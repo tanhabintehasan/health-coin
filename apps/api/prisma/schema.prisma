@@ -1,0 +1,467 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── REGIONS ─────────────────────────────────────────────────────────────────
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  code      String   @unique @db.VarChar(20)
+  level     Int      @db.SmallInt         // 1=Province 2=City 3=County
+  parentId  String?
+  parent    Region?  @relation("RegionTree", fields: [parentId], references: [id])
+  children  Region[] @relation("RegionTree")
+
+  users     User[]
+  merchants Merchant[]
+
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+  @@index([level])
+  @@map("regions")
+}
+
+// ─── MEMBERSHIP TIERS ────────────────────────────────────────────────────────
+
+model MembershipTier {
+  level              Int      @id @db.SmallInt  // 1-6
+  name               String   @db.VarChar(50)
+  minCoins           BigInt                      // lifetime threshold for auto-upgrade
+  regionalCoinRate   Decimal  @db.Decimal(5, 4) // the "m%" for Universal Health Coins
+  description        String?  @db.Text
+  updatedAt          DateTime @updatedAt
+
+  @@map("membership_tiers")
+}
+
+// ─── SYSTEM CONFIG ───────────────────────────────────────────────────────────
+
+model SystemConfig {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id              String   @id @default(uuid())
+  phone           String   @unique @db.VarChar(20)
+  nickname        String?  @db.VarChar(100)
+  avatarUrl       String?  @db.Text
+  referralCode    String   @unique @db.VarChar(12)
+  referrerId      String?
+  referrer        User?    @relation("ReferralTree", fields: [referrerId], references: [id])
+  referrals       User[]   @relation("ReferralTree")
+  regionId        String?
+  region          Region?  @relation(fields: [regionId], references: [id])
+  membershipLevel Int      @default(1) @db.SmallInt
+  totalMutualCoinsEarned BigInt @default(0)  // lifetime total for auto-upgrade tracking
+  isActive        Boolean  @default(true)
+  wechatOpenId    String?  @unique @db.VarChar(100)
+  alipayUserId    String?  @unique @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  wallets          Wallet[]
+  walletTxns       WalletTransaction[]
+  orders           Order[]
+  healthRecords    HealthRecord[]
+  merchant         Merchant?
+  withdrawals      Withdrawal[]
+  adminUser        AdminUser?
+
+  @@index([phone])
+  @@index([referrerId])
+  @@index([regionId])
+  @@index([referralCode])
+  @@map("users")
+}
+
+// ─── HEALTH RECORDS ──────────────────────────────────────────────────────────
+
+model HealthRecord {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  fileUrl   String   @db.Text
+  fileType  String   @db.VarChar(10)  // 'image' | 'pdf'
+  fileName  String   @db.VarChar(200)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("health_records")
+}
+
+// ─── WALLETS ─────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  walletType    WalletType
+  balance       BigInt   @default(0)        // stored as integer ×100
+  frozenBalance BigInt   @default(0)
+  updatedAt     DateTime @updatedAt
+
+  transactions  WalletTransaction[]
+
+  @@unique([userId, walletType])
+  @@index([userId])
+  @@map("wallets")
+}
+
+enum WalletType {
+  HEALTH_COIN
+  MUTUAL_HEALTH_COIN
+  UNIVERSAL_HEALTH_COIN
+}
+
+model WalletTransaction {
+  id            String   @id @default(uuid())
+  walletId      String
+  wallet        Wallet   @relation(fields: [walletId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  walletType    WalletType
+  amount        BigInt                       // positive=credit, negative=debit
+  balanceAfter  BigInt                       // snapshot for audit
+  txType        TxType
+  referenceId   String?  @db.Uuid
+  referenceType String?  @db.VarChar(50)
+  appliedRate   Decimal? @db.Decimal(6, 4)  // capture rate at time of reward
+  note          String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([referenceId, referenceType])
+  @@index([createdAt(sort: Desc)])
+  @@map("wallet_transactions")
+}
+
+enum TxType {
+  ORDER_REWARD
+  REFERRAL_L1_REWARD
+  REFERRAL_L2_REWARD
+  REGIONAL_REWARD
+  ORDER_PAYMENT
+  WITHDRAWAL
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+// ─── MERCHANTS ───────────────────────────────────────────────────────────────
+
+model Merchant {
+  id             String         @id @default(uuid())
+  ownerUserId    String         @unique
+  owner          User           @relation(fields: [ownerUserId], references: [id])
+  name           String         @db.VarChar(200)
+  logoUrl        String?        @db.Text
+  description    String?        @db.Text
+  regionId       String?
+  region         Region?        @relation(fields: [regionId], references: [id])
+  status         MerchantStatus @default(PENDING)
+  rejectionNote  String?        @db.Text
+  commissionRate Decimal        @default(0.05) @db.Decimal(5, 4)
+  bankAccount    Json?          // encrypted bank/payout info
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  products       Product[]
+  orders         Order[]
+  redemptionLogs RedemptionLog[]
+
+  @@index([ownerUserId])
+  @@index([status])
+  @@map("merchants")
+}
+
+enum MerchantStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────────────────
+
+model ProductCategory {
+  id        String            @id @default(uuid())
+  name      String            @db.VarChar(100)
+  parentId  String?
+  parent    ProductCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ProductCategory[] @relation("CategoryTree")
+  sortOrder Int               @default(0)
+  iconUrl   String?           @db.Text
+
+  products  Product[]
+
+  @@index([parentId])
+  @@map("product_categories")
+}
+
+model Product {
+  id               String          @id @default(uuid())
+  merchantId       String
+  merchant         Merchant        @relation(fields: [merchantId], references: [id])
+  categoryId       String?
+  category         ProductCategory? @relation(fields: [categoryId], references: [id])
+  name             String          @db.VarChar(200)
+  description      String?         @db.Text
+  images           String[]        // OSS URLs
+  productType      ProductType
+  deliveryType     DeliveryType    @default(DELIVERY)
+  basePrice        BigInt          // yuan ×100, used for display; actual price on variant
+  coinOffsetRate   Decimal         @default(0) @db.Decimal(5,4) // 0.0000–1.0000, fraction of price offsettable by HealthCoin
+  status           ProductStatus   @default(DRAFT)
+  requiresApproval Boolean         @default(false)
+  // Service product fields
+  validityDays     Int?            // how many days QR code valid after purchase
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
+
+  @@index([merchantId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+enum ProductType {
+  PHYSICAL
+  SERVICE
+}
+
+enum DeliveryType {
+  DELIVERY
+  IN_STORE_REDEMPTION
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  INACTIVE
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  name       String   @db.VarChar(200)   // e.g. "Red / XL"
+  sku        String?  @db.VarChar(100)
+  price      BigInt                       // yuan ×100
+  stock      Int      @default(0)
+  attributes Json?                        // { color: "Red", size: "XL" }
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ─── ORDERS ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id           String      @id @default(uuid())
+  orderNo      String      @unique @db.VarChar(30)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  merchantId   String
+  merchant     Merchant    @relation(fields: [merchantId], references: [id])
+  status       OrderStatus @default(PENDING_PAYMENT)
+
+  totalAmount       BigInt  @default(0)  // yuan ×100
+  healthCoinPaid    BigInt  @default(0)
+  mutualCoinPaid    BigInt  @default(0)
+  universalCoinPaid BigInt  @default(0)
+  cashPaid          BigInt  @default(0)
+  fuiouTradeNo      String? @db.VarChar(100)
+
+  shippingAddress Json?    // snapshot at order time
+  trackingNumber  String?  @db.VarChar(100)
+  remark          String?  @db.Text
+
+  paidAt      DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  items       OrderItem[]
+
+  @@index([userId])
+  @@index([merchantId])
+  @@index([status])
+  @@index([orderNo])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  REFUNDING
+  REFUNDED
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id])
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  variantId    String?
+  variant      ProductVariant? @relation(fields: [variantId], references: [id])
+  productType  ProductType
+
+  // Price snapshots (immutable after creation)
+  productName  String   @db.VarChar(200)
+  variantName  String?  @db.VarChar(200)
+  unitPrice    BigInt
+  quantity     Int
+  subtotal     BigInt
+
+  // Redemption fields (SERVICE type only)
+  redemptionCode   String?   @unique @db.VarChar(20)
+  redemptionQrUrl  String?   @db.Text
+  redeemableCount  Int?
+  redeemedCount    Int       @default(0)
+  validFrom        DateTime?
+  validUntil       DateTime?
+
+  createdAt DateTime @default(now())
+
+  redemptionLogs RedemptionLog[]
+
+  @@index([orderId])
+  @@index([redemptionCode])
+  @@map("order_items")
+}
+
+// ─── REDEMPTION ──────────────────────────────────────────────────────────────
+
+model RedemptionLog {
+  id           String    @id @default(uuid())
+  orderItemId  String
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id])
+  merchantId   String
+  merchant     Merchant  @relation(fields: [merchantId], references: [id])
+  redeemedQty  Int       @default(1)
+  redeemedAt   DateTime  @default(now())
+  note         String?   @db.Text
+
+  @@index([orderItemId])
+  @@index([merchantId])
+  @@index([redeemedAt(sort: Desc)])
+  @@map("redemption_logs")
+}
+
+// ─── WITHDRAWALS ─────────────────────────────────────────────────────────────
+
+model Withdrawal {
+  id             String           @id @default(uuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id])
+  amount         BigInt           // Universal Health Coins ×100
+  commissionRate Decimal          @db.Decimal(5, 4)
+  commissionAmt  BigInt
+  netAmount      BigInt           // actual payout
+  payoutMethod   PayoutMethod
+  payoutAccount  Json             // encrypted account details
+  status         WithdrawalStatus @default(PENDING)
+  adminNote      String?          @db.Text
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  completedAt    DateTime?
+  fuiouBatchNo   String?          @db.VarChar(100)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  reviewedByAdmin AdminUser? @relation(fields: [reviewedBy], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("withdrawals")
+}
+
+enum PayoutMethod {
+  BANK
+  ALIPAY
+  WECHAT
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+// ─── ADMIN USERS ─────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  role        AdminRole @default(STAFF)
+  permissions String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  withdrawalReviews Withdrawal[]
+
+  @@map("admin_users")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  FINANCE
+  STAFF
+}
+
+// ─── USER ADDRESSES ──────────────────────────────────────────────────────────
+
+model UserAddress {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String   @db.VarChar(50)
+  phone       String   @db.VarChar(20)
+  province    String   @db.VarChar(50)
+  city        String   @db.VarChar(50)
+  district    String   @db.VarChar(50)
+  detail      String   @db.VarChar(200)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_addresses")
+}
