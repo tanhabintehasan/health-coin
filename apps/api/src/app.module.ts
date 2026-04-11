@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { BullModule } from '@nestjs/bull';
+// import { BullModule } from '@nestjs/bull';
 import { PrismaModule } from './prisma/prisma.module';
-import { RedisModule } from './common/redis/redis.module';
+// import { RedisModule } from './common/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RegionsModule } from './modules/regions/regions.module';
@@ -25,14 +25,14 @@ import { HealthRecordsModule } from './modules/health-records/health-records.mod
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    BullModule.forRoot({
-      redis: {
-        host: process.env.REDIS_HOST ?? 'localhost',
-        port: Number(process.env.REDIS_PORT ?? 6379),
-        password: process.env.REDIS_PASSWORD,
-      },
-    }),
-    RedisModule,
+    // BullModule.forRoot({
+    //   redis: {
+    //     host: process.env.REDIS_HOST ?? 'localhost',
+    //     port: Number(process.env.REDIS_PORT ?? 6379),
+    //     password: process.env.REDIS_PASSWORD,
+    //   },
+    // }),
+    // RedisModule,
     PrismaModule,
     AuthModule,
     UsersModule,
