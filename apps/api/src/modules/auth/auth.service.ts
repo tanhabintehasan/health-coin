@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -87,6 +87,42 @@ export class AuthService {
     };
   }
 
+  async demoLogin(role: 'admin' | 'merchant' | 'user') {
+    const enabled = this.config.get('DEMO_LOGIN_ENABLED') === 'true';
+    if (!enabled) {
+      throw new ForbiddenException('Demo login is disabled');
+    }
+
+    const demoPhones: Record<string, string> = {
+      admin: '13800000001',
+      merchant: '13800000002',
+      user: '13800000004',
+    };
+
+    const phone = demoPhones[role];
+    if (!phone) {
+      throw new UnauthorizedException('Invalid demo role');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user) {
+      throw new UnauthorizedException('Demo user not found. Please run seeds.');
+    }
+
+    const tokens = await this.issueTokens(user.id, user.phone, true);
+    return {
+      user: {
+        id: user.id,
+        phone: user.phone,
+        nickname: user.nickname,
+        membershipLevel: user.membershipLevel,
+        referralCode: user.referralCode,
+        isNewUser: !user.nickname,
+      },
+      ...tokens,
+    };
+  }
+
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
@@ -117,7 +153,7 @@ export class AuthService {
     }
   }
 
-  private async issueTokens(userId: string, phone: string) {
+  private async issueTokens(userId: string, phone: string, skipRedis = false) {
     const payload = { sub: userId, phone };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -130,8 +166,14 @@ export class AuthService {
       expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
     });
 
-    // Store refresh token in Redis (7d TTL)
-    await this.redis.set(`refresh:${userId}`, refreshToken, 'EX', 7 * 24 * 3600);
+    if (!skipRedis) {
+      try {
+        // Store refresh token in Redis (7d TTL)
+        await this.redis.set(`refresh:${userId}`, refreshToken, 'EX', 7 * 24 * 3600);
+      } catch {
+        // Gracefully ignore Redis failures so logins don't hard-fail when Redis is down
+      }
+    }
 
     return { accessToken, refreshToken };
   }

@@ -72,21 +72,17 @@ export default function AuthPage() {
   }
 
   const demoLogin = async (role: 'admin' | 'merchant' | 'user') => {
-    const demoPhones: Record<string, string> = {
-      admin: '13800000001',
-      merchant: '13800000002',
-      user: '13800000003',
-    }
-    const p = demoPhones[role]
     try {
-      await api.sendOtp(p)
-      const res: any = await api.verifyOtp(p, '123456')
+      const res: any = await api.demoLogin(role)
+      if (!res?.accessToken) throw new Error('登录失败')
       setAuth(res.user, res.accessToken)
       doRedirect(role)
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '演示登录失败')
     }
   }
+
+  const demoEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED === 'true'
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1677ff 0%,#0958d9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -127,12 +123,16 @@ export default function AuthPage() {
           </Form>
         )}
 
-        <Divider>演示入口</Divider>
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Button block onClick={() => demoLogin('admin')}>演示管理员登录</Button>
-          <Button block onClick={() => demoLogin('merchant')}>演示商户登录</Button>
-          <Button block onClick={() => demoLogin('user')}>演示用户登录</Button>
-        </Space>
+        {demoEnabled && (
+          <>
+            <Divider>演示入口</Divider>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button block onClick={() => demoLogin('admin')}>演示管理员登录</Button>
+              <Button block onClick={() => demoLogin('merchant')}>演示商户登录</Button>
+              <Button block onClick={() => demoLogin('user')}>演示用户登录</Button>
+            </Space>
+          </>
+        )}
       </Card>
     </div>
   )

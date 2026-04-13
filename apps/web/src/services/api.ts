@@ -53,6 +53,8 @@ export const api = {
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
   verifyOtp: (phone: string, code: string, referralCode?: string) =>
     request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/otp/verify', { phone, code, referralCode }),
+  demoLogin: (role: 'admin' | 'merchant' | 'user') =>
+    request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/demo-login', { role }),
 
   // Users / Me
   getMe: () => request<any>('GET', '/users/me'),

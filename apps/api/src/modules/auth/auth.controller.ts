@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { DemoLoginDto } from './dto/demo-login.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -26,6 +27,15 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
+  }
+
+  @Post('demo-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Demo login (temporary — bypasses OTP)' })
+  @ApiResponse({ status: 200, description: 'Authenticated' })
+  @ApiResponse({ status: 403, description: 'Demo login disabled' })
+  demoLogin(@Body() dto: DemoLoginDto) {
+    return this.authService.demoLogin(dto.role);
   }
 
   @Post('token/refresh')
