@@ -60,6 +60,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ role: null, roleLoading: false })
       return null
     }
+
+    // TEMPORARY DEMO MODE: skip backend role probing for demo token.
+    // Controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review.
+    if (token === 'demo_token') {
+      const currentRole = get().role
+      if (currentRole) {
+        set({ role: currentRole, roleLoading: false, initialized: true })
+        return currentRole
+      }
+      set({ role: 'user', roleLoading: false, initialized: true })
+      return 'user'
+    }
+
     set({ roleLoading: true })
     try {
       // 1. Try admin first (fast endpoint)
@@ -93,6 +106,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ initialized: true })
       return
     }
+
+    // TEMPORARY DEMO MODE: skip backend verification for demo token.
+    // Controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review.
+    if (token === 'demo_token') {
+      set({ initialized: true })
+      return
+    }
+
     // First, try to get current user info
     try {
       const me = await api.getMe()

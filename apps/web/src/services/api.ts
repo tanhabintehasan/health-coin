@@ -25,16 +25,24 @@ client.interceptors.response.use(
   (res) => res,
   (err: AxiosError<any>) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('healthcoin_token')
-      try {
-        window.dispatchEvent(new Event('healthcoin:logout'))
-      } catch {}
-      const pathname = window.location.pathname
-      if (!isPublicPath(pathname) && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
-        window.location.href = '/login'
+      const token = localStorage.getItem('healthcoin_token')
+      // TEMPORARY DEMO MODE: don't logout demo users on 401.
+      // Controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review.
+      if (token !== 'demo_token') {
+        localStorage.removeItem('healthcoin_token')
+        try {
+          window.dispatchEvent(new Event('healthcoin:logout'))
+        } catch {}
+        const pathname = window.location.pathname
+        if (!isPublicPath(pathname) && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
+          window.location.href = '/login'
+        }
       }
     }
-    const msg = err.response?.data?.message || err.message || '请求失败，请稍后重试'
+    const rawMsg = err.response?.data?.message
+    const msg = Array.isArray(rawMsg)
+      ? rawMsg.join('; ')
+      : (rawMsg || err.message || '请求失败，请稍后重试')
     return Promise.reject(msg)
   }
 )
