@@ -75,8 +75,8 @@ export function AppRoutes() {
       <Route path="/shop" element={PublicRoute(ShopPage)} />
       <Route path="/merchant-join" element={PublicRoute(MerchantJoinPage)} />
       <Route path="/product/:id" element={PublicRoute(ProductDetailPage)} />
-      <Route path="/login" element={withSuspense(LoginPage)} />
-      <Route path="/register" element={withSuspense(RegisterPage)} />
+      <Route path="/login" element={PublicRoute(LoginPage)} />
+      <Route path="/register" element={PublicRoute(RegisterPage)} />
 
       <Route
         path="/portal/admin/*"

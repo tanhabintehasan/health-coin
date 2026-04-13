@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuthStore } from '../store/auth.store'
 import { MedicineBoxOutlined, PhoneOutlined, MailOutlined, EnvironmentOutlined, MenuOutlined } from '@ant-design/icons'
+import { useResponsive } from '../hooks/useResponsive'
 
 const { Header, Content, Footer } = Layout
 const { Title, Text } = Typography
@@ -12,6 +13,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const location = useLocation()
   const { token } = useAuthStore()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { isMobile } = useResponsive()
 
   const menuItems = [
     { key: '/', label: <Link to="/">首页</Link> },
@@ -26,34 +28,56 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,.06)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} className="mobile-only" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <MedicineBoxOutlined style={{ fontSize: 28, color: '#1677ff' }} />
-            <Title level={4} style={{ margin: 0, color: '#1677ff' }}>HealthCoin</Title>
-          </div>
+        {/* Logo on the left */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('/')}>
+          <MedicineBoxOutlined style={{ fontSize: 28, color: '#1677ff' }} />
+          <Title level={4} style={{ margin: 0, color: '#1677ff', whiteSpace: 'nowrap' }}>HealthCoin</Title>
         </div>
-        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ flex: 1, justifyContent: 'center', border: 'none' }} className="desktop-only" />
-        <Space>
-          {token ? (
-            <Button type="primary" onClick={() => navigate('/portal/user/home')}>进入平台</Button>
-          ) : (
-            <>
-              <Button type="default" onClick={() => navigate('/login')}>登录</Button>
-              <Button type="primary" onClick={() => navigate('/register')}>注册</Button>
-            </>
-          )}
-        </Space>
+
+        {/* Desktop: horizontal menu */}
+        {!isMobile && (
+          <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ flex: 1, justifyContent: 'center', border: 'none', maxWidth: 600 }} />
+        )}
+
+        {/* Desktop: auth buttons */}
+        {!isMobile && (
+          <Space>
+            {token ? (
+              <Button type="primary" onClick={() => navigate('/portal/user/home')}>进入平台</Button>
+            ) : (
+              <>
+                <Button type="default" onClick={() => navigate('/login')}>登录</Button>
+                <Button type="primary" onClick={() => navigate('/register')}>注册</Button>
+              </>
+            )}
+          </Space>
+        )}
+
+        {/* Mobile: hamburger on the right */}
+        {isMobile && (
+          <Button type="text" icon={<MenuOutlined style={{ fontSize: 20 }} />} onClick={() => setDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40 }} />
+        )}
       </Header>
 
       <Drawer
         title="导航"
-        placement="left"
+        placement="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={260}
       >
         <Menu mode="vertical" selectedKeys={[selectedKey]} items={menuItems} onClick={() => setDrawerOpen(false)} />
+        <Divider />
+        <div style={{ padding: '0 16px' }}>
+          {token ? (
+            <Button type="primary" block onClick={() => { navigate('/portal/user/home'); setDrawerOpen(false); }}>进入平台</Button>
+          ) : (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button type="default" block onClick={() => { navigate('/login'); setDrawerOpen(false); }}>登录</Button>
+              <Button type="primary" block onClick={() => { navigate('/register'); setDrawerOpen(false); }}>注册</Button>
+            </Space>
+          )}
+        </div>
       </Drawer>
 
       <Content>{children}</Content>
