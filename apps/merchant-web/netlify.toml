@@ -1,4 +1,5 @@
 [build]
+  base = "apps/merchant-web"
   command = "npm install && npm run build"
   publish = "dist"
 
