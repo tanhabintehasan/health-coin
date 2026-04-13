@@ -46,13 +46,28 @@ export class MerchantsController {
       this.prisma.merchant.count({ where: { status: 'APPROVED' } }),
       this.prisma.merchant.findMany({
         where: { status: 'APPROVED' },
-        select: { id: true, name: true, logoUrl: true, description: true, region: { select: { name: true } } },
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          description: true,
+          region: { select: { name: true } },
+        },
         skip,
         take: Number(limit),
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-    return { data, meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) } };
+
+    return {
+      data,
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    };
   }
 
   @Get(':id')
