@@ -1,21 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, Card, Typography, Space, Divider, message, Alert } from 'antd'
-import { UserOutlined, LockOutlined, SafetyOutlined, ShopOutlined, MobileOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, Typography, Space, message, Divider, Alert } from 'antd'
+import { ShopOutlined, LockOutlined, MobileOutlined } from '@ant-design/icons'
+import { api } from '../../services/api'
 import { useAuthStore } from '../../store/auth.store'
-import client from '../../api/client'
 
 const { Title, Text } = Typography
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const setAuth = useAuthStore((s) => s.setAuth)
+
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const setAuth = useAuthStore((s) => s.setAuth)
-  const navigate = useNavigate()
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -26,8 +27,8 @@ export default function LoginPage() {
 
   const startCountdown = () => {
     if (timerRef.current) clearInterval(timerRef.current)
-    setCountdown(60)
 
+    setCountdown(60)
     timerRef.current = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
@@ -40,76 +41,38 @@ export default function LoginPage() {
     }, 1000)
   }
 
-  // Demo login for client presentation
-  const handleDemoLogin = (role: 'admin' | 'merchant') => {
-    const demoUser =
-      role === 'admin'
-        ? {
-            id: 'demo-admin-1',
-            phone: '01700000001',
-            nickname: 'Demo Admin',
-            role: 'admin',
-            userType: 'admin',
-            isActive: true,
-          }
-        : {
-            id: 'demo-merchant-1',
-            phone: '01700000002',
-            nickname: 'Demo Merchant',
-            role: 'merchant',
-            userType: 'merchant',
-            isActive: true,
-          }
-
-    const demoToken = `demo-token-${role}`
-
-    localStorage.setItem('demoMode', 'true')
-    localStorage.setItem('demoRole', role)
-
-    setAuth(demoUser as any, demoToken)
-    message.success(`Logged in as Demo ${role === 'admin' ? 'Admin' : 'Merchant'}`)
-
-    // Change these routes if your project uses different paths
-    if (role === 'admin') {
-      navigate('/dashboard')
-    } else {
-      navigate('/dashboard')
-      // Example alternative:
-      // navigate('/merchant/dashboard')
+  const handleDemoMerchantLogin = () => {
+    const demoMerchantUser = {
+      id: 'demo-merchant-1',
+      phone: '01700000002',
+      nickname: 'Demo Merchant',
+      role: 'merchant',
+      userType: 'merchant',
+      isActive: true,
     }
+
+    setAuth(demoMerchantUser as any, 'demo-merchant-token')
+    localStorage.setItem('demoMode', 'true')
+    localStorage.setItem('demoRole', 'merchant')
+
+    message.success('Logged in as Demo Merchant')
+
+    // Change this if your merchant dashboard route is different
+    navigate('/merchant/dashboard')
   }
 
   const sendOtp = async () => {
     try {
-      await form.validateFields(['phone'])
-    } catch {
-      return
-    }
+      const values = await form.validateFields(['phone'])
+      setPhone(values.phone)
+      setLoading(true)
 
-    const phoneVal = form.getFieldValue('phone')
-    setLoading(true)
-
-    try {
-      await client.post('/auth/otp/send', { phone: phoneVal })
-      setPhone(phoneVal)
+      await api.sendOtp(values.phone)
       setStep('otp')
       startCountdown()
-      message.success('OTP sent — check the API terminal for the code')
+      message.success('OTP sent')
     } catch (err: any) {
-      message.error(typeof err === 'string' ? err : 'Failed to send OTP')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const resendOtp = async () => {
-    setLoading(true)
-    try {
-      await client.post('/auth/otp/send', { phone })
-      startCountdown()
-      message.success('New OTP sent — check the API terminal')
-    } catch (err: any) {
-      message.error(typeof err === 'string' ? err : 'Failed to resend OTP')
+      message.error(err || 'Failed to send OTP')
     } finally {
       setLoading(false)
     }
@@ -117,23 +80,21 @@ export default function LoginPage() {
 
   const verifyOtp = async () => {
     try {
-      await form.validateFields(['code'])
-    } catch {
-      return
-    }
+      const values = await form.validateFields()
+      setLoading(true)
 
-    const code = form.getFieldValue('code')
-    setLoading(true)
-
-    try {
-      const res: any = await client.post('/auth/otp/verify', { phone, code })
+      const res: any = await api.verifyOtp(values.phone, values.code)
       setAuth(res.user, res.accessToken)
+
       localStorage.removeItem('demoMode')
       localStorage.removeItem('demoRole')
-      message.success('Welcome!')
-      navigate('/dashboard')
+
+      message.success('Welcome back!')
+
+      // Change this if your merchant dashboard route is different
+      navigate('/merchant/dashboard')
     } catch (err: any) {
-      message.error(typeof err === 'string' ? err : 'Invalid OTP')
+      message.error(err || 'Invalid OTP')
     } finally {
       setLoading(false)
     }
@@ -141,7 +102,6 @@ export default function LoginPage() {
 
   const backToPhoneStep = () => {
     setStep('phone')
-    setPhone('')
     form.resetFields(['code'])
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = null
@@ -152,74 +112,59 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: '100vh',
+        background: '#f0f5ff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f0f2f5',
         padding: 24,
       }}
     >
-      <Card
-        style={{
-          width: 430,
-          boxShadow: '0 2px 16px rgba(0,0,0,.1)',
-          borderRadius: 12,
-        }}
-      >
+      <Card style={{ width: 400, borderRadius: 12 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <SafetyOutlined style={{ fontSize: 40, color: '#1677ff', marginBottom: 8 }} />
-          <Title level={3} style={{ margin: 0 }}>
-            HealthCoin Portal
-          </Title>
-          <Text type="secondary">Client Demo / Staging Access</Text>
+          <Space direction="vertical" size={4}>
+            <ShopOutlined style={{ fontSize: 40, color: '#1677ff' }} />
+            <Title level={3} style={{ margin: 0, color: '#1677ff' }}>
+              Merchant Portal
+            </Title>
+            <Text type="secondary">HealthCoin Platform</Text>
+          </Space>
         </div>
 
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 20 }}
-          message="Demo mode is enabled for presentation"
-          description="Use Demo Admin Login or Demo Merchant Login for the client meeting. OTP login is still available below."
+          style={{ marginBottom: 16 }}
+          message="Demo access available"
+          description="Use Demo Merchant Login for the client presentation, or continue with OTP login."
         />
 
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Button
-            type="primary"
-            size="large"
-            block
-            icon={<SafetyOutlined />}
-            onClick={() => handleDemoLogin('admin')}
-          >
-            Demo Admin Login
-          </Button>
+        <Button
+          type="primary"
+          block
+          size="large"
+          onClick={handleDemoMerchantLogin}
+          style={{ marginBottom: 16 }}
+        >
+          Demo Merchant Login
+        </Button>
 
-          <Button
-            size="large"
-            block
-            icon={<ShopOutlined />}
-            onClick={() => handleDemoLogin('merchant')}
-          >
-            Demo Merchant Login
-          </Button>
-        </Space>
-
-        <Divider>Or continue with OTP</Divider>
+        <Divider style={{ margin: '16px 0' }}>Or login with OTP</Divider>
 
         <Form form={form} layout="vertical">
           <Form.Item
             name="phone"
             label="Phone Number"
             rules={[
-              { required: true, message: 'Enter phone number' },
-              { pattern: /^1[3-9]\d{9}$/, message: 'Invalid phone number' },
+              { required: true, message: 'Enter your phone number' },
+              { pattern: /^1[3-9]\d{9}$/, message: 'Invalid Chinese phone number' },
             ]}
           >
             <Input
               prefix={<MobileOutlined />}
               placeholder="13x xxxx xxxx"
-              size="large"
               maxLength={11}
               disabled={step === 'otp'}
+              size="large"
             />
           </Form.Item>
 
@@ -228,15 +173,15 @@ export default function LoginPage() {
               name="code"
               label="OTP Code"
               rules={[
-                { required: true, message: 'Enter the OTP' },
-                { len: 6, message: '6 digits required' },
+                { required: true, message: 'Enter the 6-digit OTP' },
+                { len: 6, message: 'OTP must be 6 digits' },
               ]}
             >
               <Input
                 prefix={<LockOutlined />}
-                placeholder="6-digit code"
-                size="large"
+                placeholder="6-digit OTP"
                 maxLength={6}
+                size="large"
               />
             </Form.Item>
           )}
@@ -253,30 +198,19 @@ export default function LoginPage() {
 
               <Button
                 block
-                size="large"
-                onClick={resendOtp}
+                onClick={sendOtp}
                 disabled={countdown > 0}
-                loading={loading}
+                loading={loading && countdown === 0}
               >
                 {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
               </Button>
 
-              <Button block type="link" onClick={backToPhoneStep}>
+              <Button type="link" block onClick={backToPhoneStep}>
                 ← Change phone number
               </Button>
             </Space>
           )}
         </Form>
-
-        <div style={{ marginTop: 20, textAlign: 'center' }}>
-          <Text type="secondary">
-            Demo Admin: click button directly
-          </Text>
-          <br />
-          <Text type="secondary">
-            Demo Merchant: click button directly
-          </Text>
-        </div>
       </Card>
     </div>
   )
