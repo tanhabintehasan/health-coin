@@ -7,8 +7,6 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Merchants')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('merchants')
 export class MerchantsController {
   constructor(
@@ -17,18 +15,24 @@ export class MerchantsController {
   ) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Apply to become a merchant' })
   apply(@CurrentUser() user: { id: string }, @Body() dto: ApplyMerchantDto) {
     return this.merchantsService.apply(user.id, dto);
   }
 
   @Get('me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get my merchant profile' })
   getMyMerchant(@CurrentUser() user: { id: string }) {
     return this.merchantsService.getMyMerchant(user.id);
   }
 
   @Put('me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Update my merchant profile' })
   updateMyMerchant(@CurrentUser() user: { id: string }, @Body() dto: ApplyMerchantDto) {
     return this.merchantsService.updateMyMerchant(user.id, dto);
@@ -42,13 +46,28 @@ export class MerchantsController {
       this.prisma.merchant.count({ where: { status: 'APPROVED' } }),
       this.prisma.merchant.findMany({
         where: { status: 'APPROVED' },
-        select: { id: true, name: true, logoUrl: true, description: true, region: { select: { name: true } } },
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          description: true,
+          region: { select: { name: true } },
+        },
         skip,
         take: Number(limit),
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-    return { data, meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) } };
+
+    return {
+      data,
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    };
   }
 
   @Get(':id')
