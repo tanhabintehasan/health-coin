@@ -25,7 +25,7 @@ function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: s
         } else if (res.statusCode >= 400) {
           reject((res.data as any)?.message || 'Request failed')
         } else {
-          resolve((res.data as any)?.data ?? res.data)
+          resolve(res.data as any)
         }
       },
       fail: (err) => reject(err.errMsg || 'Network error'),

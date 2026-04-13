@@ -40,7 +40,7 @@ client.interceptors.response.use(
 )
 
 function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, data?: any, params?: any, config?: any): Promise<T> {
-  return client.request({ method, url: path, data, params, ...config }).then((res) => res.data?.data ?? res.data)
+  return client.request({ method, url: path, data, params, ...config }).then((res) => res.data)
 }
 
 // ─── Unified API ─────────────────────────────────────────────────────────────

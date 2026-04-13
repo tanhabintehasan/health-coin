@@ -11,7 +11,7 @@ client.interceptors.request.use((config) => {
 })
 
 client.interceptors.response.use(
-  (res) => res.data?.data ?? res.data,
+  (res) => res.data,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('merchant_token')
