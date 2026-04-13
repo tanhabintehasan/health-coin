@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaClient } from '@prisma/client'
 
 const tiers = [
   { level: 1, name: '普通会员', minCoins: 0n, regionalCoinRate: 0.0, description: 'Regular Member' },
@@ -9,20 +7,16 @@ const tiers = [
   { level: 4, name: '县级代理', minCoins: 20000n, regionalCoinRate: 0.15, description: 'County Agent' },
   { level: 5, name: '市级代理', minCoins: 50000n, regionalCoinRate: 0.10, description: 'City Agent' },
   { level: 6, name: '省级代理', minCoins: 100000n, regionalCoinRate: 0.05, description: 'Provincial Agent' },
-];
+]
 
-async function main() {
-  console.log('Seeding membership tiers...');
+export default async function seed(prisma: PrismaClient) {
+  console.log('Seeding membership tiers...')
   for (const tier of tiers) {
     await prisma.membershipTier.upsert({
       where: { level: tier.level },
       update: tier,
       create: tier,
-    });
+    })
   }
-  console.log('Seeded 6 membership tiers');
+  console.log('Seeded 6 membership tiers')
 }
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());

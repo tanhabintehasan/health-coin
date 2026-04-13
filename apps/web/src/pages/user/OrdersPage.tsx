@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../services/api'
-import { message, Spin, Empty } from 'antd'
+import { message, Spin, Empty, Button, Steps, Card, Tag, Input } from 'antd'
+import { WalletOutlined, CheckCircleOutlined } from '@ant-design/icons'
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING_PAYMENT: 'Pending Payment', PAID: 'Paid', PROCESSING: 'Processing', SHIPPED: 'Shipped',
-  COMPLETED: 'Completed', CANCELLED: 'Cancelled', REFUNDING: 'Refunding', REFUNDED: 'Refunded',
+  PENDING_PAYMENT: '待付款', PAID: '已付款', PROCESSING: '处理中', SHIPPED: '已发货',
+  COMPLETED: '已完成', CANCELLED: '已取消', REFUNDING: '退款中', REFUNDED: '已退款',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -14,7 +15,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const WALLET_LABELS: Record<string, string> = {
-  HEALTH_COIN: 'HealthCoin', MUTUAL_HEALTH_COIN: 'Mutual HealthCoin', UNIVERSAL_HEALTH_COIN: 'Universal HealthCoin',
+  HEALTH_COIN: '健康币', MUTUAL_HEALTH_COIN: '互助币', UNIVERSAL_HEALTH_COIN: '万能币',
 }
 
 const WALLET_COLORS: Record<string, string> = {
@@ -62,7 +63,7 @@ export default function OrdersPage() {
   }, [checkoutMode])
 
   const placeOrder = async () => {
-    if (!address.trim()) { message.error('Enter delivery address'); return }
+    if (!address.trim()) { message.error('请输入收货地址'); return }
     setPlacing(true)
     try {
       const noteText = [address, note].filter(Boolean).join(' | ')
@@ -72,102 +73,119 @@ export default function OrdersPage() {
       })
       for (const item of checkoutItems) { await api.removeFromCart(item.productId, item.variantId).catch(() => {}) }
       navigate(`/portal/user/order/${order.id}`)
-    } catch (err: any) { message.error(err || 'Failed to place order') } finally { setPlacing(false) }
+    } catch (err: any) { message.error(err || '下单失败') } finally { setPlacing(false) }
   }
 
   if (checkoutMode) {
     return (
-      <div style={{ minHeight: '100%', paddingBottom: 80 }}>
-        <div style={{ background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0' }}>
-          {[{ num: '1', label: 'Review' }, { num: '2', label: 'Address' }, { num: '3', label: 'Pay' }].map((step, idx, arr) => (
-            <div key={step.num} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: idx === 0 ? '#1677ff' : '#e0e0e0' }}>
-                  <span style={{ fontSize: 12, color: idx === 0 ? '#fff' : '#999', fontWeight: 'bold' }}>{step.num}</span>
-                </div>
-                <span style={{ fontSize: 12, color: idx === 0 ? '#1677ff' : '#999', fontWeight: idx === 0 ? 500 : 'normal' }}>{step.label}</span>
-              </div>
-              {idx < arr.length - 1 && <span style={{ color: '#d0d0d0', margin: '0 8px', fontSize: 14 }}>→</span>}
-            </div>
-          ))}
+      <div style={{ minHeight: '100%', paddingBottom: 100, background: '#f5f5f5' }}>
+        <div style={{ background: '#fff', padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
+          <Steps current={1} items={[{ title: '购物车' }, { title: '确认订单' }, { title: '支付' }]} />
         </div>
 
-        <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12 }}>Order Summary</div>
+        <Card style={{ margin: 12, borderRadius: 12 }} title="订单商品">
           {checkoutItems.map((item: any) => (
-            <div key={`${item.productId}:${item.variantId}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div key={`${item.productId}:${item.variantId}`} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <img src={item.product?.images?.[0] || 'https://placehold.co/80x80'} style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#333' }}>{item.product?.name}</div>
-                <div style={{ fontSize: 12, color: '#999' }}> x{item.quantity}</div>
+                <div style={{ fontSize: 12, color: '#999' }}>{item.variantName} x{item.quantity}</div>
+                <div style={{ fontSize: 14, fontWeight: 'bold', color: '#f5222d', marginTop: 4 }}>¥{(Number(item.subtotal) / 100).toFixed(2)}</div>
               </div>
-              <div style={{ fontSize: 13, color: '#1677ff' }}>¥{(Number(item.subtotal) / 100).toFixed(2)}</div>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 15, fontWeight: 'bold' }}>Total</div>
-            <div style={{ fontSize: 15, fontWeight: 'bold', color: '#1677ff' }}>¥{(total / 100).toFixed(2)}</div>
+          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 14, color: '#666' }}>商品总额</span>
+            <span style={{ fontSize: 16, fontWeight: 'bold', color: '#f5222d' }}>¥{(total / 100).toFixed(2)}</span>
           </div>
-        </div>
+        </Card>
 
-        <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>Your Coin Balances</div>
+        <Card style={{ margin: 12, borderRadius: 12 }} title="我的钱包余额">
           {(['HEALTH_COIN', 'MUTUAL_HEALTH_COIN', 'UNIVERSAL_HEALTH_COIN'] as const).map((wt) => (
             <div key={wt} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ fontSize: 13, color: '#555' }}>{WALLET_LABELS[wt]}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <WalletOutlined style={{ color: WALLET_COLORS[wt] }} />
+                <span style={{ fontSize: 13, color: '#555' }}>{WALLET_LABELS[wt]}</span>
+              </div>
               <div style={{ fontSize: 14, fontWeight: 500, color: WALLET_COLORS[wt] }}>{((walletBalances[wt] ?? 0) / 100).toFixed(2)}</div>
             </div>
           ))}
-          <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>You can choose payment method on the next screen after placing your order.</div>
-        </div>
+          <div style={{ fontSize: 12, color: '#999', marginTop: 4, background: '#f6ffed', padding: '8px 12px', borderRadius: 6 }}>
+            <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 6 }} />
+            下单后可在订单详情页选择一种健康币进行抵扣，每笔订单仅支持一种币抵扣。
+          </div>
+        </Card>
 
-        <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 14, color: '#333', fontWeight: 500 }}>Delivery Address</div>
-            <div style={{ color: '#ff4d4f', marginLeft: 2, fontSize: 14 }}> *</div>
-          </div>
-          <div style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', minHeight: 48 }}>
-            <div style={{ fontSize: 14, color: address ? '#333' : '#bbb', flex: 1 }}>{address || 'No address entered'}</div>
-            <button onClick={() => { const val = window.prompt('Enter Address', 'Street, City, Province'); if (val) setAddress(val) }} style={{ marginLeft: 12, padding: '4px 8px', background: '#f0f0f0', borderRadius: 6, fontSize: 12, color: '#555', border: 'none', cursor: 'pointer' }}>✎ Edit</button>
-          </div>
-        </div>
+        <Card style={{ margin: 12, borderRadius: 12 }} title="收货地址">
+          <Input.TextArea
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="请输入详细收货地址（省市区 + 街道 + 门牌号）"
+            rows={3}
+            maxLength={200}
+            showCount
+          />
+        </Card>
 
-        <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>Note (optional)</div>
-          <div style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, minHeight: 60, cursor: 'pointer' }} onClick={() => { const val = window.prompt('Add Note', 'Special instructions...'); if (val !== null) setNote(val || '') }}>
-            <div style={{ fontSize: 14, color: note ? '#333' : '#bbb' }}>{note || 'Tap to add note'}</div>
-          </div>
-        </div>
+        <Card style={{ margin: 12, borderRadius: 12 }} title="订单备注">
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="如有特殊要求，请在此备注"
+            maxLength={100}
+          />
+        </Card>
 
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 -2px 8px rgba(0,0,0,.08)', zIndex: 40 }}>
-          <div style={{ fontSize: 16, fontWeight: 'bold' }}>¥{(total / 100).toFixed(2)}</div>
-          <button onClick={placeOrder} disabled={placing} style={{ background: '#1677ff', color: '#fff', borderRadius: 8, padding: '10px 32px', fontSize: 14, opacity: placing ? 0.7 : 1, border: 'none', cursor: 'pointer' }}>
-            {placing ? 'Placing...' : 'Place Order'}
-          </button>
+          <div>
+            <div style={{ fontSize: 12, color: '#999' }}>合计</div>
+            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#f5222d' }}>¥{(total / 100).toFixed(2)}</div>
+          </div>
+          <Button type="primary" size="large" loading={placing} onClick={placeOrder} disabled={!address.trim()}>
+            提交订单
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100%' }}>
+    <div style={{ minHeight: '100%', background: '#f5f5f5' }}>
+      <div style={{ background: '#fff', padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ fontSize: 18, fontWeight: 'bold' }}>我的订单</div>
+      </div>
       <div style={{ overflowY: 'auto' }}>
-        {loading && <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>}
-        {!loading && !orders.length && <div style={{ padding: '60px 24px', textAlign: 'center' }}><Empty description="No orders yet" /></div>}
-        {orders.map((order: any) => (
-          <div key={order.id} onClick={() => navigate(`/portal/user/order/${order.id}`)} style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16, cursor: 'pointer' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 12, color: '#999' }}>#{order.id.slice(-8).toUpperCase()}</div>
-              <div style={{ fontSize: 12, color: STATUS_COLOR[order.status] ?? '#999', fontWeight: 500 }}>{STATUS_LABEL[order.status] ?? order.status}</div>
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              {order.items?.slice(0, 2).map((item: any) => <div key={item.id} style={{ fontSize: 13, color: '#333' }}>{item.productName} x{item.quantity}</div>)}
-              {order.items?.length > 2 && <div style={{ fontSize: 12, color: '#999' }}>+{order.items.length - 2} more</div>}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 12, color: '#999' }}>{order.createdAt?.slice(0, 10)}</div>
-              <div style={{ fontSize: 14, fontWeight: 'bold', color: '#333' }}>¥{(Number(order.totalAmount) / 100).toFixed(2)}</div>
-            </div>
+        {loading && <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>}
+        {!loading && !orders.length && (
+          <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+            <Empty description="暂无订单" />
+            <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/portal/user/home')}>去购物</Button>
           </div>
+        )}
+        {orders.map((order: any) => (
+          <Card key={order.id} style={{ margin: 12, borderRadius: 12 }} bodyStyle={{ padding: 16 }} onClick={() => navigate(`/portal/user/order/${order.id}`)} hoverable>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#999' }}>订单号：{order.orderNo || order.id.slice(-8).toUpperCase()}</div>
+              <Tag color={STATUS_COLOR[order.status] ?? '#999'}>{STATUS_LABEL[order.status] ?? order.status}</Tag>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              {order.items?.slice(0, 2).map((item: any) => (
+                <div key={item.id} style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+                  <img src={item.product?.images?.[0] || 'https://placehold.co/60x60'} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, color: '#333' }}>{item.productName}</div>
+                    <div style={{ fontSize: 12, color: '#999' }}>{item.variantName} x{item.quantity}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#333' }}>¥{(Number(item.subtotal) / 100).toFixed(2)}</div>
+                </div>
+              ))}
+              {order.items?.length > 2 && <div style={{ fontSize: 12, color: '#999' }}>+{order.items.length - 2} 件商品</div>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+              <div style={{ fontSize: 12, color: '#999' }}>{order.createdAt?.slice(0, 10)}</div>
+              <div style={{ fontSize: 16, fontWeight: 'bold', color: '#f5222d' }}>¥{(Number(order.totalAmount) / 100).toFixed(2)}</div>
+            </div>
+          </Card>
         ))}
       </div>
     </div>

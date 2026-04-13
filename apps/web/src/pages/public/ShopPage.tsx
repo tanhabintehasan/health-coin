@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Input, Select, Card, Row, Col, Pagination, Spin, Empty, Button, Typography, Tag } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Input, Select, Card, Row, Col, Pagination, Spin, Empty, Button, Typography, Tag, Badge, Breadcrumb } from 'antd'
+import { SearchOutlined, ShoppingOutlined, FireOutlined, ShopOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 
-const { Title } = Typography
+const { Title, Text } = Typography
+
+const SORT_OPTIONS = [
+  { value: 'default', label: '默认排序' },
+  { value: 'price_asc', label: '价格从低到高' },
+  { value: 'price_desc', label: '价格从高到低' },
+  { value: 'coin_desc', label: '抵扣比例最高' },
+]
 
 export default function ShopPage() {
   const navigate = useNavigate()
@@ -19,6 +26,7 @@ export default function ShopPage() {
   const search = searchParams.get('search') || ''
   const categoryId = searchParams.get('categoryId') || ''
   const merchantId = searchParams.get('merchantId') || ''
+  const sort = searchParams.get('sort') || 'default'
 
   useEffect(() => {
     api.getCategories().then((cats: any[]) => {
@@ -34,7 +42,7 @@ export default function ShopPage() {
     }).catch(() => {})
 
     api.listMerchantsPublic({ limit: 100 }).then((res: any) => {
-      setMerchants((res?.data || []).map((m: any) => ({ value: m.id, label: m.name })))
+      setMerchants((res?.data || []).map((m: any) => ({ value: m.id, label: m.name, logo: m.logoUrl })))
     }).catch(() => {})
   }, [])
 
@@ -47,12 +55,16 @@ export default function ShopPage() {
 
     api.listProducts(params)
       .then((res: any) => {
-        setProducts(res?.data || [])
+        let list = res?.data || []
+        if (sort === 'price_asc') list = list.sort((a: any, b: any) => Number(a.basePrice) - Number(b.basePrice))
+        if (sort === 'price_desc') list = list.sort((a: any, b: any) => Number(b.basePrice) - Number(a.basePrice))
+        if (sort === 'coin_desc') list = list.sort((a: any, b: any) => Number(b.coinOffsetRate) - Number(a.coinOffsetRate))
+        setProducts(list)
         setTotal(res?.meta?.total || 0)
       })
       .catch(() => { setProducts([]); setTotal(0) })
       .finally(() => setLoading(false))
-  }, [search, categoryId, merchantId, page])
+  }, [search, categoryId, merchantId, page, sort])
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams)
@@ -62,22 +74,31 @@ export default function ShopPage() {
     setPage(1)
   }
 
+  const activeCategory = categories.find((c) => c.value === categoryId)
+  const activeMerchant = merchants.find((m) => m.value === merchantId)
+
   return (
-    <div style={{ padding: '32px 24px 64px', maxWidth: 1400, margin: '0 auto' }}>
-      <Title level={3} style={{ marginBottom: 24 }}>积分商城</Title>
+    <div style={{ padding: '24px 24px 64px', maxWidth: 1400, margin: '0 auto' }}>
+      <Breadcrumb style={{ marginBottom: 16 }} items={[{ title: <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>首页</span> }, { title: '积分商城' }]} />
+
+      <div style={{ background: 'linear-gradient(90deg, #1677ff 0%, #4096ff 100%)', borderRadius: 16, padding: '32px 24px', color: '#fff', marginBottom: 24 }}>
+        <Title level={3} style={{ color: '#fff', margin: 0 }}><ShoppingOutlined /> 积分商城</Title>
+        <Text style={{ color: 'rgba(255,255,255,0.85)' }}>严选健康好物，健康币可抵扣，多商户正品保障</Text>
+      </div>
 
       <Card style={{ marginBottom: 24, borderRadius: 12 }}>
         <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={8}>
+          <Col xs={24} md={7}>
             <Input
               prefix={<SearchOutlined />}
               placeholder="搜索商品名称"
               value={search}
               onChange={(e) => updateFilter('search', e.target.value)}
+              allowClear
               size="large"
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="全部分类"
               allowClear
@@ -88,7 +109,7 @@ export default function ShopPage() {
               size="large"
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="全部商户"
               allowClear
@@ -99,10 +120,29 @@ export default function ShopPage() {
               size="large"
             />
           </Col>
+          <Col xs={24} md={5}>
+            <Select
+              placeholder="排序方式"
+              style={{ width: '100%' }}
+              value={sort}
+              onChange={(v) => updateFilter('sort', v)}
+              options={SORT_OPTIONS}
+              size="large"
+            />
+          </Col>
         </Row>
+        {(activeCategory || activeMerchant || search) && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text type="secondary">当前筛选：</Text>
+            {search && <Tag closable onClose={() => updateFilter('search', '')}>关键词：{search}</Tag>}
+            {activeCategory && <Tag closable onClose={() => updateFilter('categoryId', '')}>分类：{activeCategory.label}</Tag>}
+            {activeMerchant && <Tag closable onClose={() => updateFilter('merchantId', '')}>商户：{activeMerchant.label}</Tag>}
+            <Button type="link" size="small" onClick={() => { setSearchParams({}); setPage(1) }}>清除全部</Button>
+          </div>
+        )}
       </Card>
 
-      {loading ? (
+      {loading && products.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
       ) : products.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 80 }}>
@@ -112,31 +152,46 @@ export default function ShopPage() {
       ) : (
         <>
           <Row gutter={[24, 24]}>
-            {products.map((p: any) => (
-              <Col xs={24} sm={12} lg={6} key={p.id}>
-                <Card
-                  hoverable
-                  cover={<img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 200, objectFit: 'cover' }} />}
-                  style={{ borderRadius: 12, overflow: 'hidden' }}
-                  onClick={() => navigate(`/portal/user/product/${p.id}`)}
-                >
-                  <div style={{ fontWeight: 500, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 18 }}>¥{(Number(p.basePrice) / 100).toFixed(2)}</span>
-                    {Number(p.coinOffsetRate) > 0 && (
-                      <Tag color="blue">可抵 {Math.round(Number(p.coinOffsetRate) * 100)}%</Tag>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#888' }}>{p.merchant?.name || '平台自营'}</div>
-                  {p.productType === 'SERVICE' && (
-                    <Tag color="orange" style={{ marginTop: 8 }}>到店核销</Tag>
-                  )}
-                  {p.deliveryType === 'DELIVERY' && (
-                    <Tag style={{ marginTop: 8 }}>快递配送</Tag>
-                  )}
-                </Card>
-              </Col>
-            ))}
+            {products.map((p: any) => {
+              const coinRate = Number(p.coinOffsetRate || 0)
+              const coinAmt = Math.round(Number(p.basePrice) * coinRate)
+              return (
+                <Col xs={24} sm={12} lg={6} key={p.id}>
+                  <Card
+                    hoverable
+                    cover={
+                      <div style={{ position: 'relative' }}>
+                        <img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 200, objectFit: 'cover', width: '100%' }} />
+                        {coinRate > 0 && (
+                          <Badge count={`可抵${Math.round(coinRate * 100)}%`} style={{ backgroundColor: '#ff4d4f', position: 'absolute', top: 8, right: 8 }} />
+                        )}
+                      </div>
+                    }
+                    style={{ borderRadius: 12, overflow: 'hidden' }}
+                    onClick={() => navigate(`/portal/user/product/${p.id}`)}
+                  >
+                    <div style={{ fontWeight: 500, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div>
+                        <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 18 }}>¥{(Number(p.basePrice) / 100).toFixed(2)}</span>
+                        {coinRate > 0 && (
+                          <span style={{ color: '#999', fontSize: 12, marginLeft: 8, textDecoration: 'line-through' }}>¥{((Number(p.basePrice) + coinAmt) / 100).toFixed(2)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <ShopOutlined style={{ color: '#1677ff', fontSize: 12 }} />
+                      <span style={{ fontSize: 12, color: '#666' }}>{p.merchant?.name || '平台自营'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {p.productType === 'SERVICE' && <Tag color="orange">到店核销</Tag>}
+                      {p.deliveryType === 'DELIVERY' && <Tag color="blue">快递配送</Tag>}
+                      {coinRate > 0 && <Tag color="green"><FireOutlined /> 健康币抵扣</Tag>}
+                    </div>
+                  </Card>
+                </Col>
+              )
+            })}
           </Row>
 
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
