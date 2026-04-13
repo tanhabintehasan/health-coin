@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Card, Button, Input, Steps, Form, Typography, Space, Divider, message
 } from 'antd'
@@ -10,6 +10,8 @@ const { Title, Text } = Typography
 
 export default function AuthPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const from = searchParams.get('from') || ''
   const { setAuth, detectRole } = useAuthStore()
 
   const [step, setStep] = useState(0)
@@ -40,6 +42,16 @@ export default function AuthPage() {
     }
   }
 
+  const doRedirect = (role: 'admin' | 'merchant' | 'user') => {
+    if (from && from.startsWith('/')) {
+      navigate(from, { replace: true })
+      return
+    }
+    if (role === 'admin') navigate('/portal/admin/dashboard', { replace: true })
+    else if (role === 'merchant') navigate('/portal/merchant/dashboard', { replace: true })
+    else navigate('/portal/user/home', { replace: true })
+  }
+
   const verifyAndLogin = async () => {
     if (!/^\d{6}$/.test(otp)) {
       message.error('请输入6位验证码')
@@ -51,9 +63,7 @@ export default function AuthPage() {
       if (!res?.accessToken) throw new Error('登录失败')
       setAuth(res.user, res.accessToken)
       const role = await detectRole()
-      if (role === 'admin') navigate('/portal/admin/dashboard', { replace: true })
-      else if (role === 'merchant') navigate('/portal/merchant/dashboard', { replace: true })
-      else navigate('/portal/user/home', { replace: true })
+      doRedirect(role as any)
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '登录失败')
     } finally {
@@ -72,9 +82,7 @@ export default function AuthPage() {
       await api.sendOtp(p)
       const res: any = await api.verifyOtp(p, '123456')
       setAuth(res.user, res.accessToken)
-      if (role === 'admin') navigate('/portal/admin/dashboard', { replace: true })
-      else if (role === 'merchant') navigate('/portal/merchant/dashboard', { replace: true })
-      else navigate('/portal/user/home', { replace: true })
+      doRedirect(role)
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '演示登录失败')
     }

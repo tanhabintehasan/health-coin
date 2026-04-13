@@ -8,5 +8,13 @@ export default function App() {
     init()
   }, [init])
 
+  useEffect(() => {
+    const onLogout = () => {
+      useAuthStore.getState().logout()
+    }
+    window.addEventListener('healthcoin:logout', onLogout)
+    return () => window.removeEventListener('healthcoin:logout', onLogout)
+  }, [])
+
   return <AppRoutes />
 }

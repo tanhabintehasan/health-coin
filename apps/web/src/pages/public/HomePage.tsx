@@ -177,7 +177,7 @@ export default function HomePage() {
                   hoverable
                   cover={<img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 180, objectFit: 'cover' }} />}
                   style={{ borderRadius: 12, overflow: 'hidden' }}
-                  onClick={() => navigate(`/shop?productId=${p.id}`)}
+                  onClick={() => navigate(`/product/${p.id}`)}
                 >
                   <div style={{ fontWeight: 500, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

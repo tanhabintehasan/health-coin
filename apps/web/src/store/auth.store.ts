@@ -16,6 +16,7 @@ interface AuthState {
 }
 
 const TOKEN_KEY = 'healthcoin_token'
+const USER_KEY = 'healthcoin_user'
 
 function getStoredToken(): string | null {
   try {
@@ -25,20 +26,31 @@ function getStoredToken(): string | null {
   }
 }
 
+function getStoredUser(): any | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: getStoredToken(),
-  user: null,
+  user: getStoredUser(),
   role: null,
   roleLoading: false,
   initialized: false,
 
   setAuth: (user, token, role) => {
     localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
     set({ user, token, role: role ?? get().role })
   },
 
   logout: () => {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
     set({ token: null, user: null, role: null, initialized: true, roleLoading: false })
   },
 
@@ -85,6 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const me = await api.getMe()
       set({ user: me })
+      localStorage.setItem(USER_KEY, JSON.stringify(me))
     } catch {
       // token invalid
       get().logout()

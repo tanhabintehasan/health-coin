@@ -10,6 +10,7 @@ const AboutPage = lazy(() => import('../pages/public/AboutPage'))
 const ContactPage = lazy(() => import('../pages/public/ContactPage'))
 const ShopPage = lazy(() => import('../pages/public/ShopPage'))
 const MerchantJoinPage = lazy(() => import('../pages/public/MerchantJoinPage'))
+const ProductDetailPage = lazy(() => import('../pages/user/ProductDetailPage'))
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'))
 
@@ -23,6 +24,10 @@ const AdminWithdrawals = lazy(() => import('../pages/admin/WithdrawalsPage'))
 const AdminMembership = lazy(() => import('../pages/admin/MembershipPage'))
 const AdminSettings = lazy(() => import('../pages/admin/SettingsPage'))
 const AdminRedemption = lazy(() => import('../pages/admin/RedemptionPage'))
+const AdminCategories = lazy(() => import('../pages/admin/CategoriesPage'))
+const AdminCommission = lazy(() => import('../pages/admin/CommissionPage'))
+const AdminAnalytics = lazy(() => import('../pages/admin/AnalyticsPage'))
+const AdminRefunds = lazy(() => import('../pages/admin/RefundsPage'))
 
 const MerchantLayout = lazy(() => import('../layouts/MerchantLayout'))
 const MerchantDashboard = lazy(() => import('../pages/merchant/DashboardPage'))
@@ -41,6 +46,7 @@ const UserWallet = lazy(() => import('../pages/user/WalletPage'))
 const UserProfile = lazy(() => import('../pages/user/ProfilePage'))
 const UserReferral = lazy(() => import('../pages/user/ReferralPage'))
 const UserHealth = lazy(() => import('../pages/user/HealthPage'))
+const UserWishlist = lazy(() => import('../pages/user/WishlistPage'))
 
 function withSuspense(Element: React.LazyExoticComponent<any>, props?: any) {
   return (
@@ -68,6 +74,7 @@ export function AppRoutes() {
       <Route path="/contact" element={PublicRoute(ContactPage)} />
       <Route path="/shop" element={PublicRoute(ShopPage)} />
       <Route path="/merchant-join" element={PublicRoute(MerchantJoinPage)} />
+      <Route path="/product/:id" element={PublicRoute(ProductDetailPage)} />
       <Route path="/login" element={withSuspense(LoginPage)} />
       <Route path="/register" element={withSuspense(RegisterPage)} />
 
@@ -88,11 +95,15 @@ export function AppRoutes() {
         <Route path="users" element={withSuspense(AdminUsers)} />
         <Route path="merchants" element={withSuspense(AdminMerchants)} />
         <Route path="products" element={withSuspense(AdminProducts)} />
+        <Route path="categories" element={withSuspense(AdminCategories)} />
         <Route path="orders" element={withSuspense(AdminOrders)} />
         <Route path="withdrawals" element={withSuspense(AdminWithdrawals)} />
         <Route path="membership" element={withSuspense(AdminMembership)} />
         <Route path="redemption" element={withSuspense(AdminRedemption)} />
         <Route path="settings" element={withSuspense(AdminSettings)} />
+        <Route path="commission" element={withSuspense(AdminCommission)} />
+        <Route path="analytics" element={withSuspense(AdminAnalytics)} />
+        <Route path="refunds" element={withSuspense(AdminRefunds)} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
@@ -139,6 +150,7 @@ export function AppRoutes() {
         <Route path="profile" element={withSuspense(UserProfile)} />
         <Route path="referral" element={withSuspense(UserReferral)} />
         <Route path="health" element={withSuspense(UserHealth)} />
+        <Route path="wishlist" element={withSuspense(UserWishlist)} />
         <Route path="*" element={<Navigate to="home" replace />} />
       </Route>
 

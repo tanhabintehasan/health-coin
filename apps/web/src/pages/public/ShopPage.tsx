@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Input, Select, Card, Row, Col, Pagination, Spin, Empty, Button, Typography, Tag, Badge, Breadcrumb } from 'antd'
-import { SearchOutlined, ShoppingOutlined, FireOutlined, ShopOutlined } from '@ant-design/icons'
+import { Input, Select, Card, Row, Col, Pagination, Spin, Empty, Button, Typography, Tag, Badge, Breadcrumb, message } from 'antd'
+import { SearchOutlined, ShoppingOutlined, FireOutlined, ShopOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useWishlistStore } from '../../store/wishlist.store'
 
 const { Title, Text } = Typography
 
@@ -16,6 +17,8 @@ const SORT_OPTIONS = [
 export default function ShopPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { has, toggle } = useWishlistStore()
+
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [merchants, setMerchants] = useState<any[]>([])
@@ -155,6 +158,7 @@ export default function ShopPage() {
             {products.map((p: any) => {
               const coinRate = Number(p.coinOffsetRate || 0)
               const coinAmt = Math.round(Number(p.basePrice) * coinRate)
+              const isWishlisted = has(p.id)
               return (
                 <Col xs={24} sm={12} lg={6} key={p.id}>
                   <Card
@@ -165,10 +169,16 @@ export default function ShopPage() {
                         {coinRate > 0 && (
                           <Badge count={`可抵${Math.round(coinRate * 100)}%`} style={{ backgroundColor: '#ff4d4f', position: 'absolute', top: 8, right: 8 }} />
                         )}
+                        <div
+                          onClick={(e) => { e.stopPropagation(); toggle(p.id); message.success(isWishlisted ? '已取消收藏' : '已收藏') }}
+                          style={{ position: 'absolute', top: 8, left: 8, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        >
+                          {isWishlisted ? <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} /> : <HeartOutlined style={{ color: '#999', fontSize: 18 }} />}
+                        </div>
                       </div>
                     }
                     style={{ borderRadius: 12, overflow: 'hidden' }}
-                    onClick={() => navigate(`/portal/user/product/${p.id}`)}
+                    onClick={() => navigate(`/product/${p.id}`)}
                   >
                     <div style={{ fontWeight: 500, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -187,6 +197,7 @@ export default function ShopPage() {
                       {p.productType === 'SERVICE' && <Tag color="orange">到店核销</Tag>}
                       {p.deliveryType === 'DELIVERY' && <Tag color="blue">快递配送</Tag>}
                       {coinRate > 0 && <Tag color="green"><FireOutlined /> 健康币抵扣</Tag>}
+                      {p.requiresApproval && <Tag color="red">需审核</Tag>}
                     </div>
                   </Card>
                 </Col>

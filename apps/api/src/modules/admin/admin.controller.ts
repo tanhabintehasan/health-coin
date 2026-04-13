@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Put, Param, Query, Body, Res, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Param, Query, Body, Res, UseGuards, BadRequestException } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -298,5 +298,68 @@ export class AdminController {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(header + rows.join('\n'));
+  }
+
+  // ── Categories ───────────────────────────────────────────────────────────────
+
+  @Post('categories')
+  @ApiOperation({ summary: 'Create a product category' })
+  async createCategory(@Body() body: { name: string; parentId?: string; sortOrder?: number }) {
+    return this.prisma.productCategory.create({
+      data: { name: body.name, parentId: body.parentId, sortOrder: body.sortOrder ?? 0 },
+    });
+  }
+
+  @Put('categories/:id')
+  @ApiOperation({ summary: 'Update a product category' })
+  async updateCategory(@Param('id') id: string, @Body() body: { name?: string; parentId?: string; sortOrder?: number }) {
+    return this.prisma.productCategory.update({
+      where: { id },
+      data: { ...(body.name !== undefined && { name: body.name }), ...(body.parentId !== undefined && { parentId: body.parentId }), ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }) },
+    });
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'List all product categories' })
+  async listCategories() {
+    return this.prisma.productCategory.findMany({ orderBy: { sortOrder: 'asc' } });
+  }
+
+  @Delete('categories/:id')
+  @ApiOperation({ summary: 'Delete a product category' })
+  async deleteCategory(@Param('id') id: string) {
+    const count = await this.prisma.product.count({ where: { categoryId: id } });
+    if (count > 0) throw new BadRequestException('Cannot delete category that has products');
+    await this.prisma.productCategory.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ── Commission Config ────────────────────────────────────────────────────────
+
+  @Get('commission/config')
+  @ApiOperation({ summary: 'Get commission configuration' })
+  async getCommissionConfig() {
+    const rows = await this.prisma.systemConfig.findMany({
+      where: { key: { in: ['platform_commission_rate', 'withdrawal_commission_rate'] } },
+    });
+    const map: Record<string, string> = {};
+    rows.forEach((r) => (map[r.key] = r.value));
+    return {
+      platformCommissionRate: map['platform_commission_rate'] || '5',
+      withdrawalCommissionRate: map['withdrawal_commission_rate'] || '2',
+    };
+  }
+
+  @Put('commission/config')
+  @ApiOperation({ summary: 'Update commission configuration' })
+  async updateCommissionConfig(@Body() body: Record<string, string>) {
+    for (const [key, value] of Object.entries(body)) {
+      await this.prisma.systemConfig.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+      });
+    }
+    return { success: true };
   }
 }

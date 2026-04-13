@@ -16,13 +16,21 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+const PUBLIC_PATHS = ['/', '/shop', '/about', '/contact', '/merchant-join', '/login', '/register', '/product']
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
+
 client.interceptors.response.use(
   (res) => res,
   (err: AxiosError<any>) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('healthcoin_token')
+      try {
+        window.dispatchEvent(new Event('healthcoin:logout'))
+      } catch {}
       const pathname = window.location.pathname
-      if (!pathname.startsWith('/login') && !pathname.startsWith('/register')) {
+      if (!isPublicPath(pathname) && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
         window.location.href = '/login'
       }
     }
@@ -166,4 +174,13 @@ export const api = {
   getAdminRedemptionLogs: (params?: any) => request<any>('GET', '/admin/redemption/logs', undefined, params),
   exportRedemptionLogs: () =>
     client.get('/admin/redemption/logs/export', { responseType: 'blob' }).then((res) => res.data),
+
+  // Categories (admin scaffold - backend may need matching endpoints)
+  createCategory: (data: any) => request<any>('POST', '/admin/categories', data),
+  updateCategory: (id: string, data: any) => request<any>('PUT', `/admin/categories/${id}`, data),
+  deleteCategory: (id: string) => request<any>('DELETE', `/admin/categories/${id}`),
+
+  // Commission
+  getCommissionConfig: () => request<any>('GET', '/admin/commission/config'),
+  updateCommissionConfig: (data: Record<string, string>) => request<any>('PUT', '/admin/commission/config', data),
 }

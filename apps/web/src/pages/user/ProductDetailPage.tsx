@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../../services/api'
-import { message, Spin, Empty, Tag, Button, Card, Typography } from 'antd'
-import { ShopOutlined, FireOutlined, CarOutlined, CheckCircleOutlined, ArrowLeftOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { message, Spin, Empty, Tag, Button, Card, Typography, Modal } from 'antd'
+import { ShopOutlined, FireOutlined, CarOutlined, CheckCircleOutlined, ArrowLeftOutlined, ShoppingCartOutlined, ThunderboltOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
+import { useAuthStore } from '../../store/auth.store'
+import { useWishlistStore } from '../../store/wishlist.store'
 
 const { Title, Text } = Typography
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { token } = useAuthStore()
+  const { has, toggle } = useWishlistStore()
+
   const [product, setProduct] = useState<any>(null)
   const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [qty, setQty] = useState(1)
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
 
   useEffect(() => {
     if (!id) {
-      navigate('/portal/user/home')
+      navigate('/shop')
       return
     }
     api.getProduct(id)
@@ -29,8 +36,17 @@ export default function ProductDetailPage() {
       .finally(() => setLoading(false))
   }, [id, navigate])
 
+  const requireAuth = () => {
+    if (!token) {
+      setLoginModalOpen(true)
+      return false
+    }
+    return true
+  }
+
   const addToCart = async () => {
     if (!selectedVariant) { message.error('请选择规格'); return }
+    if (!requireAuth()) return
     setAdding(true)
     try {
       await api.addToCart({ productId: product.id, variantId: selectedVariant.id, quantity: qty })
@@ -40,6 +56,7 @@ export default function ProductDetailPage() {
 
   const buyNow = async () => {
     if (!selectedVariant) { message.error('请选择规格'); return }
+    if (!requireAuth()) return
     await addToCart()
     navigate('/portal/user/cart')
   }
@@ -51,12 +68,15 @@ export default function ProductDetailPage() {
   const coinRate = parseFloat(product.coinOffsetRate ?? '0')
   const coinAmt = Math.round(price * coinRate)
   const cashAmt = price - coinAmt
+  const isWishlisted = has(product.id)
 
   return (
     <div style={{ minHeight: '100%', paddingBottom: 80, background: '#f5f5f5' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0' }}>
         <Button icon={<ArrowLeftOutlined />} shape="circle" onClick={() => navigate(-1)} />
         <Text strong style={{ fontSize: 16 }}>商品详情</Text>
+        <div style={{ flex: 1 }} />
+        <Button icon={isWishlisted ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />} shape="circle" onClick={() => { toggle(product.id); message.success(isWishlisted ? '已取消收藏' : '已收藏') }} />
       </div>
 
       <div style={{ background: '#fff' }}>
@@ -77,6 +97,9 @@ export default function ProductDetailPage() {
         )}
         <Title level={5} style={{ margin: 0, lineHeight: 1.4 }}>{product.name}</Title>
         <div style={{ marginTop: 8, fontSize: 13, color: '#888' }}>{product.description}</div>
+        {product.requiresApproval && (
+          <Tag color="orange" style={{ marginTop: 8 }}>需审核 / 处方药</Tag>
+        )}
       </div>
 
       <Card style={{ margin: '0 12px 12px', borderRadius: 12 }} bodyStyle={{ padding: 16 }}>
@@ -129,6 +152,18 @@ export default function ProductDetailPage() {
         <Button icon={<ShoppingCartOutlined />} style={{ flex: 1 }} onClick={addToCart} loading={adding}>加入购物车</Button>
         <Button type="primary" icon={<ThunderboltOutlined />} style={{ flex: 1 }} onClick={buyNow}>立即购买</Button>
       </div>
+
+      <Modal
+        open={loginModalOpen}
+        title="需要登录"
+        onCancel={() => setLoginModalOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setLoginModalOpen(false)}>稍后再说</Button>,
+          <Button key="login" type="primary" onClick={() => navigate(`/login?from=${encodeURIComponent(location.pathname)}`)}>去登录</Button>,
+        ]}
+      >
+        登录后即可加入购物车、下单购买和收藏商品。
+      </Modal>
     </div>
   )
 }

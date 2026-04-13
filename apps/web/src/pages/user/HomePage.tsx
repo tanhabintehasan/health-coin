@@ -126,7 +126,7 @@ export default function HomePage() {
           {products.map((p: any) => (
             <div
               key={p.id}
-              onClick={() => navigate(`/portal/user/product/${p.id}`)}
+              onClick={() => navigate(`/product/${p.id}`)}
               style={{ width: '45%', margin: '2.5%', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)', cursor: 'pointer' }}
             >
               <div style={{ position: 'relative' }}>

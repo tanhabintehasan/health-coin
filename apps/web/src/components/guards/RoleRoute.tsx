@@ -1,10 +1,11 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore, UserRole } from '../../store/auth.store'
 import { Spin, Result, Button } from 'antd'
 
 export function RoleRoute({ allowed, children }: { allowed: UserRole[]; children: React.ReactNode }) {
   const { token, role, initialized, roleLoading } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
 
   if (!initialized || roleLoading) {
     return (
@@ -25,7 +26,7 @@ export function RoleRoute({ allowed, children }: { allowed: UserRole[]; children
         title="Access Denied"
         subTitle="You don't have permission to view this page."
         extra={
-          <Button type="primary" onClick={() => (window.location.href = '/')}>Back Home</Button>
+          <Button type="primary" onClick={() => navigate('/')}>Back Home</Button>
         }
       />
     )

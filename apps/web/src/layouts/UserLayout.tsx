@@ -8,6 +8,7 @@ import {
   TeamOutlined,
   MedicineBoxOutlined,
   LogoutOutlined,
+  HeartOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
@@ -41,6 +42,7 @@ export default function UserLayout() {
     { key: 'home', icon: <HomeOutlined />, label: <Link to="/portal/user/home">首页</Link> },
     { key: 'cart', icon: <Badge count={cartCount} showZero><ShoppingCartOutlined /></Badge>, label: <Link to="/portal/user/cart">购物车</Link> },
     { key: 'orders', icon: <UnorderedListOutlined />, label: <Link to="/portal/user/orders">订单</Link> },
+    { key: 'wishlist', icon: <HeartOutlined />, label: <Link to="/portal/user/wishlist">收藏</Link> },
     { key: 'wallet', icon: <WalletOutlined />, label: <Link to="/portal/user/wallet">钱包</Link> },
     { key: 'referral', icon: <TeamOutlined />, label: <Link to="/portal/user/referral">推荐</Link> },
     { key: 'health', icon: <MedicineBoxOutlined />, label: <Link to="/portal/user/health">健康</Link> },
