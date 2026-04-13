@@ -53,6 +53,11 @@ export const api = {
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
   verifyOtp: (phone: string, code: string, referralCode?: string) =>
     request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/otp/verify', { phone, code, referralCode }),
+
+  // TEMPORARY DEMO LOGIN — bypasses OTP/Redis/SMS for client review.
+  // Controlled by VITE_DEMO_LOGIN_ENABLED env var on the frontend
+  // and DEMO_LOGIN_ENABLED on the backend.
+  // Safe to remove after client review is complete.
   demoLogin: (role: 'admin' | 'merchant' | 'user') =>
     request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/demo-login', { role }),
 

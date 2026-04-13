@@ -29,6 +29,12 @@ export class AuthController {
     return this.authService.verifyOtp(dto);
   }
 
+  // ---------------------------------------------------------------------------
+  // TEMPORARY DEMO LOGIN — bypasses OTP/Redis/SMS for client review.
+  // Controlled by DEMO_LOGIN_ENABLED env var.
+  // Returns valid JWT tokens exactly like normal login.
+  // Safe to remove after client review is complete.
+  // ---------------------------------------------------------------------------
   @Post('demo-login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Demo login (temporary — bypasses OTP)' })

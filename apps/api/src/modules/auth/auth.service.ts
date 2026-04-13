@@ -87,6 +87,12 @@ export class AuthService {
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // TEMPORARY DEMO LOGIN — bypasses OTP/Redis/SMS for client review.
+  // Controlled by DEMO_LOGIN_ENABLED env var.
+  // Looks up pre-seeded demo users and returns valid JWT tokens.
+  // Safe to remove after client review is complete.
+  // ---------------------------------------------------------------------------
   async demoLogin(role: 'admin' | 'merchant' | 'user') {
     const enabled = this.config.get('DEMO_LOGIN_ENABLED') === 'true';
     if (!enabled) {

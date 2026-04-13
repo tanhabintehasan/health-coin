@@ -71,6 +71,12 @@ export default function AuthPage() {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // TEMPORARY DEMO LOGIN — bypasses OTP/Redis/SMS for client review.
+  // Controlled by VITE_DEMO_LOGIN_ENABLED env var.
+  // Calls the backend demo-login endpoint and stores tokens exactly like real login.
+  // Safe to remove after client review is complete.
+  // ---------------------------------------------------------------------------
   const demoLogin = async (role: 'admin' | 'merchant' | 'user') => {
     try {
       const res: any = await api.demoLogin(role)
@@ -123,6 +129,7 @@ export default function AuthPage() {
           </Form>
         )}
 
+        {/* TEMPORARY DEMO LOGIN UI — controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review. */}
         {demoEnabled && (
           <>
             <Divider>演示入口</Divider>
