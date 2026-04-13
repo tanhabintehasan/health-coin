@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, Card, Typography, Space, Divider, message, Alert } from 'antd'
-import { UserOutlined, LockOutlined, SafetyOutlined, ShopOutlined, MobileOutlined } from '@ant-design/icons'
+import { LockOutlined, SafetyOutlined, MobileOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth.store'
 import client from '../../api/client'
 
@@ -40,43 +40,22 @@ export default function LoginPage() {
     }, 1000)
   }
 
-  // Demo login for client presentation
-  const handleDemoLogin = (role: 'admin' | 'merchant') => {
-    const demoUser =
-      role === 'admin'
-        ? {
-            id: 'demo-admin-1',
-            phone: '01700000001',
-            nickname: 'Demo Admin',
-            role: 'admin',
-            userType: 'admin',
-            isActive: true,
-          }
-        : {
-            id: 'demo-merchant-1',
-            phone: '01700000002',
-            nickname: 'Demo Merchant',
-            role: 'merchant',
-            userType: 'merchant',
-            isActive: true,
-          }
-
-    const demoToken = `demo-token-${role}`
-
-    localStorage.setItem('demoMode', 'true')
-    localStorage.setItem('demoRole', role)
-
-    setAuth(demoUser as any, demoToken)
-    message.success(`Logged in as Demo ${role === 'admin' ? 'Admin' : 'Merchant'}`)
-
-    // Change these routes if your project uses different paths
-    if (role === 'admin') {
-      navigate('/dashboard')
-    } else {
-      navigate('/dashboard')
-      // Example alternative:
-      // navigate('/merchant/dashboard')
+  const handleDemoAdminLogin = () => {
+    const demoAdminUser = {
+      id: 'demo-admin-1',
+      phone: '01700000001',
+      nickname: 'Demo Admin',
+      role: 'admin',
+      userType: 'admin',
+      isActive: true,
     }
+
+    setAuth(demoAdminUser as any, 'demo-admin-token')
+    localStorage.setItem('demoMode', 'true')
+    localStorage.setItem('demoRole', 'admin')
+
+    message.success('Logged in as Demo Admin')
+    navigate('/admin/dashboard')
   }
 
   const sendOtp = async () => {
@@ -131,7 +110,7 @@ export default function LoginPage() {
       localStorage.removeItem('demoMode')
       localStorage.removeItem('demoRole')
       message.success('Welcome!')
-      navigate('/dashboard')
+      navigate('/admin/dashboard')
     } catch (err: any) {
       message.error(typeof err === 'string' ? err : 'Invalid OTP')
     } finally {
@@ -169,39 +148,29 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <SafetyOutlined style={{ fontSize: 40, color: '#1677ff', marginBottom: 8 }} />
           <Title level={3} style={{ margin: 0 }}>
-            HealthCoin Portal
+            HealthCoin Admin
           </Title>
-          <Text type="secondary">Client Demo / Staging Access</Text>
+          <Text type="secondary">Platform Management</Text>
         </div>
 
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 20 }}
-          message="Demo mode is enabled for presentation"
-          description="Use Demo Admin Login or Demo Merchant Login for the client meeting. OTP login is still available below."
+          message="Demo admin access enabled"
+          description="Use Demo Admin Login for client presentation, or continue with OTP login."
         />
 
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Button
-            type="primary"
-            size="large"
-            block
-            icon={<SafetyOutlined />}
-            onClick={() => handleDemoLogin('admin')}
-          >
-            Demo Admin Login
-          </Button>
-
-          <Button
-            size="large"
-            block
-            icon={<ShopOutlined />}
-            onClick={() => handleDemoLogin('merchant')}
-          >
-            Demo Merchant Login
-          </Button>
-        </Space>
+        <Button
+          type="primary"
+          size="large"
+          block
+          icon={<SafetyOutlined />}
+          onClick={handleDemoAdminLogin}
+          style={{ marginBottom: 16 }}
+        >
+          Demo Admin Login
+        </Button>
 
         <Divider>Or continue with OTP</Divider>
 
@@ -269,13 +238,7 @@ export default function LoginPage() {
         </Form>
 
         <div style={{ marginTop: 20, textAlign: 'center' }}>
-          <Text type="secondary">
-            Demo Admin: click button directly
-          </Text>
-          <br />
-          <Text type="secondary">
-            Demo Merchant: click button directly
-          </Text>
+          <Text type="secondary">Demo Admin: click button directly</Text>
         </div>
       </Card>
     </div>
