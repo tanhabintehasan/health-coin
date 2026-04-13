@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro'
 
 // Set BASE_URL via env injection at build time, or update for your deployment
-const BASE_URL = process.env.TARO_APP_API_URL || 'http://localhost:3000/api/v1'
+const BASE_URL = process.env.TARO_APP_API_URL || 'http://localhost:10000/api/v1'
 
 function getToken(): string {
   return Taro.getStorageSync('access_token') || ''

@@ -67,7 +67,7 @@ export class PaymentsService {
 
     // Cash payment — use primary provider
     if (settings.primary === 'fuiou' && settings.fuiouEnabled) {
-      const appUrl = this.config.get('APP_URL', 'http://localhost:3000');
+      const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
       const { payParams, tradeNo } = await this.fuiou.createPayment({
         orderId,
         orderNo: order.orderNo,

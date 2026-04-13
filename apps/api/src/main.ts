@@ -36,7 +36,7 @@ async function bootstrap() {
 
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3001', 'http://localhost:3002'];
+    : ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
 
   app.enableCors({
     origin: allowedOrigins,
@@ -57,8 +57,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(process.env.PORT || 3000);
+  const port = process.env.PORT ?? 10000;
+  await app.listen(process.env.PORT || 10000);
   console.log(`API running on http://localhost:${port}`);
   console.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }

@@ -31,7 +31,7 @@ chmod +x scripts/start-all.sh
 ```
 
 Services will be available at:
-- API: http://localhost:3000
+- API: http://localhost:10000
 - User Web: http://localhost:5173
 - Admin Web: http://localhost:5174
 - Merchant Web: http://localhost:5175

@@ -31,7 +31,7 @@ osascript -e "tell app \"Terminal\" to do script \"cd $ROOT/apps/merchant-web &&
   (cd "$ROOT/apps/merchant-web" && npm run dev &)
 
 echo "Opened terminals for:"
-echo "  API          → http://localhost:3000"
+echo "  API          → http://localhost:10000"
 echo "  User Web     → http://localhost:5173"
 echo "  Admin Web    → http://localhost:5174 (or check terminal for port)"
 echo "  Merchant Web → http://localhost:5175 (or check terminal for port)"

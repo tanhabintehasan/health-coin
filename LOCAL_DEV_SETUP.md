@@ -162,7 +162,7 @@ chmod +x scripts/start-all.sh
 ```
 
 ### Option B — Manual
-- API: `cd apps/api && npm run dev` → http://localhost:3000
+- API: `cd apps/api && npm run dev` → http://localhost:10000
 - User Web: `cd apps/user-web && npm run dev` → http://localhost:5173
 - Admin Web: `cd apps/admin-web && npm run dev` → http://localhost:5174
 - Merchant Web: `cd apps/merchant-web && npm run dev` → http://localhost:5175

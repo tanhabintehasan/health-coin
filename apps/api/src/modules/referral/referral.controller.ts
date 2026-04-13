@@ -18,7 +18,7 @@ export class ReferralController {
   @Get('my')
   @ApiOperation({ summary: 'Get my referral code and QR code' })
   getMyReferral(@CurrentUser() user: { id: string }) {
-    const appUrl = this.config.get('APP_URL', 'http://localhost:3000');
+    const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
     return this.referralService.getMyReferral(user.id, appUrl);
   }
 

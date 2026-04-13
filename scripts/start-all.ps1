@@ -28,7 +28,7 @@ Start-ServiceInWindow -Name "Merchant Web (Vite)" -WorkingDirectory "$root\apps\
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "All services are starting in new windows" -ForegroundColor Green
-Write-Host "API        -> http://localhost:3000" -ForegroundColor Cyan
+Write-Host "API        -> http://localhost:10000" -ForegroundColor Cyan
 Write-Host "User Web   -> http://localhost:5173" -ForegroundColor Cyan
 Write-Host "Admin Web  -> http://localhost:5174" -ForegroundColor Cyan
 Write-Host "Merchant   -> http://localhost:5175" -ForegroundColor Cyan
