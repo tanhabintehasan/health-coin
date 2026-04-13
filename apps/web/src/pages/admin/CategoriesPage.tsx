@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Button, Table, Input, message, Space, Popconfirm, Tag } from 'antd'
+import { Card, Button, Table, Input, message, Space, Popconfirm, Tag, Row, Col } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 
@@ -79,14 +79,24 @@ export default function CategoriesPage() {
     <div>
       <h2 style={{ marginBottom: 16 }}>分类管理</h2>
       <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Input placeholder="分类名称" value={name} onChange={(e) => setName(e.target.value)} style={{ width: 200 }} />
-          <Input placeholder="排序" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{ width: 100 }} />
-          <Button type="primary" icon={<PlusOutlined />} onClick={save}>{editing ? '保存修改' : '新增分类'}</Button>
-          {editing && <Button onClick={() => { setEditing(null); setName(''); setSortOrder('0') }}>取消</Button>}
-        </Space>
+        <Row gutter={[8, 8]} align="middle">
+          <Col xs={24} sm={8} md={6}>
+            <Input placeholder="分类名称" value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%' }} />
+          </Col>
+          <Col xs={12} sm={6} md={4}>
+            <Input placeholder="排序" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{ width: '100%' }} />
+          </Col>
+          <Col xs={12} sm={10} md={8}>
+            <Space>
+              <Button type="primary" icon={<PlusOutlined />} onClick={save}>{editing ? '保存修改' : '新增分类'}</Button>
+              {editing && <Button onClick={() => { setEditing(null); setName(''); setSortOrder('0') }}>取消</Button>}
+            </Space>
+          </Col>
+        </Row>
       </Card>
-      <Table dataSource={categories} columns={columns} loading={loading} pagination={false} />
+      <div className="table-responsive">
+        <Table dataSource={categories} columns={columns} loading={loading} pagination={false} scroll={{ x: 'max-content' }} />
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Table, Input, Tag, Typography, Space, Button, Drawer, Descriptions, Mod
 import { SearchOutlined, WalletOutlined, ApartmentOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const LEVEL_LABELS: Record<number, string> = {
   1: 'Regular', 2: 'Ambassador', 3: 'Community Agent',
@@ -28,6 +29,7 @@ function toTreeData(node: any): any {
 }
 
 export default function UsersPage() {
+  const { isMobile } = useResponsive()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -115,7 +117,7 @@ export default function UsersPage() {
     {
       title: 'Actions', key: 'actions',
       render: (_: any, record: any) => (
-        <Space>
+        <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => setSelected(record)}>View</Button>
           <Button type="link" size="small" icon={<WalletOutlined />} onClick={() => openWalletModal(record)}>Adjust Wallet</Button>
           <Button type="link" size="small" icon={<ApartmentOutlined />} onClick={() => openReferralTree(record)}>Referral Tree</Button>
@@ -127,14 +129,16 @@ export default function UsersPage() {
   return (
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>Users</Typography.Title>
-      <Space style={{ marginBottom: 16 }}>
-        <Input placeholder="Search phone or nickname" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={() => fetchUsers(1, search)} style={{ width: 280 }} />
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Input placeholder="Search phone or nickname" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={() => fetchUsers(1, search)} style={{ width: isMobile ? '100%' : 280 }} />
         <Button type="primary" onClick={() => fetchUsers(1, search)}>Search</Button>
       </Space>
 
-      <Table rowKey="id" columns={columns} dataSource={users} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchUsers(p, search) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={users} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchUsers(p, search) } }} scroll={{ x: 'max-content' }} />
+      </div>
 
-      <Drawer title="User Detail" open={!!selected} onClose={() => setSelected(null)} width={480}>
+      <Drawer title="User Detail" open={!!selected} onClose={() => setSelected(null)} width={isMobile ? '100%' : 480} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         {selected && (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
@@ -148,7 +152,7 @@ export default function UsersPage() {
         )}
       </Drawer>
 
-      <Modal title={`Adjust Wallet — ${walletTarget?.phone}`} open={walletModalOpen} onOk={handleWalletAdjust} onCancel={() => setWalletModalOpen(false)} confirmLoading={adjusting} okText="Apply Adjustment">
+      <Modal title={`Adjust Wallet — ${walletTarget?.phone}`} open={walletModalOpen} onOk={handleWalletAdjust} onCancel={() => setWalletModalOpen(false)} confirmLoading={adjusting} okText="Apply Adjustment" style={{ maxWidth: 'calc(100vw - 32px)' }}>
         <Form form={walletForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="walletType" label="Wallet Type" rules={[{ required: true }]}>
             <Select options={WALLET_TYPE_OPTIONS} placeholder="Select wallet" />
@@ -162,7 +166,7 @@ export default function UsersPage() {
         </Form>
       </Modal>
 
-      <Modal title={`Referral Tree — ${referralTarget?.phone}`} open={referralModalOpen} onCancel={() => setReferralModalOpen(false)} footer={null} width={560}>
+      <Modal title={`Referral Tree — ${referralTarget?.phone}`} open={referralModalOpen} onCancel={() => setReferralModalOpen(false)} footer={null} width={isMobile ? '100%' : 560} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         {loadingTree && <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>}
         {!loadingTree && referralTree && <Tree treeData={[toTreeData(referralTree)]} defaultExpandAll showLine selectable={false} />}
         {!loadingTree && !referralTree && <div style={{ textAlign: 'center', color: '#999', padding: 24 }}>No referral data</div>}

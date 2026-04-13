@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Card, Row, Col, Typography, Form, Input, Button, message } from 'antd'
 import { PhoneOutlined, MailOutlined, EnvironmentOutlined, WechatOutlined } from '@ant-design/icons'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
 export default function ContactPage() {
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
+  const { isMobile } = useResponsive()
 
   const onFinish = (_values: any) => {
     setSubmitting(true)
@@ -19,12 +21,12 @@ export default function ContactPage() {
 
   return (
     <div>
-      <div style={{ background: '#1677ff', color: '#fff', padding: '64px 24px', textAlign: 'center' }}>
+      <div style={{ background: '#1677ff', color: '#fff', padding: isMobile ? '40px 16px' : '64px 24px', textAlign: 'center' }}>
         <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>联系我们</Title>
         <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16 }}>商务合作、商户入驻、客服咨询</Text>
       </div>
 
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '32px 16px' : '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Row gutter={[48, 48]}>
           <Col xs={24} md={10}>
             <Title level={4}>联系方式</Title>
@@ -81,12 +83,12 @@ export default function ContactPage() {
               <Title level={4}>在线咨询</Title>
               <Form form={form} layout="vertical" onFinish={onFinish} style={{ marginTop: 16 }}>
                 <Row gutter={16}>
-                  <Col span={12}>
+                  <Col xs={24} sm={12}>
                     <Form.Item name="name" label="您的姓名" rules={[{ required: true, message: '请输入姓名' }]}>
                       <Input placeholder="请输入姓名" size="large" />
                     </Form.Item>
                   </Col>
-                  <Col span={12}>
+                  <Col xs={24} sm={12}>
                     <Form.Item name="phone" label="联系电话" rules={[{ required: true, pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号' }]}>
                       <Input placeholder="请输入手机号" size="large" maxLength={11} />
                     </Form.Item>

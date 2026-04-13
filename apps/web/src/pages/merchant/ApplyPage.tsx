@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Card, Typography, Button, Form, Input, Steps, message, Result } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
 export default function MerchantApplyPage() {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -32,7 +34,7 @@ export default function MerchantApplyPage() {
 
   if (submitted) {
     return (
-      <Card style={{ maxWidth: 800, margin: '40px auto', borderRadius: 12 }}>
+      <Card style={{ maxWidth: 800, margin: '24px auto', borderRadius: 12 }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
         <Result
           status="success"
           title="入驻申请提交成功"
@@ -46,7 +48,7 @@ export default function MerchantApplyPage() {
   }
 
   return (
-    <Card style={{ maxWidth: 800, margin: '40px auto', borderRadius: 12 }}>
+    <Card style={{ maxWidth: 800, margin: '24px auto', borderRadius: 12 }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
       <Title level={4}>商户入驻申请</Title>
       <Text type="secondary">请填写真实信息，平台审核通过后即可上架商品。</Text>
 

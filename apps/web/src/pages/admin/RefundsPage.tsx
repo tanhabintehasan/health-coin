@@ -31,7 +31,9 @@ export default function RefundsPage() {
       {orders.length === 0 ? (
         <Empty description="暂无退款订单" style={{ marginTop: 80 }} />
       ) : (
-        <Table dataSource={orders} columns={columns} rowKey="id" style={{ marginTop: 24 }} />
+        <div className="table-responsive">
+          <Table dataSource={orders} columns={columns} rowKey="id" style={{ marginTop: 24 }} scroll={{ x: 'max-content' }} />
+        </div>
       )}
     </div>
   )

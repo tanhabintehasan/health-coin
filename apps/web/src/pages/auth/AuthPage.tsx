@@ -130,7 +130,7 @@ export default function AuthPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1677ff 0%,#0958d9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Card style={{ width: 460, borderRadius: 16, boxShadow: '0 10px 30px rgba(0,0,0,.15)' }}>
+      <Card style={{ width: '100%', maxWidth: 460, borderRadius: 16, boxShadow: '0 10px 30px rgba(0,0,0,.15)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={3} style={{ margin: 0 }}>HealthCoin</Title>
           <Text type="secondary">健康币平台 · 登录 / 注册</Text>
@@ -172,28 +172,28 @@ export default function AuthPage() {
           <>
             <Divider style={{ marginTop: 24 }}>快速演示入口</Divider>
             <Row gutter={[12, 12]}>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Card hoverable size="small" onClick={() => enterDemo('admin')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
                   <SafetyOutlined style={{ fontSize: 28, color: '#722ed1', marginBottom: 8 }} />
                   <div style={{ fontWeight: 500 }}>管理员后台</div>
                   <div style={{ fontSize: 12, color: '#888' }}>数据概览 · 审核管理</div>
                 </Card>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Card hoverable size="small" onClick={() => enterDemo('merchant')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
                   <ShopOutlined style={{ fontSize: 28, color: '#52c41a', marginBottom: 8 }} />
                   <div style={{ fontWeight: 500 }}>商户工作台</div>
                   <div style={{ fontSize: 12, color: '#888' }}>商品订单 · 核销结算</div>
                 </Card>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Card hoverable size="small" onClick={() => enterDemo('user')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
                   <UserOutlined style={{ fontSize: 28, color: '#1677ff', marginBottom: 8 }} />
                   <div style={{ fontWeight: 500 }}>会员首页</div>
                   <div style={{ fontSize: 12, color: '#888' }}>购物下单 · 钱包健康</div>
                 </Card>
               </Col>
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Card hoverable size="small" onClick={() => navigate('/shop')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
                   <ShoppingOutlined style={{ fontSize: 28, color: '#fa8c16', marginBottom: 8 }} />
                   <div style={{ fontWeight: 500 }}>积分商城</div>

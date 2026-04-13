@@ -4,6 +4,7 @@ import { api } from '../../services/api'
 import { message, Spin, Empty, Button, Card, Steps, Divider } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, WalletOutlined, WechatOutlined, AlipayOutlined, CreditCardOutlined, FireOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../store/settings.store'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_PAYMENT: '待付款', PAID: '已付款', PROCESSING: '处理中', SHIPPED: '已发货',
@@ -32,6 +33,7 @@ export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { settings, fetchSettings } = useSettingsStore()
+  const { isMobile } = useResponsive()
 
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -103,7 +105,7 @@ export default function OrderDetailPage() {
   const cashAmt = totalAmt - coinAmt
 
   return (
-    <div style={{ minHeight: '100%', paddingBottom: order.status === 'PENDING_PAYMENT' ? 90 : 0, background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100%', paddingBottom: order.status === 'PENDING_PAYMENT' ? 100 : 0, background: '#f5f5f5' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0' }}>
         <Button icon={<ArrowLeftOutlined />} shape="circle" onClick={() => navigate(-1)} />
         <span style={{ fontSize: 16, fontWeight: 'bold' }}>订单详情</span>
@@ -116,7 +118,7 @@ export default function OrderDetailPage() {
 
       {stepIndex >= 0 && (
         <Card style={{ margin: 12, borderRadius: 12 }} bodyStyle={{ padding: '16px 8px' }}>
-          <Steps current={stepIndex} size="small" items={[
+          <Steps current={stepIndex} size={isMobile ? 'small' : undefined} items={[
             { title: '待付款' }, { title: '已付款' }, { title: '处理中' }, { title: '已发货' }, { title: '已完成' }
           ]} />
         </Card>
@@ -126,7 +128,7 @@ export default function OrderDetailPage() {
         {order.items?.map((item: any) => (
           <div key={item.id} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
             <img src={item.product?.images?.[0] || 'https://placehold.co/80x80'} style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, color: '#333' }}>{item.productName}</div>
               <div style={{ fontSize: 12, color: '#999' }}>{item.variantName} x{item.quantity}</div>
               {item.redemptionCode && (
@@ -138,7 +140,7 @@ export default function OrderDetailPage() {
                 </div>
               )}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#333' }}>¥{(Number(item.unitPrice) * item.quantity / 100).toFixed(2)}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#333', whiteSpace: 'nowrap' }}>¥{(Number(item.unitPrice) * item.quantity / 100).toFixed(2)}</div>
           </div>
         ))}
         <Divider style={{ margin: '12px 0' }} />
@@ -183,11 +185,11 @@ export default function OrderDetailPage() {
                   opacity: disabled ? 0.6 : 1,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <span style={{ fontSize: 18, color: opt.color }}>{opt.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: isSelected ? opt.color : '#333' }}>{opt.label}</div>
-                    <div style={{ fontSize: 12, color: '#999' }}>{opt.sub}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: isSelected ? opt.color : '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</div>
+                    <div style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.sub}</div>
                   </div>
                 </div>
                 <div>{isSelected ? <CheckCircleOutlined style={{ color: opt.color, fontSize: 18 }} /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #ccc' }} />}</div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Tag, Select, Space, Typography, Drawer, Descriptions, Button, message, Divider } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
@@ -16,6 +17,7 @@ const NEXT_STATUS: Record<string, string> = {
 }
 
 export default function OrdersPage() {
+  const { isMobile } = useResponsive()
   const [orders, setOrders] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -66,9 +68,11 @@ export default function OrdersPage() {
         <Select placeholder="Filter by status" allowClear style={{ width: 180 }} onChange={(v) => { setStatusFilter(v); setPage(1) }} options={ALL_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))} />
       </div>
       <Card>
-        <Table dataSource={orders} columns={columns} rowKey="id" loading={loading} pagination={{ total, pageSize: 10, current: page, onChange: (p) => setPage(p) }} />
+        <div className="table-responsive">
+          <Table dataSource={orders} columns={columns} rowKey="id" loading={loading} pagination={{ total, pageSize: 10, current: page, onChange: (p) => setPage(p) }} scroll={{ x: 'max-content' }} />
+        </div>
       </Card>
-      <Drawer title={`Order #${selected?.id?.slice(-8).toUpperCase() ?? ''}`} open={!!selected} onClose={() => setSelected(null)} width={480}
+      <Drawer title={`Order #${selected?.id?.slice(-8).toUpperCase() ?? ''}`} open={!!selected} onClose={() => setSelected(null)} width={isMobile ? '90%' : 480} style={{ maxWidth: '100vw' }}
         extra={NEXT_STATUS[selected?.status] && <Button type="primary" loading={advancing} onClick={advanceStatus}>Mark as {NEXT_STATUS[selected?.status]?.replace(/_/g, ' ')}</Button>}
       >
         {selected && (

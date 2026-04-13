@@ -3,12 +3,14 @@ import { Table, Tag, Typography, Space, Button, Drawer, Descriptions, Image, mes
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'success', PENDING_REVIEW: 'orange', REJECTED: 'error', INACTIVE: 'default',
 }
 
 export default function ProductsPage() {
+  const { isMobile } = useResponsive()
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -46,7 +48,7 @@ export default function ProductsPage() {
     {
       title: 'Actions', key: 'actions', width: 200,
       render: (_: any, r: any) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => setSelected(r)}>View</Button>
           {r.status === 'PENDING_REVIEW' && (
             <>
@@ -62,9 +64,11 @@ export default function ProductsPage() {
   return (
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>Product Review</Typography.Title>
-      <Table rowKey="id" columns={columns} dataSource={products} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchProducts(p) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={products} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchProducts(p) } }} scroll={{ x: 'max-content' }} />
+      </div>
 
-      <Drawer title="Product Detail" open={!!selected} onClose={() => setSelected(null)} width={520}>
+      <Drawer title="Product Detail" open={!!selected} onClose={() => setSelected(null)} width={isMobile ? '100%' : 520} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         {selected && (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Name">{selected.name}</Descriptions.Item>
@@ -79,7 +83,7 @@ export default function ProductsPage() {
             {selected.images?.length > 0 && (
               <Descriptions.Item label="Images">
                 <Image.PreviewGroup>
-                  <Space>
+                  <Space wrap>
                     {selected.images.map((url: string, idx: number) => (
                       <Image key={idx} src={url} width={80} height={80} style={{ objectFit: 'cover', borderRadius: 6 }} />
                     ))}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../services/api'
 import { message, Spin, Empty } from 'antd'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const WALLET_LABEL: Record<string, string> = {
   HEALTH_COIN: 'HealthCoin', MUTUAL_HEALTH_COIN: 'MutualCoin', UNIVERSAL_HEALTH_COIN: 'UniversalCoin',
@@ -36,6 +37,7 @@ export default function WalletPage() {
   const [accountName, setAccountName] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const { isMobile } = useResponsive()
 
   const fetchWallets = async () => {
     const res: any = await api.getWallets()
@@ -94,6 +96,8 @@ export default function WalletPage() {
   const healthCoinWallet = wallets.find((w: any) => w.walletType === 'HEALTH_COIN')
   const totalCoins = wallets.reduce((sum: number, w: any) => sum + Number(w.balance ?? 0), 0)
 
+  const sheetPadding = isMobile ? '20px 16px calc(20px + env(safe-area-inset-bottom))' : '24px 16px'
+
   return (
     <div style={{ minHeight: '100%' }}>
       <div style={{ background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)', padding: '20px 16px 28px' }}>
@@ -144,7 +148,7 @@ export default function WalletPage() {
 
       {withdrawStep === 1 && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
-          <div style={{ background: '#fff', width: '100%', borderRadius: '16px 16px 0 0', padding: '24px 16px' }}>
+          <div style={{ background: '#fff', width: '100%', borderRadius: '16px 16px 0 0', padding: sheetPadding }}>
             <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>Withdrawal</div>
             <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>Reviewed within 3 business days · 5% commission deducted</div>
             <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>Payout Method</div>
@@ -173,7 +177,7 @@ export default function WalletPage() {
 
       {withdrawStep === 2 && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
-          <div style={{ background: '#fff', width: '100%', borderRadius: '16px 16px 0 0', padding: '24px 16px' }}>
+          <div style={{ background: '#fff', width: '100%', borderRadius: '16px 16px 0 0', padding: sheetPadding }}>
             <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>Withdrawal Amount</div>
             <div style={{ fontSize: 12, color: '#999', marginBottom: 20 }}>To: {PAYOUT_LABELS[payoutMethod]} · {accountNumber}</div>
             <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>Amount (MHC)</div>
@@ -204,17 +208,17 @@ export default function WalletPage() {
             const isCredit = TX_CREDIT_TYPES.has(tx.txType) || Number(tx.amount) > 0
             return (
               <div key={tx.id} style={{ background: '#fff', marginBottom: 1, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap', minWidth: 0 }}>
                     <div style={{ padding: '2px 8px', borderRadius: 10, background: isCredit ? '#f6ffed' : '#fff1f0', border: `1px solid ${isCredit ? '#b7eb8f' : '#ffa39e'}` }}>
                       <span style={{ fontSize: 11, color: isCredit ? '#52c41a' : '#ff4d4f', fontWeight: 500 }}>{isCredit ? 'Credit' : 'Debit'}</span>
                     </div>
-                    <span style={{ fontSize: 14, color: '#333' }}>{TX_LABEL[tx.txType] ?? tx.txType}</span>
+                    <span style={{ fontSize: 14, color: '#333', wordBreak: 'break-word' }}>{TX_LABEL[tx.txType] ?? tx.txType}</span>
                   </div>
                   <div style={{ fontSize: 12, color: '#bbb' }}>{tx.createdAt?.slice(0, 16).replace('T', ' ')}</div>
-                  {tx.note && <div style={{ fontSize: 11, color: '#999' }}>{tx.note}</div>}
+                  {tx.note && <div style={{ fontSize: 11, color: '#999', wordBreak: 'break-word' }}>{tx.note}</div>}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 'bold', color: isCredit ? '#52c41a' : '#ff4d4f' }}>{isCredit ? '+' : ''}{(Number(tx.amount) / 100).toFixed(2)}</div>
+                <div style={{ fontSize: 15, fontWeight: 'bold', color: isCredit ? '#52c41a' : '#ff4d4f', marginLeft: 12, whiteSpace: 'nowrap' }}>{isCredit ? '+' : ''}{(Number(tx.amount) / 100).toFixed(2)}</div>
               </div>
             )
           })}

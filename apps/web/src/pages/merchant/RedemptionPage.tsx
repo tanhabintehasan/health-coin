@@ -3,10 +3,12 @@ import { Card, Input, Button, Space, Typography, Table, Tag, Descriptions, Input
 import { QrcodeOutlined, SearchOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
 export default function RedemptionPage() {
+  const { isMobile } = useResponsive()
   const [code, setCode] = useState('')
   const [scanning, setScanning] = useState(false)
   const [preview, setPreview] = useState<any>(null)
@@ -69,9 +71,9 @@ export default function RedemptionPage() {
 
   return (
     <div>
-      <Title level={4} style={{ marginBottom: 24 }}>Redemption Scanner</Title>
-      <Row gutter={24}>
-        <Col span={12}>
+      <Title level={4} style={{ marginBottom: isMobile ? 16 : 24 }}>Redemption Scanner</Title>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
           <Card title={<Space><QrcodeOutlined /> Scan Code</Space>}>
             <Space.Compact style={{ width: '100%', marginBottom: 16 }}>
               <Input placeholder="Enter or scan redemption code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onPressEnter={scanCode} size="large" style={{ fontFamily: 'monospace', letterSpacing: 2 }} />
@@ -91,8 +93,8 @@ export default function RedemptionPage() {
                 </Descriptions>
                 <div>
                   <Text strong style={{ display: 'block', marginBottom: 8 }}>Quantity to Redeem</Text>
-                  <Space>
-                    <InputNumber min={1} max={preview.remainingCount} value={confirmQty} onChange={(v) => setConfirmQty(v ?? 1)} />
+                  <Space wrap>
+                    <InputNumber min={1} max={preview.remainingCount} value={confirmQty} onChange={(v) => setConfirmQty(v ?? 1)} style={{ minWidth: 80 }} />
                     <Button type="primary" size="large" onClick={confirmRedemption} loading={confirming} icon={<CheckCircleOutlined />}>Confirm Redemption</Button>
                   </Space>
                 </div>
@@ -100,17 +102,19 @@ export default function RedemptionPage() {
             )}
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} lg={12}>
           <Card>
             <Row gutter={16}>
-              <Col span={12}><Statistic title="Total Redemptions" value={logsTotal} prefix={<QrcodeOutlined />} /></Col>
-              <Col span={12}><Statistic title="Today" value={logs.filter((l) => dayjs(l.createdAt).isAfter(dayjs().startOf('day'))).length} /></Col>
+              <Col xs={12}><Statistic title="Total Redemptions" value={logsTotal} prefix={<QrcodeOutlined />} /></Col>
+              <Col xs={12}><Statistic title="Today" value={logs.filter((l) => dayjs(l.createdAt).isAfter(dayjs().startOf('day'))).length} /></Col>
             </Row>
           </Card>
         </Col>
       </Row>
       <Card title="Redemption History" style={{ marginTop: 24 }}>
-        <Table dataSource={logs} columns={logColumns} rowKey="id" loading={logsLoading} pagination={{ total: logsTotal, pageSize: 10, current: logsPage, onChange: (p) => { setLogsPage(p); fetchLogs(p) } }} size="small" />
+        <div className="table-responsive">
+          <Table dataSource={logs} columns={logColumns} rowKey="id" loading={logsLoading} pagination={{ total: logsTotal, pageSize: 10, current: logsPage, onChange: (p) => { setLogsPage(p); fetchLogs(p) } }} size="small" scroll={{ x: 'max-content' }} />
+        </div>
       </Card>
     </div>
   )

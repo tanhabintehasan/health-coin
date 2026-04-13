@@ -13,6 +13,7 @@ import {
   DollarOutlined,
 } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
@@ -32,6 +33,7 @@ export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([])
   const [merchants, setMerchants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const { isMobile } = useResponsive()
 
   useEffect(() => {
     setLoading(true)
@@ -41,15 +43,18 @@ export default function HomePage() {
     ]).finally(() => setLoading(false))
   }, [])
 
+  const sectionPadding = isMobile ? '32px 16px' : '64px 24px'
+  const heroPadding = isMobile ? '48px 16px' : '80px 24px'
+
   return (
     <div>
       {/* Hero */}
-      <div style={{ background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)', color: '#fff', padding: '80px 24px', textAlign: 'center' }}>
-        <Title style={{ color: '#fff', fontSize: 48, marginBottom: 16 }}>HealthCoin 健康币平台</Title>
-        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 20, display: 'block', maxWidth: 720, margin: '0 auto 40px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)', color: '#fff', padding: heroPadding, textAlign: 'center' }}>
+        <Title style={{ color: '#fff', fontSize: isMobile ? 32 : 48, marginBottom: 16 }}>HealthCoin 健康币平台</Title>
+        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: isMobile ? 16 : 20, display: 'block', maxWidth: 720, margin: '0 auto 40px' }}>
           中国领先的健康积分电商平台 · 健康消费 · 数字资产 · 共享价值
         </Text>
-        <Space size="large">
+        <Space size="large" direction={isMobile ? 'vertical' : 'horizontal'} style={{ display: 'flex', justifyContent: 'center' }}>
           <Button type="primary" size="large" style={{ background: '#fff', color: '#1677ff', borderColor: '#fff', fontWeight: 500 }} onClick={() => navigate('/shop')}>
             进入商城
           </Button>
@@ -60,7 +65,7 @@ export default function HomePage() {
       </div>
 
       {/* Entry cards */}
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: sectionPadding, maxWidth: 1200, margin: '0 auto' }}>
         <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>平台入口</Title>
         <Row gutter={[24, 24]}>
           <Col xs={24} md={8}>
@@ -88,7 +93,7 @@ export default function HomePage() {
       </div>
 
       {/* Core features */}
-      <div style={{ padding: '64px 24px', background: '#f5f5f5' }}>
+      <div style={{ padding: sectionPadding, background: '#f5f5f5' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>核心功能</Title>
           <Row gutter={[24, 24]}>
@@ -113,20 +118,20 @@ export default function HomePage() {
       </div>
 
       {/* Business flow */}
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: sectionPadding, maxWidth: 1200, margin: '0 auto' }}>
         <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>业务流程</Title>
         <Row gutter={[16, 16]} justify="center">
           {flowSteps.map((step, idx) => (
             <Col key={idx} xs={12} sm={8} md={6} lg={3}>
-              <div style={{ textAlign: 'center', padding: 16 }}>
+              <div style={{ textAlign: 'center', padding: isMobile ? 12 : 16 }}>
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%', background: '#1677ff', color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontWeight: 'bold',
+                  width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, borderRadius: '50%', background: '#1677ff', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontWeight: 'bold', fontSize: isMobile ? 14 : 16,
                 }}>
                   {idx + 1}
                 </div>
-                <div style={{ fontWeight: 500, marginBottom: 4 }}>{step.title}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>{step.desc}</div>
+                <div style={{ fontWeight: 500, marginBottom: 4, fontSize: isMobile ? 13 : 14 }}>{step.title}</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, color: '#888' }}>{step.desc}</div>
                 {idx < flowSteps.length - 1 && (
                   <div style={{ display: 'none' }} />
                 )}
@@ -137,7 +142,7 @@ export default function HomePage() {
       </div>
 
       {/* Featured merchants */}
-      <div style={{ padding: '64px 24px', background: '#f5f5f5' }}>
+      <div style={{ padding: sectionPadding, background: '#f5f5f5' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <Title level={3} style={{ margin: 0 }}>优选商户</Title>
@@ -164,7 +169,7 @@ export default function HomePage() {
       </div>
 
       {/* Featured products */}
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: sectionPadding, maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Title level={3} style={{ margin: 0 }}>热门推荐</Title>
           <Button type="link" onClick={() => navigate('/shop')}>查看更多 &gt;</Button>
@@ -193,12 +198,12 @@ export default function HomePage() {
       </div>
 
       {/* Trust / CTA */}
-      <div style={{ padding: '64px 24px', background: 'linear-gradient(135deg, #722ed1 0%, #531dab 100%)', color: '#fff', textAlign: 'center' }}>
+      <div style={{ padding: sectionPadding, background: 'linear-gradient(135deg, #722ed1 0%, #531dab 100%)', color: '#fff', textAlign: 'center' }}>
         <Title level={3} style={{ color: '#fff', marginBottom: 16 }}>立即加入 HealthCoin</Title>
         <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16, display: 'block', marginBottom: 32 }}>
           无论是健康消费者、优质商户还是平台运营者，HealthCoin 都为您提供完整解决方案
         </Text>
-        <Space size="large">
+        <Space size="large" direction={isMobile ? 'vertical' : 'horizontal'} style={{ display: 'flex', justifyContent: 'center' }}>
           <Button type="primary" size="large" style={{ background: '#fff', color: '#722ed1', borderColor: '#fff', fontWeight: 500 }} onClick={() => navigate('/register')}>
             免费注册
           </Button>

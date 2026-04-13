@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, Select, Typography, Popconfirm, message, Row, Col, Slider } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title } = Typography
 const { TextArea } = Input
@@ -17,6 +18,7 @@ const DELIVERY_TYPE_OPTIONS = [
 ]
 
 export default function ProductsPage() {
+  const { isMobile } = useResponsive()
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -133,25 +135,27 @@ export default function ProductsPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Product</Button>
       </div>
       <Card>
-        <Table dataSource={products} columns={columns} rowKey="id" loading={loading} pagination={{ total, pageSize: 10, current: page, onChange: (p) => { setPage(p); fetchProducts(p) } }} />
+        <div className="table-responsive">
+          <Table dataSource={products} columns={columns} rowKey="id" loading={loading} pagination={{ total, pageSize: 10, current: page, onChange: (p) => { setPage(p); fetchProducts(p) } }} scroll={{ x: 'max-content' }} />
+        </div>
       </Card>
-      <Modal title={editing ? 'Edit Product' : 'New Product'} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} width={640} okText={editing ? 'Update' : 'Create'}>
+      <Modal title={editing ? 'Edit Product' : 'New Product'} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} width={isMobile ? '90%' : 640} style={{ maxWidth: 'calc(100vw - 32px)' }} okText={editing ? 'Update' : 'Create'}>
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Row gutter={16}>
-            <Col span={16}><Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input placeholder="Product name" /></Form.Item></Col>
-            <Col span={8}><Form.Item name="productType" label="Type" rules={[{ required: true }]}><Select options={PRODUCT_TYPE_OPTIONS} disabled={!!editing} /></Form.Item></Col>
+            <Col xs={24} sm={16}><Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input placeholder="Product name" /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="productType" label="Type" rules={[{ required: true }]}><Select options={PRODUCT_TYPE_OPTIONS} disabled={!!editing} /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="deliveryType" label="Delivery Type" rules={[{ required: true }]}><Select options={DELIVERY_TYPE_OPTIONS} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="categoryId" label="Category"><Select options={categories} placeholder="Select category" allowClear showSearch /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="deliveryType" label="Delivery Type" rules={[{ required: true }]}><Select options={DELIVERY_TYPE_OPTIONS} /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="categoryId" label="Category"><Select options={categories} placeholder="Select category" allowClear showSearch /></Form.Item></Col>
           </Row>
           <Form.Item name="coinOffsetRate" label={`HealthCoin Offset Rate: ${Math.round((form.getFieldValue('coinOffsetRate') ?? 0) * 100)}%`}>
             <Slider min={0} max={1} step={0.05} marks={{ 0: '0%', 0.5: '50%', 1: '100%' }} />
           </Form.Item>
           {!editing && (
             <Row gutter={16}>
-              <Col span={12}><Form.Item name="price" label="Price (¥)" rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: '100%' }} prefix="¥" /></Form.Item></Col>
-              <Col span={12}><Form.Item name="stock" label="Stock" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col xs={24} sm={12}><Form.Item name="price" label="Price (¥)" rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: '100%' }} prefix="¥" /></Form.Item></Col>
+              <Col xs={24} sm={12}><Form.Item name="stock" label="Stock" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
             </Row>
           )}
           {productType === 'SERVICE' && (

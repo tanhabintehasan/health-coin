@@ -1,17 +1,20 @@
 import { Card, Row, Col, Typography, Timeline } from 'antd'
 import { AimOutlined, GlobalOutlined, SafetyOutlined, RocketOutlined } from '@ant-design/icons'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
 export default function AboutPage() {
+  const { isMobile } = useResponsive()
+
   return (
     <div>
-      <div style={{ background: '#1677ff', color: '#fff', padding: '64px 24px', textAlign: 'center' }}>
+      <div style={{ background: '#1677ff', color: '#fff', padding: isMobile ? '40px 16px' : '64px 24px', textAlign: 'center' }}>
         <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>关于 HealthCoin</Title>
         <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16 }}>构建健康消费与数字资产的桥梁</Text>
       </div>
 
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '32px 16px' : '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Row gutter={[48, 48]}>
           <Col xs={24} md={12}>
             <Title level={4}>平台简介</Title>
@@ -30,7 +33,7 @@ export default function AboutPage() {
           </Col>
         </Row>
 
-        <div style={{ marginTop: 64 }}>
+        <div style={{ marginTop: isMobile ? 40 : 64 }}>
           <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>为什么选择我们</Title>
           <Row gutter={[24, 24]}>
             {[
@@ -50,10 +53,10 @@ export default function AboutPage() {
           </Row>
         </div>
 
-        <div style={{ marginTop: 64 }}>
+        <div style={{ marginTop: isMobile ? 40 : 64 }}>
           <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>发展历程</Title>
           <Timeline
-            mode="alternate"
+            mode={isMobile ? 'left' : 'alternate'}
             items={[
               { children: <div><b>2024 Q1</b><div>平台立项，完成核心商业模型设计</div></div> },
               { children: <div><b>2024 Q3</b><div>上线三币体系与会员等级系统</div></div> },

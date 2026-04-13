@@ -69,7 +69,7 @@ export default function ProfilePage() {
           { label: 'Referral', iconBg: '#f9f0ff', iconColor: '#722ed1', iconChar: '\u{1F465}', path: '/portal/user/referral' },
           { label: 'Health Records', iconBg: '#fff7e6', iconColor: '#fa8c16', iconChar: '\u{1F3E5}', path: '/portal/user/health' },
         ].map((item, idx, arr) => (
-          <div key={item.label} onClick={() => navigate(item.path)} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: idx < arr.length - 1 ? '1px solid #f0f0f0' : 'none', cursor: 'pointer' }}>
+          <div key={item.label} onClick={() => navigate(item.path)} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: idx < arr.length - 1 ? '1px solid #f0f0f0' : 'none', cursor: 'pointer', minHeight: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: item.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 18, color: item.iconColor }}>{item.iconChar}</span>
@@ -85,7 +85,7 @@ export default function ProfilePage() {
         <div style={{ padding: '8px 16px 4px' }}>
           <div style={{ fontSize: 12, color: '#999', fontWeight: 500, letterSpacing: '0.5px' }}>SETTINGS</div>
         </div>
-        <div onClick={() => alert('Edit profile not implemented in this demo')} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+        <div onClick={() => alert('Edit profile not implemented in this demo')} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: 48 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 18, color: '#666' }}>✎</span>
@@ -97,7 +97,7 @@ export default function ProfilePage() {
       </div>
 
       <div style={{ margin: 12, paddingBottom: 24 }}>
-        <button onClick={logout} style={{ width: '100%', background: '#fff', color: '#ff4d4f', border: '1.5px solid #ff4d4f', borderRadius: 10, padding: 12, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>
+        <button onClick={logout} style={{ width: '100%', background: '#fff', color: '#ff4d4f', border: '1.5px solid #ff4d4f', borderRadius: 10, padding: '14px 12px', fontSize: 15, fontWeight: 500, cursor: 'pointer', minHeight: 48 }}>
           Logout
         </button>
       </div>

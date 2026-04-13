@@ -148,7 +148,9 @@ export default function DashboardPage() {
       </Card>
 
       <Card title="最近订单">
-        <Table dataSource={recentOrders} columns={orderColumns} rowKey="id" pagination={false} size="small" locale={{ emptyText: '暂无最近订单' }} />
+        <div className="table-responsive">
+          <Table dataSource={recentOrders} columns={orderColumns} rowKey="id" pagination={false} size="small" locale={{ emptyText: '暂无最近订单' }} scroll={{ x: 'max-content' }} />
+        </div>
       </Card>
     </div>
   )

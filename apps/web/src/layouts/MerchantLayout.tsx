@@ -11,6 +11,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
 import { Suspense } from 'react'
 import { LoadingFallback } from '../components/common/LoadingFallback'
+import { useResponsive } from '../hooks/useResponsive'
 
 const { Sider, Content, Header } = Layout
 const { Title } = Typography
@@ -26,6 +27,7 @@ export default function MerchantLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout, user } = useAuthStore()
+  const { isMobile } = useResponsive()
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
@@ -47,7 +49,7 @@ export default function MerchantLayout() {
         <Menu mode="inline" selectedKeys={[selected]} items={items} />
       </Sider>
       <Layout>
-        <Header style={{ padding: '0 24px', background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Header style={{ padding: '0 16px', background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span />
           <Dropdown menu={{ items: menuItems }} placement="bottomRight">
             <Space style={{ cursor: 'pointer' }}>
@@ -56,7 +58,7 @@ export default function MerchantLayout() {
             </Space>
           </Dropdown>
         </Header>
-        <Content style={{ margin: 24, padding: 24, background: colorBgContainer, borderRadius: borderRadiusLG }}>
+        <Content style={{ margin: isMobile ? 12 : 24, padding: isMobile ? 16 : 24, background: colorBgContainer, borderRadius: borderRadiusLG }}>
           <Suspense fallback={<LoadingFallback />}>
             <Outlet />
           </Suspense>

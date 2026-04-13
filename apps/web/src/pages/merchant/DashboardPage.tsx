@@ -3,6 +3,7 @@ import { Card, Row, Col, Statistic, Table, Tag, Typography, Space, Alert, Button
 import { ShoppingCartOutlined, DollarOutlined, QrcodeOutlined, ShoppingOutlined, ShopOutlined, PlusOutlined, UnorderedListOutlined, ScanOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -13,6 +14,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
   const [recentOrders, setRecentOrders] = useState<any[]>([])
   const [stats, setStats] = useState({ orders: 0, revenue: 0, products: 0, redemptions: 0 })
   const [loading, setLoading] = useState(true)
@@ -87,7 +89,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Title level={4} style={{ marginBottom: 24 }}>Dashboard — {merchant?.name}</Title>
+      <Title level={4} style={{ marginBottom: isMobile ? 16 : 24 }}>Dashboard — {merchant?.name}</Title>
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false} style={{ background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)', color: '#fff', borderRadius: 12 }} styles={{ body: { padding: '20px 24px' } }}>
@@ -123,7 +125,9 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={16}>
           <Card title="Recent Orders" extra={<Button type="link" onClick={() => navigate('/portal/merchant/orders')}>View All</Button>}>
-            <Table dataSource={recentOrders} columns={orderColumns} rowKey="id" pagination={false} size="small" locale={{ emptyText: 'No recent orders' }} />
+            <div className="table-responsive">
+              <Table dataSource={recentOrders} columns={orderColumns} rowKey="id" pagination={false} size="small" locale={{ emptyText: 'No recent orders' }} scroll={{ x: 'max-content' }} />
+            </div>
           </Card>
         </Col>
       </Row>

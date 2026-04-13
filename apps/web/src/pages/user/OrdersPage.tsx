@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../services/api'
 import { message, Spin, Empty, Button, Steps, Card, Tag, Input } from 'antd'
 import { WalletOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_PAYMENT: '待付款', PAID: '已付款', PROCESSING: '处理中', SHIPPED: '已发货',
@@ -26,6 +27,7 @@ export default function OrdersPage() {
   const [searchParams] = useSearchParams()
   const itemsParam = searchParams.get('items')
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
 
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -80,7 +82,7 @@ export default function OrdersPage() {
     return (
       <div style={{ minHeight: '100%', paddingBottom: 100, background: '#f5f5f5' }}>
         <div style={{ background: '#fff', padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
-          <Steps current={1} items={[{ title: '购物车' }, { title: '确认订单' }, { title: '支付' }]} />
+          <Steps current={1} size={isMobile ? 'small' : undefined} items={[{ title: '购物车' }, { title: '确认订单' }, { title: '支付' }]} />
         </div>
 
         <Card style={{ margin: 12, borderRadius: 12 }} title="订单商品">

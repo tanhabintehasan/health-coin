@@ -71,7 +71,7 @@ export default function ProductDetailPage() {
   const isWishlisted = has(product.id)
 
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 80, background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100%', paddingBottom: 100, background: '#f5f5f5' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0' }}>
         <Button icon={<ArrowLeftOutlined />} shape="circle" onClick={() => navigate(-1)} />
         <Text strong style={{ fontSize: 16 }}>商品详情</Text>
@@ -123,7 +123,7 @@ export default function ProductDetailPage() {
               <div
                 key={v.id}
                 onClick={() => setSelectedVariant(v)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${selectedVariant?.id === v.id ? '#1677ff' : '#d9d9d9'}`, color: selectedVariant?.id === v.id ? '#1677ff' : '#333', fontSize: 13, background: selectedVariant?.id === v.id ? '#e6f4ff' : '#fff', cursor: 'pointer' }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${selectedVariant?.id === v.id ? '#1677ff' : '#d9d9d9'}`, color: selectedVariant?.id === v.id ? '#1677ff' : '#333', fontSize: 13, background: selectedVariant?.id === v.id ? '#e6f4ff' : '#fff', cursor: 'pointer', maxWidth: '100%', lineHeight: 1.3 }}
               >{v.name} ¥{(Number(v.price) / 100).toFixed(2)}</div>
             ))}
           </div>

@@ -47,11 +47,13 @@ export default function RedemptionPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>Redemption Logs</Typography.Title>
         <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>Export CSV</Button>
       </div>
-      <Table rowKey="id" columns={columns} dataSource={logs} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchLogs(p) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={logs} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchLogs(p) } }} scroll={{ x: 'max-content' }} />
+      </div>
     </div>
   )
 }

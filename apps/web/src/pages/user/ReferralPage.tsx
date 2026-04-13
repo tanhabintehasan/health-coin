@@ -53,7 +53,7 @@ export default function ReferralPage() {
 
       {referral?.qrCode && (
         <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 20, textAlign: 'center' }}>
-          <img src={referral.qrCode} alt="Referral QR" style={{ width: 160, height: 160, margin: '0 auto', display: 'block' }} />
+          <img src={referral.qrCode} alt="Referral QR" style={{ width: 160, maxWidth: '100%', height: 'auto', margin: '0 auto', display: 'block' }} />
           <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>Scan to join with your referral link</div>
         </div>
       )}
@@ -89,13 +89,13 @@ export default function ReferralPage() {
           <div style={{ fontSize: 14, fontWeight: 500, padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>Referral List</div>
           {referrals.map((r: any, idx: number) => (
             <div key={r.id + idx} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: idx < referrals.length - 1 ? '1px solid #f8f8f8' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: r.level === 1 ? '#e6f4ff' : '#f9f0ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: r.level === 1 ? '#e6f4ff' : '#f9f0ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: 14, color: r.level === 1 ? '#1677ff' : '#722ed1', fontWeight: 'bold' }}>L{r.level}</span>
                 </div>
-                <span style={{ fontSize: 14, color: '#333' }}>{r.phone}</span>
+                <span style={{ fontSize: 14, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.phone}</span>
               </div>
-              <span style={{ fontSize: 12, color: '#bbb' }}>{r.createdAt?.slice(0, 10)}</span>
+              <span style={{ fontSize: 12, color: '#bbb', marginLeft: 8, flexShrink: 0 }}>{r.createdAt?.slice(0, 10)}</span>
             </div>
           ))}
         </div>

@@ -3,6 +3,7 @@ import { Table, Tag, Button, Typography, Space, message, Popconfirm, Tabs, Drawe
 import { CheckOutlined, CloseOutlined, StopOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING: 'orange', APPROVED: 'success', REJECTED: 'error', SUSPENDED: 'default',
@@ -17,6 +18,7 @@ const STATUS_TABS = [
 ]
 
 export default function MerchantsPage() {
+  const { isMobile } = useResponsive()
   const [merchants, setMerchants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('PENDING')
@@ -60,7 +62,7 @@ export default function MerchantsPage() {
     {
       title: 'Actions', key: 'actions', width: 240,
       render: (_: any, r: any) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => setSelected(r)}>Detail</Button>
           {r.status === 'PENDING' && (
             <>
@@ -91,9 +93,11 @@ export default function MerchantsPage() {
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>Merchants</Typography.Title>
       <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key); setPage(1); fetchMerchants(key, 1) }} style={{ marginBottom: 16 }} items={STATUS_TABS.map((t) => ({ key: t.key, label: t.label }))} />
-      <Table rowKey="id" columns={columns} dataSource={merchants} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchMerchants(activeTab, p) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={merchants} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchMerchants(activeTab, p) } }} scroll={{ x: 'max-content' }} />
+      </div>
 
-      <Drawer title="Merchant Detail" open={!!selected} onClose={() => setSelected(null)} width={480}>
+      <Drawer title="Merchant Detail" open={!!selected} onClose={() => setSelected(null)} width={isMobile ? '100%' : 480} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         {selected && (
           <>
             <Descriptions column={1} bordered size="small">
@@ -111,7 +115,7 @@ export default function MerchantsPage() {
               <div style={{ marginTop: 16 }}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Input.TextArea rows={2} placeholder="Rejection note (optional)" value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} />
-                  <Space>
+                  <Space wrap>
                     <Popconfirm title="Approve?" onConfirm={() => handleApprove(selected.id)}><Button type="primary" icon={<CheckOutlined />}>Approve</Button></Popconfirm>
                     <Popconfirm title="Reject?" onConfirm={() => handleReject(selected.id)}><Button danger icon={<CloseOutlined />}>Reject</Button></Popconfirm>
                   </Space>
@@ -119,7 +123,7 @@ export default function MerchantsPage() {
               </div>
             )}
             <div style={{ marginTop: 16 }}>
-              <Space>
+              <Space wrap>
                 {selected.status === 'APPROVED' && (
                   <Popconfirm title="Suspend this merchant?" onConfirm={() => handleSuspend(selected.id, true)}>
                     <Button icon={<StopOutlined />}>Suspend</Button>

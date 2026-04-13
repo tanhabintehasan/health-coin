@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Table, Typography, Button, Modal, Form, Input, InputNumber, message, Tag } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const LEVEL_NAMES: Record<number, string> = {
   1: 'Regular Member', 2: 'Health Ambassador', 3: 'Community Agent',
@@ -9,6 +10,7 @@ const LEVEL_NAMES: Record<number, string> = {
 }
 
 export default function MembershipPage() {
+  const { isMobile } = useResponsive()
   const [tiers, setTiers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [editTarget, setEditTarget] = useState<any>(null)
@@ -71,8 +73,10 @@ export default function MembershipPage() {
       <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
         Configure tier names, upgrade thresholds, and regional coin reward rates (m%) per level.
       </Typography.Text>
-      <Table rowKey="level" columns={columns} dataSource={tiers} loading={loading} pagination={false} />
-      <Modal title={`Edit Tier L${editTarget?.level} — ${LEVEL_NAMES[editTarget?.level] ?? ''}`} open={!!editTarget} onOk={handleSave} onCancel={() => setEditTarget(null)} confirmLoading={saving} okText="Save Changes" width={520}>
+      <div className="table-responsive">
+        <Table rowKey="level" columns={columns} dataSource={tiers} loading={loading} pagination={false} scroll={{ x: 'max-content' }} />
+      </div>
+      <Modal title={`Edit Tier L${editTarget?.level} — ${LEVEL_NAMES[editTarget?.level] ?? ''}`} open={!!editTarget} onOk={handleSave} onCancel={() => setEditTarget(null)} confirmLoading={saving} okText="Save Changes" width={isMobile ? '100%' : 520} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="name" label="Tier Name" rules={[{ required: true }]}>
             <Input placeholder="e.g. Health Ambassador" />

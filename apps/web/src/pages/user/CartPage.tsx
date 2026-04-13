@@ -87,10 +87,10 @@ export default function CartPage() {
               <div
                 onClick={() => toggleMerchant(group.merchant?.id || 'platform', items)}
                 style={{
-                  width: 18, height: 18, borderRadius: '50%', border: `2px solid ${allSelected ? '#1677ff' : '#d9d9d9'}`,
+                  width: 22, height: 22, borderRadius: '50%', border: `2px solid ${allSelected ? '#1677ff' : '#d9d9d9'}`,
                   background: allSelected ? '#1677ff' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                 }}
-              >{allSelected && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}</div>
+              >{allSelected && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}</div>
               <Text strong>{group.merchant?.name || '平台自营'}</Text>
             </div>
             {items.map((item: any) => {
@@ -101,10 +101,10 @@ export default function CartPage() {
                   <div
                     onClick={() => toggleSelect(key)}
                     style={{
-                      width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isSelected ? '#1677ff' : '#d9d9d9'}`,
+                      width: 22, height: 22, borderRadius: '50%', border: `2px solid ${isSelected ? '#1677ff' : '#d9d9d9'}`,
                       background: isSelected ? '#1677ff' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                     }}
-                  >{isSelected && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}</div>
+                  >{isSelected && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}</div>
                   <img src={item.product?.images?.[0] || 'https://placehold.co/80x80'} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product?.name}</div>

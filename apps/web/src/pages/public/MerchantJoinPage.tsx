@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Card, Row, Col, Typography, Steps, Button, List, Space } from 'antd'
 import { ShopOutlined, SafetyOutlined, DollarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
@@ -22,15 +23,16 @@ const materials = [
 
 export default function MerchantJoinPage() {
   const navigate = useNavigate()
+  const { isMobile } = useResponsive()
 
   return (
     <div>
-      <div style={{ background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)', color: '#fff', padding: '80px 24px', textAlign: 'center' }}>
+      <div style={{ background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)', color: '#fff', padding: isMobile ? '48px 16px' : '80px 24px', textAlign: 'center' }}>
         <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>成为 HealthCoin 商户</Title>
         <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 18 }}>入驻健康积分电商平台，共享健康消费新红利</Text>
       </div>
 
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '32px 16px' : '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>入驻优势</Title>
         <Row gutter={[24, 24]}>
           {benefits.map((b, idx) => (
@@ -45,11 +47,11 @@ export default function MerchantJoinPage() {
         </Row>
       </div>
 
-      <div style={{ padding: '64px 24px', background: '#f5f5f5' }}>
+      <div style={{ padding: isMobile ? '32px 16px' : '64px 24px', background: '#f5f5f5' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Title level={3} style={{ textAlign: 'center', marginBottom: 40 }}>入驻流程</Title>
           <Steps
-            direction="horizontal"
+            direction={isMobile ? 'vertical' : 'horizontal'}
             current={-1}
             items={[
               { title: '提交申请', description: '填写商户信息并上传资质' },
@@ -62,7 +64,7 @@ export default function MerchantJoinPage() {
         </div>
       </div>
 
-      <div style={{ padding: '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '32px 16px' : '64px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Row gutter={[48, 48]}>
           <Col xs={24} md={12}>
             <Title level={4}>所需资料</Title>

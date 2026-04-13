@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Form, InputNumber, Button, message, Spin, Row, Col, Divider, Tooltip } from 'antd'
 import { InfoCircleOutlined, SaveOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const META: Record<string, { label: string; hint: string; min?: number; max?: number; step?: number }> = {
   platform_commission_rate: { label: '平台佣金比例', hint: '每笔订单平台抽取的佣金比例，例如 0.05 表示 5%', min: 0, max: 1, step: 0.01 },
@@ -12,6 +13,7 @@ const META: Record<string, { label: string; hint: string; min?: number; max?: nu
 const KEYS = Object.keys(META)
 
 export default function CommissionPage() {
+  const { isMobile } = useResponsive()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -72,7 +74,7 @@ export default function CommissionPage() {
             ))}
           </Row>
           <div style={{ marginTop: 24 }}>
-            <Button type="primary" htmlType="submit" loading={saving} size="large" icon={<SaveOutlined />} style={{ minWidth: 160 }}>保存设置</Button>
+            <Button type="primary" htmlType="submit" loading={saving} size="large" icon={<SaveOutlined />} block={isMobile} style={{ minWidth: isMobile ? '100%' : 160 }}>保存设置</Button>
           </div>
         </Form>
       </Card>

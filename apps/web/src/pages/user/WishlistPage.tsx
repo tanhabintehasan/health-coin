@@ -4,12 +4,14 @@ import { Card, Row, Col, Empty, Button, Spin, Tag, Badge, message } from 'antd'
 import { ShoppingOutlined, FireOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useWishlistStore } from '../../store/wishlist.store'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 export default function WishlistPage() {
   const navigate = useNavigate()
   const { items, remove } = useWishlistStore()
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const { isMobile } = useResponsive()
 
   useEffect(() => {
     if (items.length === 0) {
@@ -41,9 +43,9 @@ export default function WishlistPage() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: isMobile ? 12 : 24 }}>
       <h2>我的收藏</h2>
-      <Row gutter={[24, 24]} style={{ marginTop: 16 }}>
+      <Row gutter={[isMobile ? 12 : 24, isMobile ? 12 : 24]} style={{ marginTop: 16 }}>
         {products.map((p: any) => {
           const coinRate = Number(p.coinOffsetRate || 0)
           return (
@@ -52,7 +54,7 @@ export default function WishlistPage() {
                 hoverable
                 cover={
                   <div style={{ position: 'relative' }}>
-                    <img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 200, objectFit: 'cover', width: '100%' }} />
+                    <img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 160, objectFit: 'cover', width: '100%' }} />
                     {coinRate > 0 && (
                       <Badge count={`可抵${Math.round(coinRate * 100)}%`} style={{ backgroundColor: '#ff4d4f', position: 'absolute', top: 8, right: 8 }} />
                     )}
@@ -64,7 +66,7 @@ export default function WishlistPage() {
                     </div>
                   </div>
                 }
-                style={{ borderRadius: 12, overflow: 'hidden' }}
+                style={{ borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}
                 onClick={() => navigate(`/product/${p.id}`)}
               >
                 <div style={{ fontWeight: 500, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Form, Button, Card, Typography, message, Spin, Row, Col, Divider, InputNumber, Tooltip } from 'antd'
 import { InfoCircleOutlined, SaveOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useResponsive } from '../../hooks/useResponsive'
 
 interface ConfigMeta { label: string; hint: string; min?: number; max?: number; step?: number }
 
@@ -21,6 +22,7 @@ const COMMISSION_KEYS = ['withdrawal_commission_rate']
 const REVIEW_KEYS = ['order_approval_required']
 
 export default function SettingsPage() {
+  const { isMobile } = useResponsive()
   const [configs, setConfigs] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -86,7 +88,7 @@ export default function SettingsPage() {
           <Divider orientation="left">Product Review</Divider>
           <Row gutter={16}>{REVIEW_KEYS.map(renderConfigField)}</Row>
           <div style={{ marginTop: 24 }}>
-            <Button type="primary" htmlType="submit" loading={saving} size="large" icon={<SaveOutlined />} style={{ minWidth: 160 }}>Save Settings</Button>
+            <Button type="primary" htmlType="submit" loading={saving} size="large" icon={<SaveOutlined />} block={isMobile} style={{ minWidth: isMobile ? '100%' : 160 }}>Save Settings</Button>
           </div>
         </Form>
       </Card>

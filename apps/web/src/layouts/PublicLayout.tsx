@@ -1,7 +1,8 @@
-import { Layout, Menu, Button, Space, Typography, Row, Col, Divider } from 'antd'
+import { Layout, Menu, Button, Space, Typography, Row, Col, Divider, Drawer } from 'antd'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuthStore } from '../store/auth.store'
-import { MedicineBoxOutlined, PhoneOutlined, MailOutlined, EnvironmentOutlined } from '@ant-design/icons'
+import { MedicineBoxOutlined, PhoneOutlined, MailOutlined, EnvironmentOutlined, MenuOutlined } from '@ant-design/icons'
 
 const { Header, Content, Footer } = Layout
 const { Title, Text } = Typography
@@ -10,6 +11,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const navigate = useNavigate()
   const location = useLocation()
   const { token } = useAuthStore()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const menuItems = [
     { key: '/', label: <Link to="/">首页</Link> },
@@ -23,12 +25,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,.06)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('/')}>
-          <MedicineBoxOutlined style={{ fontSize: 28, color: '#1677ff' }} />
-          <Title level={4} style={{ margin: 0, color: '#1677ff' }}>HealthCoin</Title>
+      <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,.06)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} className="mobile-only" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <MedicineBoxOutlined style={{ fontSize: 28, color: '#1677ff' }} />
+            <Title level={4} style={{ margin: 0, color: '#1677ff' }}>HealthCoin</Title>
+          </div>
         </div>
-        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ flex: 1, justifyContent: 'center', border: 'none' }} />
+        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ flex: 1, justifyContent: 'center', border: 'none' }} className="desktop-only" />
         <Space>
           {token ? (
             <Button type="primary" onClick={() => navigate('/portal/user/home')}>进入平台</Button>
@@ -40,6 +45,16 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           )}
         </Space>
       </Header>
+
+      <Drawer
+        title="导航"
+        placement="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={260}
+      >
+        <Menu mode="vertical" selectedKeys={[selectedKey]} items={menuItems} onClick={() => setDrawerOpen(false)} />
+      </Drawer>
 
       <Content>{children}</Content>
 

@@ -1,4 +1,4 @@
-import { Layout, Menu, theme, Avatar, Dropdown, Space, Typography, Badge, type MenuProps } from 'antd'
+import { Layout, Menu, theme, Avatar, Dropdown, Space, Typography, Badge, type MenuProps, Drawer, Button } from 'antd'
 import {
   HomeOutlined,
   ShoppingCartOutlined,
@@ -9,12 +9,14 @@ import {
   MedicineBoxOutlined,
   LogoutOutlined,
   HeartOutlined,
+  MenuOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
 import { Suspense, useEffect, useState } from 'react'
 import { LoadingFallback } from '../components/common/LoadingFallback'
 import { api } from '../services/api'
+import { useResponsive } from '../hooks/useResponsive'
 
 const { Header, Content, Footer } = Layout
 const { Title, Text } = Typography
@@ -24,6 +26,8 @@ export default function UserLayout() {
   const navigate = useNavigate()
   const { logout, user } = useAuthStore()
   const [cartCount, setCartCount] = useState(0)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const { isMobile } = useResponsive()
 
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -57,17 +61,33 @@ export default function UserLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-        <Title level={4} style={{ margin: 0, color: '#1677ff' }}>HealthCoin</Title>
-        <Menu mode="horizontal" selectedKeys={[selected]} items={items} style={{ flex: 1, justifyContent: 'flex-end', border: 'none' }} />
+      <Header style={{ background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isMobile && (
+            <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} />
+          )}
+          <Title level={4} style={{ margin: 0, color: '#1677ff' }}>HealthCoin</Title>
+        </div>
+        <Menu mode="horizontal" selectedKeys={[selected]} items={items} style={{ flex: 1, justifyContent: 'flex-end', border: 'none', display: isMobile ? 'none' : 'block' }} />
         <Dropdown menu={{ items: menuItems }} placement="bottomRight">
           <Space style={{ marginLeft: 16, cursor: 'pointer' }}>
             <Avatar icon={<UserOutlined />} />
-            <Text>{user?.nickname || user?.phone || '用户'}</Text>
+            {!isMobile && <Text>{user?.nickname || user?.phone || '用户'}</Text>}
           </Space>
         </Dropdown>
       </Header>
-      <Content style={{ padding: 24 }}>
+
+      <Drawer
+        title="菜单"
+        placement="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={240}
+      >
+        <Menu mode="vertical" selectedKeys={[selected]} items={items} onClick={() => setDrawerOpen(false)} />
+      </Drawer>
+
+      <Content style={{ padding: isMobile ? 12 : 24 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', background: colorBgContainer, borderRadius: borderRadiusLG, padding: 0, minHeight: 600, overflow: 'hidden' }}>
           <Suspense fallback={<LoadingFallback />}>
             <Outlet />

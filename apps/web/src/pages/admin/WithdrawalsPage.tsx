@@ -69,9 +69,11 @@ export default function WithdrawalsPage() {
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>Withdrawals</Typography.Title>
       <Alert type="info" showIcon message="Only pending withdrawals are shown by default." style={{ marginBottom: 16 }} />
-      <Table rowKey="id" columns={columns} dataSource={withdrawals} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchWithdrawals(p) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={withdrawals} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchWithdrawals(p) } }} scroll={{ x: 'max-content' }} />
+      </div>
 
-      <Modal title="Review Withdrawal" open={reviewModal.open} onCancel={() => { setReviewModal({ open: false, id: null }); form.resetFields() }} onOk={() => form.submit()}>
+      <Modal title="Review Withdrawal" open={reviewModal.open} onCancel={() => { setReviewModal({ open: false, id: null }); form.resetFields() }} onOk={() => form.submit()} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         <Form form={form} layout="vertical" onFinish={handleReview}>
           <Form.Item name="action" label="Decision" rules={[{ required: true }]}>
             <Select options={[{ label: 'Approve', value: 'APPROVED' }, { label: 'Reject', value: 'REJECTED' }]} />

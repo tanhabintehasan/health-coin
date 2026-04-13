@@ -3,6 +3,7 @@ import { Table, Tag, Typography, Input, Button, Space, Drawer, Descriptions, Mod
 import { SearchOutlined, UndoOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
   PENDING_PAYMENT: 'orange', PAID: 'blue', PROCESSING: 'blue', SHIPPED: 'purple', DELIVERED: 'cyan', COMPLETED: 'green', CANCELLED: 'default',
@@ -10,6 +11,7 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
 }
 
 export default function OrdersPage() {
+  const { isMobile } = useResponsive()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -82,19 +84,22 @@ export default function OrdersPage() {
   return (
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>订单监控</Typography.Title>
-      <Space style={{ marginBottom: 16 }}>
-        <Input placeholder="搜索订单号或用户手机号" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={() => fetchOrders(1, search)} style={{ width: 300 }} />
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Input placeholder="搜索订单号或用户手机号" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={() => fetchOrders(1, search)} style={{ width: isMobile ? '100%' : 300 }} />
         <Button type="primary" onClick={() => fetchOrders(1, search)}>搜索</Button>
       </Space>
-      <Table rowKey="id" columns={columns} dataSource={orders} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchOrders(p, search) } }} />
+      <div className="table-responsive">
+        <Table rowKey="id" columns={columns} dataSource={orders} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchOrders(p, search) } }} scroll={{ x: 'max-content' }} />
+      </div>
 
       <Drawer
         title="订单详情"
         open={!!selected}
         onClose={() => setSelected(null)}
-        width={560}
+        width={isMobile ? '100%' : 560}
+        style={{ maxWidth: 'calc(100vw - 32px)' }}
         extra={
-          <Space>
+          <Space wrap>
             <Button icon={<UndoOutlined />} onClick={() => setRefundModalOpen(true)} disabled={selected && ['CANCELLED', 'REFUNDED', 'REFUNDING'].includes(selected.status)}>发起退款</Button>
             <Button type="primary" onClick={() => { setNewStatus(selected?.status || ''); setStatusModalOpen(true) }}>修改状态</Button>
           </Space>
@@ -128,6 +133,7 @@ export default function OrdersPage() {
         onOk={handleRefund}
         okText="确认标记退款中"
         cancelText="取消"
+        style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <p>将此订单标记为 <Tag color="red">退款中</Tag>，并通知相关商户与用户处理退款。</p>
         <Input.TextArea
@@ -144,6 +150,7 @@ export default function OrdersPage() {
         onCancel={() => setStatusModalOpen(false)}
         onOk={handleStatusChange}
         okText="保存"
+        style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <Select style={{ width: '100%' }} value={newStatus} onChange={(v) => setNewStatus(v)}>
           {['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'REFUNDING', 'REFUNDED'].map((s) => (

@@ -4,6 +4,7 @@ import { Input, Select, Card, Row, Col, Pagination, Spin, Empty, Button, Typogra
 import { SearchOutlined, ShoppingOutlined, FireOutlined, ShopOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
 import { api } from '../../services/api'
 import { useWishlistStore } from '../../store/wishlist.store'
+import { useResponsive } from '../../hooks/useResponsive'
 
 const { Title, Text } = Typography
 
@@ -18,6 +19,7 @@ export default function ShopPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { has, toggle } = useWishlistStore()
+  const { isMobile } = useResponsive()
 
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -81,15 +83,15 @@ export default function ShopPage() {
   const activeMerchant = merchants.find((m) => m.value === merchantId)
 
   return (
-    <div style={{ padding: '24px 24px 64px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px 16px 48px' : '24px 24px 64px', maxWidth: 1400, margin: '0 auto' }}>
       <Breadcrumb style={{ marginBottom: 16 }} items={[{ title: <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>首页</span> }, { title: '积分商城' }]} />
 
-      <div style={{ background: 'linear-gradient(90deg, #1677ff 0%, #4096ff 100%)', borderRadius: 16, padding: '32px 24px', color: '#fff', marginBottom: 24 }}>
+      <div style={{ background: 'linear-gradient(90deg, #1677ff 0%, #4096ff 100%)', borderRadius: 16, padding: isMobile ? '20px 16px' : '32px 24px', color: '#fff', marginBottom: 24 }}>
         <Title level={3} style={{ color: '#fff', margin: 0 }}><ShoppingOutlined /> 积分商城</Title>
         <Text style={{ color: 'rgba(255,255,255,0.85)' }}>严选健康好物，健康币可抵扣，多商户正品保障</Text>
       </div>
 
-      <Card style={{ marginBottom: 24, borderRadius: 12 }}>
+      <Card style={{ marginBottom: 24, borderRadius: 12 }} bodyStyle={{ padding: isMobile ? 16 : 24 }}>
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} md={7}>
             <Input
@@ -205,8 +207,8 @@ export default function ShopPage() {
             })}
           </Row>
 
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
-            <Pagination current={page} pageSize={12} total={total} onChange={(p) => setPage(p)} showSizeChanger={false} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40, overflowX: 'auto' }}>
+            <Pagination current={page} pageSize={12} total={total} onChange={(p) => setPage(p)} showSizeChanger={false} size={isMobile ? 'small' : 'default'} />
           </div>
         </>
       )}

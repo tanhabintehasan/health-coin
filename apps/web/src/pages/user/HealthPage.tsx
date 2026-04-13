@@ -56,7 +56,7 @@ export default function HealthPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 500 }}>My Health Records</div>
           <input ref={fileInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFileChange} />
-          <button disabled={uploading} onClick={handleUploadClick} style={{ background: '#1677ff', color: '#fff', borderRadius: 6, padding: '6px 12px', fontSize: 13, opacity: uploading ? 0.7 : 1, border: 'none', cursor: 'pointer' }}>
+          <button disabled={uploading} onClick={handleUploadClick} style={{ background: '#1677ff', color: '#fff', borderRadius: 6, padding: '8px 14px', fontSize: 14, opacity: uploading ? 0.7 : 1, border: 'none', cursor: 'pointer' }}>
             {uploading ? 'Uploading...' : '+ Upload'}
           </button>
         </div>
@@ -72,16 +72,16 @@ export default function HealthPage() {
           </div>
         )}
         {records.map((record: any) => (
-          <div key={record.id} style={{ background: '#fff', margin: '8px 12px', borderRadius: 10, padding: 14 }}>
+          <div key={record.id} style={{ background: '#fff', margin: '8px 12px', borderRadius: 10, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: FILE_TYPE_COLOR[record.fileType] + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: FILE_TYPE_COLOR[record.fileType] + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <span style={{ fontSize: 11, color: FILE_TYPE_COLOR[record.fileType], fontWeight: 'bold' }}>{FILE_TYPE_LABEL[record.fileType]}</span>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.fileName}</div>
+                <div style={{ fontSize: 14, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.fileName}>{record.fileName}</div>
                 <div style={{ fontSize: 12, color: '#999' }}>{new Date(record.createdAt).toLocaleDateString('zh-CN')}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <span onClick={() => handleView(record)} style={{ fontSize: 13, color: '#1677ff', padding: '4px 8px', cursor: 'pointer' }}>View</span>
                 <span onClick={() => handleDelete(record.id)} style={{ fontSize: 13, color: '#ff4d4f', padding: '4px 8px', cursor: 'pointer' }}>Delete</span>
               </div>

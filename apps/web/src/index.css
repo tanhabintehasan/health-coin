@@ -5,9 +5,47 @@ html, body, #root {
 body {
   margin: 0;
   background: #f5f5f5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Mobile-friendly table scroll container */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure images don't overflow */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mobile-first safe tap targets */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Prevent horizontal scroll on the app */
+#root {
+  overflow-x: hidden;
+}
+
+/* Small screen adjustments */
+@media (max-width: 767px) {
+  .ant-steps-item-title {
+    font-size: 12px !important;
+  }
+  .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+  }
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+  }
 }

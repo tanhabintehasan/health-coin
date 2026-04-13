@@ -103,7 +103,7 @@ export default function HomePage() {
         {loading && products.length === 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap' }}>
             {[1,2,3,4].map((n) => (
-              <div key={n} style={{ width: '45%', margin: '2.5%', borderRadius: 10, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+              <div key={n} style={{ width: '47%', margin: '1.5%', borderRadius: 10, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
                 <div style={{ width: '100%', height: 150, background: '#e8e8e8' }} />
                 <div style={{ padding: 8 }}>
                   <div style={{ height: 12, background: '#e8e8e8', borderRadius: 4, marginBottom: 8 }} />
@@ -127,7 +127,7 @@ export default function HomePage() {
             <div
               key={p.id}
               onClick={() => navigate(`/product/${p.id}`)}
-              style={{ width: '45%', margin: '2.5%', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)', cursor: 'pointer' }}
+              style={{ width: '47%', margin: '1.5%', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)', cursor: 'pointer' }}
             >
               <div style={{ position: 'relative' }}>
                 <img src={p.images?.[0] || 'https://placehold.co/200x200?text=No+Image'} alt={p.name} style={{ width: '100%', height: 150, objectFit: 'cover' }} />

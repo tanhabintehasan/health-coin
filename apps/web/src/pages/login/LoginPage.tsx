@@ -133,7 +133,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5', padding: 24 }}>
-      <Card style={{ width: 460, boxShadow: '0 2px 16px rgba(0,0,0,.1)', borderRadius: 12 }}>
+      <Card style={{ width: '100%', maxWidth: 460, boxShadow: '0 2px 16px rgba(0,0,0,.1)', borderRadius: 12 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <SafetyOutlined style={{ fontSize: 40, color: '#1677ff', marginBottom: 8 }} />
           <Title level={3} style={{ margin: 0 }}>HealthCoin</Title>
