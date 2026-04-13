@@ -56,8 +56,6 @@ export default function LoginPage() {
     localStorage.setItem('demoRole', 'merchant')
 
     message.success('Logged in as Demo Merchant')
-
-    // Change this if your merchant dashboard route is different
     navigate('/merchant/dashboard')
   }
 
@@ -90,11 +88,25 @@ export default function LoginPage() {
       localStorage.removeItem('demoRole')
 
       message.success('Welcome back!')
-
-      // Change this if your merchant dashboard route is different
       navigate('/merchant/dashboard')
     } catch (err: any) {
       message.error(err || 'Invalid OTP')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resendOtp = async () => {
+    try {
+      const values = await form.validateFields(['phone'])
+      setLoading(true)
+
+      await api.sendOtp(values.phone)
+      setPhone(values.phone)
+      startCountdown()
+      message.success('OTP resent')
+    } catch (err: any) {
+      message.error(err || 'Failed to resend OTP')
     } finally {
       setLoading(false)
     }
@@ -134,8 +146,8 @@ export default function LoginPage() {
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message="Demo access available"
-          description="Use Demo Merchant Login for the client presentation, or continue with OTP login."
+          message="Demo merchant access enabled"
+          description="Use Demo Merchant Login for client presentation, or continue with OTP login."
         />
 
         <Button
@@ -198,9 +210,9 @@ export default function LoginPage() {
 
               <Button
                 block
-                onClick={sendOtp}
+                onClick={resendOtp}
                 disabled={countdown > 0}
-                loading={loading && countdown === 0}
+                loading={loading}
               >
                 {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
               </Button>
