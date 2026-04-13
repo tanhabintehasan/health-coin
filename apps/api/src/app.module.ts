@@ -20,6 +20,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { HealthRecordsModule } from './modules/health-records/health-records.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { HealthRecordsModule } from './modules/health-records/health-records.mod
     ReferralModule,
     AdminModule,
     HealthRecordsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

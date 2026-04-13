@@ -7,7 +7,12 @@
     "start": "node dist/main",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "seed:config": "ts-node prisma/seed-config.ts",
+    "seed:tiers": "ts-node prisma/seed-tiers.ts",
+    "seed:regions": "ts-node prisma/seed-regions.ts",
+    "seed:demo": "ts-node prisma/seed-demo.ts",
+    "seed:all": "npm run seed:config && npm run seed:tiers && npm run seed:regions && npm run seed:demo"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

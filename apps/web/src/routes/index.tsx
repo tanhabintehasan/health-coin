@@ -3,9 +3,15 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { LoadingFallback } from '../components/common/LoadingFallback'
 import { ProtectedRoute } from '../components/guards/ProtectedRoute'
 import { RoleRoute } from '../components/guards/RoleRoute'
+import PublicLayout from '../layouts/PublicLayout'
 
-const HomePage = lazy(() => import('../pages/home/HomePage'))
-const LoginPage = lazy(() => import('../pages/login/LoginPage'))
+const HomePage = lazy(() => import('../pages/public/HomePage'))
+const AboutPage = lazy(() => import('../pages/public/AboutPage'))
+const ContactPage = lazy(() => import('../pages/public/ContactPage'))
+const ShopPage = lazy(() => import('../pages/public/ShopPage'))
+const MerchantJoinPage = lazy(() => import('../pages/public/MerchantJoinPage'))
+const LoginPage = lazy(() => import('../pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'))
 
 const AdminLayout = lazy(() => import('../layouts/AdminLayout'))
 const AdminDashboard = lazy(() => import('../pages/admin/DashboardPage'))
@@ -23,6 +29,7 @@ const MerchantDashboard = lazy(() => import('../pages/merchant/DashboardPage'))
 const MerchantProducts = lazy(() => import('../pages/merchant/ProductsPage'))
 const MerchantOrders = lazy(() => import('../pages/merchant/OrdersPage'))
 const MerchantRedemption = lazy(() => import('../pages/merchant/RedemptionPage'))
+const MerchantApply = lazy(() => import('../pages/merchant/ApplyPage'))
 
 const UserLayout = lazy(() => import('../layouts/UserLayout'))
 const UserHome = lazy(() => import('../pages/user/HomePage'))
@@ -43,11 +50,26 @@ function withSuspense(Element: React.LazyExoticComponent<any>, props?: any) {
   )
 }
 
+function PublicRoute(Element: React.LazyExoticComponent<any>) {
+  return (
+    <PublicLayout>
+      <Suspense fallback={<LoadingFallback />}>
+        <Element />
+      </Suspense>
+    </PublicLayout>
+  )
+}
+
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={withSuspense(HomePage)} />
+      <Route path="/" element={PublicRoute(HomePage)} />
+      <Route path="/about" element={PublicRoute(AboutPage)} />
+      <Route path="/contact" element={PublicRoute(ContactPage)} />
+      <Route path="/shop" element={PublicRoute(ShopPage)} />
+      <Route path="/merchant-join" element={PublicRoute(MerchantJoinPage)} />
       <Route path="/login" element={withSuspense(LoginPage)} />
+      <Route path="/register" element={withSuspense(RegisterPage)} />
 
       <Route
         path="/portal/admin/*"
@@ -91,6 +113,7 @@ export function AppRoutes() {
         <Route path="products" element={withSuspense(MerchantProducts)} />
         <Route path="orders" element={withSuspense(MerchantOrders)} />
         <Route path="redemption" element={withSuspense(MerchantRedemption)} />
+        <Route path="apply" element={withSuspense(MerchantApply)} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 

@@ -22,11 +22,11 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('healthcoin_token')
       const pathname = window.location.pathname
-      if (!pathname.startsWith('/login')) {
+      if (!pathname.startsWith('/login') && !pathname.startsWith('/register')) {
         window.location.href = '/login'
       }
     }
-    const msg = err.response?.data?.message || err.message || 'Request failed'
+    const msg = err.response?.data?.message || err.message || '请求失败，请稍后重试'
     return Promise.reject(msg)
   }
 )
@@ -38,6 +38,9 @@ function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: s
 // ─── Unified API ─────────────────────────────────────────────────────────────
 
 export const api = {
+  // Settings (public)
+  getPublicSettings: () => request<any>('GET', '/settings/public'),
+
   // Auth
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
   verifyOtp: (phone: string, code: string, referralCode?: string) =>
@@ -49,6 +52,7 @@ export const api = {
 
   // Role probes
   getMyMerchant: () => request<any>('GET', '/merchants/me'),
+
   // Wallets
   getWallets: () => request<any[]>('GET', '/wallets'),
   getTransactions: (params?: { walletType?: string; page?: number; limit?: number }) =>
@@ -62,10 +66,20 @@ export const api = {
   getTiers: () => request<any[]>('GET', '/membership/tiers'),
   getMyMembership: () => request<any>('GET', '/membership/my'),
 
+  // Regions
+  getRegionsTree: () => request<any[]>('GET', '/regions/tree'),
+  getProvinces: () => request<any[]>('GET', '/regions/provinces'),
+  getCities: (provinceId: string) => request<any[]>('GET', `/regions/provinces/${provinceId}/cities`),
+  getCounties: (cityId: string) => request<any[]>('GET', `/regions/cities/${cityId}/counties`),
+
   // Products (public / user)
   listProducts: (params?: any) => request<any>('GET', '/products', undefined, params),
   getProduct: (id: string) => request<any>('GET', `/products/${id}`),
   getCategories: () => request<any[]>('GET', '/products/categories'),
+
+  // Merchants (public)
+  listMerchantsPublic: (params?: any) => request<any>('GET', '/merchants/list/public', undefined, params),
+  getMerchantStorefront: (id: string) => request<any>('GET', `/merchants/${id}`),
 
   // Cart
   getCart: () => request<any>('GET', '/cart'),
@@ -74,12 +88,17 @@ export const api = {
     request<any>('DELETE', `/cart/${productId}/${variantId}`),
 
   // Orders (user)
-  createOrder: (data: { items: any[]; note?: string }) =>
-    request<any>('POST', '/orders', { items: data.items, remark: data.note }),
+  createOrder: (data: { items: any[]; note?: string; addressId?: string }) =>
+    request<any>('POST', '/orders', { items: data.items, remark: data.note, addressId: data.addressId }),
   listOrders: (params?: { status?: string; page?: number; limit?: number }) =>
     request<any>('GET', '/orders', undefined, params),
   getOrder: (id: string) => request<any>('GET', `/orders/${id}`),
   cancelOrder: (id: string) => request<any>('PATCH', `/orders/${id}/cancel`),
+  requestRefund: (id: string) => request<any>('PATCH', `/orders/${id}/refund`),
+
+  // User addresses
+  getMyAddresses: () => request<any[]>('GET', '/users/addresses'),
+  createAddress: (data: any) => request<any>('POST', '/users/addresses', data),
 
   // Payments
   payOrder: (orderId: string, walletType?: 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN') =>
@@ -91,6 +110,7 @@ export const api = {
   // Withdrawals (user)
   requestWithdrawal: (data: { payoutMethod: 'BANK' | 'ALIPAY' | 'WECHAT'; payoutAccount: any; amount: number }) =>
     request<any>('POST', '/withdrawals', data),
+  getMyWithdrawals: (params?: any) => request<any>('GET', '/withdrawals', undefined, params),
 
   // Health Records
   listHealthRecords: () => request<any[]>('GET', '/health-records'),
@@ -107,6 +127,7 @@ export const api = {
   deleteProduct: (id: string) => request<any>('DELETE', `/products/merchant/${id}`),
   getMerchantOrders: (params?: any) => request<any>('GET', '/orders/merchant/list', undefined, params),
   updateOrderStatus: (id: string, status: string) => request<any>('PATCH', `/orders/merchant/${id}/status`, { status }),
+  shipOrder: (id: string, trackingNumber: string) => request<any>('PATCH', `/orders/merchant/${id}/ship`, { trackingNumber }),
   getRedemptionLogs: (params?: any) => request<any>('GET', '/redemption/logs', undefined, params),
   scanCode: (code: string) => request<any>('POST', '/redemption/scan', { code }),
   confirmRedemption: (orderItemId: string, quantity: number) =>
@@ -114,6 +135,8 @@ export const api = {
 
   // ─── Admin ──────────────────────────────────────────────────────────────────
   getAdminConfigs: () => request<any>('GET', '/admin/configs'),
+  updateAdminConfigs: (data: Record<string, string>) => request<any>('PUT', '/admin/configs', data),
+
   getAdminUsers: (params?: any) => request<any>('GET', '/admin/users', undefined, params),
   suspendUser: (id: string, isActive: boolean) => request<any>('PATCH', `/admin/users/${id}/suspend`, { isActive }),
   setUserLevel: (id: string, level: number) => request<any>('PATCH', `/admin/users/${id}/level`, { level }),
@@ -136,8 +159,6 @@ export const api = {
   reviewWithdrawal: (id: string, data: any) => request<any>('PATCH', `/withdrawals/admin/${id}/review`, data),
   completeWithdrawal: (id: string) => request<any>('PATCH', `/withdrawals/admin/${id}/complete`),
   getFinanceSummary: () => request<any>('GET', '/withdrawals/admin/finance-summary'),
-
-  updateAdminConfigs: (data: Record<string, string>) => request<any>('PUT', '/admin/configs', data),
 
   getAdminTiers: () => request<any>('GET', '/admin/membership/tiers'),
   updateAdminTier: (level: number, data: any) => request<any>('PATCH', `/admin/membership/tiers/${level}`, data),

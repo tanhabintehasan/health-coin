@@ -19,13 +19,38 @@ export class PaymentsService {
     private readonly ordersService: OrdersService,
   ) {}
 
+  private async getPaymentSettings() {
+    const keys = [
+      'payment_fuiou_enabled',
+      'payment_wechat_enabled',
+      'payment_alipay_enabled',
+      'payment_coin_enabled',
+      'payment_provider_primary',
+    ];
+    const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
+    const map: Record<string, string> = {};
+    for (const c of configs) map[c.key] = c.value;
+    return {
+      fuiouEnabled: map.payment_fuiou_enabled === 'true',
+      wechatEnabled: map.payment_wechat_enabled === 'true',
+      alipayEnabled: map.payment_alipay_enabled === 'true',
+      coinEnabled: map.payment_coin_enabled === 'true',
+      primary: map.payment_provider_primary ?? 'fuiou',
+    };
+  }
+
   async initiatePayment(userId: string, orderId: string, walletType?: WalletType) {
     const order = await this.prisma.order.findFirst({ where: { id: orderId, userId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'PENDING_PAYMENT') throw new BadRequestException('Order is not pending payment');
 
+    const settings = await this.getPaymentSettings();
+
     // Pay with coins
     if (walletType) {
+      if (!settings.coinEnabled) {
+        throw new BadRequestException('Coin payment is currently disabled');
+      }
       await this.walletTx.debit({
         userId,
         walletType,
@@ -40,23 +65,38 @@ export class PaymentsService {
       return { paymentMethod: 'coin', walletType, status: 'paid' };
     }
 
-    // Pay with Fuiou (cash)
-    const appUrl = this.config.get('APP_URL', 'http://localhost:3000');
-    const { payParams, tradeNo } = await this.fuiou.createPayment({
-      orderId,
-      orderNo: order.orderNo,
-      amount: order.totalAmount,
-      description: `HealthCoin Order ${order.orderNo}`,
-      notifyUrl: `${appUrl}/api/v1/webhooks/fuiou/payment`,
-    });
+    // Cash payment — use primary provider
+    if (settings.primary === 'fuiou' && settings.fuiouEnabled) {
+      const appUrl = this.config.get('APP_URL', 'http://localhost:3000');
+      const { payParams, tradeNo } = await this.fuiou.createPayment({
+        orderId,
+        orderNo: order.orderNo,
+        amount: order.totalAmount,
+        description: `HealthCoin Order ${order.orderNo}`,
+        notifyUrl: `${appUrl}/api/v1/webhooks/fuiou/payment`,
+      });
 
-    // Store pending trade reference
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { fuiouTradeNo: tradeNo },
-    });
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { fuiouTradeNo: tradeNo },
+      });
 
-    return { paymentMethod: 'fuiou', payParams };
+      return { paymentMethod: 'fuiou', provider: 'fuiou', payParams };
+    }
+
+    if (settings.primary === 'wechat' && settings.wechatEnabled) {
+      // Placeholder for WeChat Pay integration
+      this.logger.log(`[WeChat Pay] Would initiate payment for order ${order.orderNo}`);
+      return { paymentMethod: 'wechat', provider: 'wechat', payUrl: null, message: 'WeChat Pay integration pending' };
+    }
+
+    if (settings.primary === 'alipay' && settings.alipayEnabled) {
+      // Placeholder for Alipay integration
+      this.logger.log(`[Alipay] Would initiate payment for order ${order.orderNo}`);
+      return { paymentMethod: 'alipay', provider: 'alipay', payUrl: null, message: 'Alipay integration pending' };
+    }
+
+    throw new BadRequestException('No payment provider is currently available');
   }
 
   async handleFuiouWebhook(body: Record<string, string>): Promise<string> {

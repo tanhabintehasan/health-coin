@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class OtpService {
@@ -8,6 +9,7 @@ export class OtpService {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 
@@ -23,63 +25,86 @@ export class OtpService {
     return `otp:hourly:${phone}`;
   }
 
+  private async getSettings() {
+    const keys = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name'];
+    const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
+    const map: Record<string, string> = {};
+    for (const c of configs) map[c.key] = c.value;
+    return {
+      smsEnabled: map.sms_enabled === 'true',
+      otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
+      otpResend: parseInt(map.otp_resend_seconds ?? '60', 10),
+      hourlyLimit: parseInt(map.otp_hourly_limit ?? '5', 10),
+      provider: map.sms_provider ?? 'aliyun',
+      templateCode: map.sms_template_code ?? '',
+      signName: map.sms_sign_name ?? '',
+    };
+  }
+
   async sendOtp(phone: string): Promise<void> {
-    // Rate limit: 1 per 60s
+    const settings = await this.getSettings();
+
+    if (!settings.smsEnabled && this.config.get('NODE_ENV') === 'production') {
+      throw new BadRequestException('SMS service is temporarily disabled');
+    }
+
+    // Rate limit: 1 per resend period
     const rateLimitKey = this.otpRateLimitKey(phone);
     const recentSend = await this.redis.get(rateLimitKey);
     if (recentSend) {
-      throw new BadRequestException('Please wait 60 seconds before requesting another OTP');
+      throw new BadRequestException(`请等待 ${settings.otpResend} 秒后再获取验证码`);
     }
 
-    // Rate limit: 5 per hour
+    // Rate limit: hourly limit
     const hourlyKey = this.otpHourlyKey(phone);
     const hourlyCount = await this.redis.incr(hourlyKey);
     if (hourlyCount === 1) {
       await this.redis.expire(hourlyKey, 3600);
     }
-    if (hourlyCount > 5) {
-      throw new BadRequestException('Too many OTP requests. Please try again later');
+    if (hourlyCount > settings.hourlyLimit) {
+      throw new BadRequestException('验证码请求过于频繁，请稍后再试');
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store OTP (5 min TTL)
-    await this.redis.set(this.otpKey(phone), code, 'EX', 300);
-    // Store rate limit (60s TTL)
-    await this.redis.set(rateLimitKey, '1', 'EX', 60);
+    // Store OTP (dynamic TTL)
+    await this.redis.set(this.otpKey(phone), code, 'EX', settings.otpExpiry);
+    // Store rate limit
+    await this.redis.set(rateLimitKey, '1', 'EX', settings.otpResend);
 
-    await this.sendSms(phone, code);
+    await this.sendSms(phone, code, settings);
   }
 
   async verifyOtp(phone: string, code: string): Promise<void> {
     const stored = await this.redis.get(this.otpKey(phone));
     if (!stored) {
-      throw new BadRequestException('OTP expired or not found');
+      throw new BadRequestException('验证码已过期，请重新获取');
     }
     if (stored !== code) {
-      throw new BadRequestException('Invalid OTP');
+      throw new BadRequestException('验证码错误，请重新输入');
     }
     // Single use — delete immediately after successful verification
     await this.redis.del(this.otpKey(phone));
   }
 
-  private async sendSms(phone: string, code: string): Promise<void> {
+  private async sendSms(phone: string, code: string, settings: any): Promise<void> {
     // In development, log the OTP instead of sending
     if (this.config.get('NODE_ENV') !== 'production') {
-      this.logger.log(`[DEV OTP] Phone: ${phone}, Code: ${code}`);
+      this.logger.log(`[DEV OTP] Phone: ${phone}, Code: ${code}, Provider: ${settings.provider}, Template: ${settings.templateCode}`);
       return;
     }
 
-    // Aliyun SMS integration
-    // TODO: integrate @alicloud/pop-core or aliyun-sdk when going to production
-    // For now: HTTP call to Aliyun SMS API
+    // Env-based credentials for security
     const accessKeyId = this.config.get('ALIYUN_ACCESS_KEY_ID');
-    const signName = this.config.get('ALIYUN_SMS_SIGN_NAME');
-    const templateCode = this.config.get('ALIYUN_SMS_TEMPLATE_CODE');
+    const accessKeySecret = this.config.get('ALIYUN_ACCESS_KEY_SECRET');
 
-    this.logger.log(
-      `[SMS] Would send to ${phone}: code=${code}, sign=${signName}, template=${templateCode}, key=${accessKeyId}`,
-    );
-    // Production: call Aliyun SMS SendSms API here
+    if (settings.provider === 'aliyun') {
+      this.logger.log(
+        `[SMS Aliyun] To=${phone} Code=${code} Sign=${settings.signName} Template=${settings.templateCode}`,
+      );
+      // Production: integrate @alicloud/pop-core here using accessKeyId / accessKeySecret
+    } else {
+      this.logger.log(`[SMS ${settings.provider}] To=${phone} Code=${code} — provider not implemented yet`);
+    }
   }
 }
