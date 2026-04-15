@@ -148,8 +148,9 @@ export default function SystemConfigPage() {
     setLoading(true)
     try {
       const res: any = await client.get('/admin/configs')
+      const list = Array.isArray(res) ? res : res.data ?? []
       const map: Record<string, string> = {}
-      for (const c of (res.data ?? [])) map[c.key] = c.value
+      for (const c of list) map[c.key] = c.value
       setConfigs(map)
       const numericMap: Record<string, number | string> = {}
       for (const [k, v] of Object.entries(map)) {
@@ -157,7 +158,9 @@ export default function SystemConfigPage() {
         numericMap[k] = isNaN(parsed) ? v : parsed
       }
       form.setFieldsValue(numericMap)
-    } catch { /* endpoint stub */ }
+    } catch (e: any) {
+      message.error('Failed to load settings: ' + (e.message || e))
+    }
     finally { setLoading(false) }
   }
 
