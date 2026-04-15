@@ -159,6 +159,25 @@ export class AuthService {
     }
   }
 
+  async wxLogin(code: string) {
+    const appId = await this.prisma.systemConfig.findUnique({ where: { key: 'wechat_appid' } });
+    const secret = await this.prisma.systemConfig.findUnique({ where: { key: 'wechat_secret' } });
+    if (!appId?.value || !secret?.value) {
+      return { openId: `mock_openid_${code}`, message: 'Mock openid（未配置微信参数）' };
+    }
+    try {
+      const axios = (await import('axios')).default;
+      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId.value}&secret=${secret.value}&js_code=${code}&grant_type=authorization_code`;
+      const { data } = await axios.get(url, { timeout: 10000 });
+      if (data.openid) {
+        return { openId: data.openid, sessionKey: data.session_key, unionId: data.unionid };
+      }
+      return { openId: `mock_openid_${code}`, message: '微信接口未返回openid', wxErr: data };
+    } catch (err: any) {
+      return { openId: `mock_openid_${code}`, message: '微信接口异常', error: err.message };
+    }
+  }
+
   private async issueTokens(userId: string, phone: string, skipRedis = false) {
     const payload = { sub: userId, phone };
 

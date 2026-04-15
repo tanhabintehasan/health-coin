@@ -26,7 +26,11 @@ export class OtpService {
   }
 
   private async getSettings() {
-    const keys = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name'];
+    const keys = [
+      'sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit',
+      'sms_provider', 'sms_template_code', 'sms_sign_name',
+      'smsbao_username', 'smsbao_password', 'smsbao_template',
+    ];
     const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
     const map: Record<string, string> = {};
     for (const c of configs) map[c.key] = c.value;
@@ -38,6 +42,9 @@ export class OtpService {
       provider: map.sms_provider ?? 'aliyun',
       templateCode: map.sms_template_code ?? '',
       signName: map.sms_sign_name ?? '',
+      smsbaoUsername: map.smsbao_username ?? '',
+      smsbaoPassword: map.smsbao_password ?? '',
+      smsbaoTemplate: map.smsbao_template ?? '',
     };
   }
 
@@ -91,6 +98,29 @@ export class OtpService {
     // In development, log the OTP instead of sending
     if (this.config.get('NODE_ENV') !== 'production') {
       this.logger.log(`[DEV OTP] Phone: ${phone}, Code: ${code}, Provider: ${settings.provider}, Template: ${settings.templateCode}`);
+      return;
+    }
+
+    if (settings.provider === 'smsbao') {
+      if (!settings.smsbaoUsername || !settings.smsbaoPassword || !settings.smsbaoTemplate) {
+        this.logger.warn('[SMSbao] Configuration incomplete');
+        return;
+      }
+      const content = settings.smsbaoTemplate.replace(/\[code\]/g, code);
+      const md5Pass = require('crypto').createHash('md5').update(settings.smsbaoPassword).digest('hex');
+      const encodedContent = encodeURIComponent(content);
+      const url = `http://api.smsbao.com/sms?u=${settings.smsbaoUsername}&p=${md5Pass}&m=${phone}&c=${encodedContent}`;
+      try {
+        const axios = (await import('axios')).default;
+        const { data } = await axios.get(url, { timeout: 10000 });
+        if (data !== '0' && data !== 0) {
+          this.logger.error(`[SMSbao] Failed to send SMS, code: ${data}`);
+        } else {
+          this.logger.log(`[SMSbao] SMS sent to ${phone}`);
+        }
+      } catch (err: any) {
+        this.logger.error(`[SMSbao] Exception: ${err.message}`);
+      }
       return;
     }
 

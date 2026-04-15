@@ -1,0 +1,6 @@
+[build]
+  command = "npm install && npm run build:admin"
+  publish = "apps/admin-web/dist"
+
+[build.environment]
+  NODE_VERSION = "20"

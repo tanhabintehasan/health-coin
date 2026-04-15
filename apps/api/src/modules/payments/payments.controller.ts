@@ -14,7 +14,7 @@ export class PaymentsController {
   @Post('orders/:id/pay')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Initiate payment for an order (coin or Fuiou)' })
+  @ApiOperation({ summary: 'Initiate payment for an order (coin or cash provider)' })
   initiatePayment(
     @CurrentUser() user: { id: string },
     @Param('id') orderId: string,
@@ -23,12 +23,30 @@ export class PaymentsController {
     return this.paymentsService.initiatePayment(user.id, orderId, dto.walletType);
   }
 
+  @Post('orders/:id/pay/lcsw-mini')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Initiate LCSW mini-program payment' })
+  initiateLcswMiniPayment(
+    @CurrentUser() user: { id: string },
+    @Param('id') orderId: string,
+    @Body() body: { openId: string; subAppId?: string },
+  ) {
+    return this.paymentsService.initiateLcswMiniPayment(user.id, orderId, body.openId, body.subAppId);
+  }
+
   @Post('/webhooks/fuiou/payment')
   @HttpCode(200)
   @ApiOperation({ summary: 'Fuiou payment callback webhook (server-to-server)' })
   async fuiouWebhook(@Body() body: Record<string, string>, @Res() res: Response) {
     const result = await this.paymentsService.handleFuiouWebhook(body);
-    // Fuiou expects plain text "SUCCESS" or "FAIL"
     res.type('text/plain').send(result);
+  }
+
+  @Post('/webhooks/lcsw/payment')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'LCSW payment callback webhook (server-to-server)' })
+  async lcswWebhook(@Body() body: Record<string, any>) {
+    return this.paymentsService.handleLcswWebhook(body);
   }
 }

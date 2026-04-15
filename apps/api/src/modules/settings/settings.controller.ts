@@ -21,6 +21,7 @@ export class SettingsController {
       'payment_fuiou_enabled',
       'payment_wechat_enabled',
       'payment_alipay_enabled',
+      'payment_lcsw_enabled',
       'payment_coin_enabled',
       'product_review_required',
       'redemption_code_valid_days',
@@ -58,6 +59,7 @@ export class SettingsController {
         fuiou: map.payment_fuiou_enabled === 'true',
         wechat: map.payment_wechat_enabled === 'true',
         alipay: map.payment_alipay_enabled === 'true',
+        lcsw: map.payment_lcsw_enabled === 'true',
         coin: map.payment_coin_enabled === 'true',
       },
       business: {

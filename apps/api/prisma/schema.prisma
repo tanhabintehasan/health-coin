@@ -298,6 +298,7 @@ model Order {
   universalCoinPaid BigInt  @default(0)
   cashPaid          BigInt  @default(0)
   fuiouTradeNo      String? @db.VarChar(100)
+  lcswTradeNo       String? @db.VarChar(100)
 
   shippingAddress Json?    // snapshot at order time
   trackingNumber  String?  @db.VarChar(100)

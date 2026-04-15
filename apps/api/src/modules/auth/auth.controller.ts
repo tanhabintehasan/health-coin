@@ -52,4 +52,11 @@ export class AuthController {
   refreshToken(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshToken(dto.refreshToken);
   }
+
+  @Post('wx-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'WeChat mini-program login (exchange code for openId)' })
+  wxLogin(@Body('code') code: string) {
+    return this.authService.wxLogin(code);
+  }
 }

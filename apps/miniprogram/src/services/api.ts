@@ -106,6 +106,13 @@ export const api = {
   payOrder: (orderId: string, walletType?: 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN') =>
     request<any>('POST', `/payments/orders/${orderId}/pay`, walletType ? { walletType } : {}),
 
+  // LCSW mini-program payment
+  payLcswMini: (orderId: string, openId: string, subAppId?: string) =>
+    request<any>('POST', `/payments/orders/${orderId}/pay/lcsw-mini`, { openId, subAppId }),
+
+  // WeChat login
+  wxLogin: (code: string) => request<any>('POST', '/auth/wx-login', { code }),
+
   // Redemption
   getMyCodes: () => request<any[]>('GET', '/redemption/my-codes'),
 

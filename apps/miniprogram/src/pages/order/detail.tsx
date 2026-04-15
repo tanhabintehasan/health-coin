@@ -27,8 +27,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 type CoinType = 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN'
 
-const PAY_OPTIONS: Array<{ value: 'FUIOU' | CoinType; label: string; sub: string; color: string }> = [
+type PayMethod = 'FUIOU' | 'LCSW' | CoinType
+
+const PAY_OPTIONS: Array<{ value: PayMethod; label: string; sub: string; color: string }> = [
   { value: 'FUIOU', label: 'WeChat Pay', sub: 'Pay with WeChat / Alipay', color: '#07c160' },
+  { value: 'LCSW', label: 'LCSW Pay', sub: 'Saobei mini-program pay', color: '#fa8c16' },
   { value: 'HEALTH_COIN', label: 'HealthCoin', sub: 'HC', color: '#1677ff' },
   { value: 'MUTUAL_HEALTH_COIN', label: 'Mutual HealthCoin', sub: 'MHC', color: '#52c41a' },
   { value: 'UNIVERSAL_HEALTH_COIN', label: 'Universal HealthCoin', sub: 'UHC', color: '#722ed1' },
@@ -40,7 +43,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
-  const [payMethod, setPayMethod] = useState<'FUIOU' | CoinType>('FUIOU')
+  const [payMethod, setPayMethod] = useState<PayMethod>('FUIOU')
   const [wallets, setWallets] = useState<Record<string, number>>({})
 
   const fetchOrder = async () => {
@@ -65,6 +68,52 @@ export default function OrderDetailPage() {
   const pay = async () => {
     setPaying(true)
     try {
+      if (payMethod === 'LCSW') {
+        let openId = Taro.getStorageSync('openId')
+        if (!openId) {
+          const loginRes: any = await new Promise((resolve) => {
+            Taro.login({
+              success: (r) => resolve(r),
+              fail: () => resolve(null),
+            })
+          })
+          if (!loginRes || !loginRes.code) {
+            throw new Error('WeChat login failed')
+          }
+          const wxRes: any = await api.wxLogin(loginRes.code)
+          if (wxRes.openId) {
+            openId = wxRes.openId
+            Taro.setStorageSync('openId', openId)
+          } else {
+            throw new Error('Failed to get WeChat openId')
+          }
+        }
+        const res = await api.payLcswMini(id!, openId)
+        const pp = res.payParams
+        if (pp && pp.return_code === '01' && pp.result_code === '01') {
+          Taro.requestPayment({
+            provider: 'wxpay',
+            timeStamp: pp.timeStamp || String(Math.floor(Date.now() / 1000)),
+            nonceStr: pp.nonceStr || pp.nonce_str,
+            package: pp.package || pp.package_str,
+            signType: pp.signType || 'RSA',
+            paySign: pp.paySign || pp.pay_sign,
+            success: () => {
+              Taro.showToast({ title: 'Payment successful', icon: 'success' })
+              fetchOrder()
+            },
+            fail: (e: any) => {
+              console.error('wxpay fail', e)
+              Taro.showToast({ title: 'Payment cancelled', icon: 'error' })
+            },
+          })
+        } else {
+          throw new Error(pp?.return_msg || 'LCSW payment initiation failed')
+        }
+        setPaying(false)
+        return
+      }
+
       const walletType = payMethod === 'FUIOU' ? undefined : payMethod
       const res = await api.payOrder(id!, walletType)
       if (res.payUrl) {
