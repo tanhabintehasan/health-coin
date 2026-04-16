@@ -48,47 +48,55 @@ export class OtpService {
       throw new BadRequestException('SMS service is temporarily disabled');
     }
 
-    const now = new Date();
-
-    // Rate limit: 1 per resend period
-    const resendWindow = new Date(now.getTime() - settings.otpResend * 1000);
-    const recentSend = await this.prisma.otpCode.count({
-      where: { phone, createdAt: { gte: resendWindow } },
-    });
-    if (recentSend > 0) {
-      throw new BadRequestException(`请等待 ${settings.otpResend} 秒后再获取验证码`);
-    }
-
-    // Rate limit: hourly limit
-    const hourlyWindow = new Date(now.getTime() - 3600 * 1000);
-    const hourlyCount = await this.prisma.otpCode.count({
-      where: { phone, createdAt: { gte: hourlyWindow } },
-    });
-    if (hourlyCount >= settings.hourlyLimit) {
-      throw new BadRequestException('验证码请求过于频繁，请稍后再试');
-    }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(now.getTime() + settings.otpExpiry * 1000);
-
-    // Clean up expired codes for this phone (best-effort)
-    await this.prisma.otpCode.deleteMany({
-      where: { phone, expiresAt: { lt: now } },
-    });
-
-    // Store OTP
-    await this.prisma.otpCode.create({
-      data: { phone, code, purpose: 'login', expiresAt },
-    });
-
     try {
-      await this.sendSms(phone, code, settings);
+      const now = new Date();
+
+      // Rate limit: 1 per resend period
+      const resendWindow = new Date(now.getTime() - settings.otpResend * 1000);
+      const recentSend = await this.prisma.otpCode.count({
+        where: { phone, createdAt: { gte: resendWindow } },
+      });
+      if (recentSend > 0) {
+        throw new BadRequestException(`请等待 ${settings.otpResend} 秒后再获取验证码`);
+      }
+
+      // Rate limit: hourly limit
+      const hourlyWindow = new Date(now.getTime() - 3600 * 1000);
+      const hourlyCount = await this.prisma.otpCode.count({
+        where: { phone, createdAt: { gte: hourlyWindow } },
+      });
+      if (hourlyCount >= settings.hourlyLimit) {
+        throw new BadRequestException('验证码请求过于频繁，请稍后再试');
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(now.getTime() + settings.otpExpiry * 1000);
+
+      // Clean up expired codes for this phone (best-effort)
+      await this.prisma.otpCode.deleteMany({
+        where: { phone, expiresAt: { lt: now } },
+      });
+
+      // Store OTP
+      await this.prisma.otpCode.create({
+        data: { phone, code, purpose: 'login', expiresAt },
+      });
+
+      try {
+        await this.sendSms(phone, code, settings);
+      } catch (err: any) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
+        this.logger.error(`sendSms failed: ${err.message}`);
+        throw new BadRequestException('Failed to send SMS');
+      }
     } catch (err: any) {
       if (err instanceof BadRequestException) {
         throw err;
       }
-      this.logger.error(`sendSms failed: ${err.message}`);
-      throw new BadRequestException('Failed to send SMS');
+      this.logger.error(`[OTP SEND CRASH] ${err.message}\n${err.stack}`);
+      throw new BadRequestException('Failed to send OTP');
     }
   }
 

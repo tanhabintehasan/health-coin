@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { execSync } from 'child_process';
 
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
 
@@ -24,7 +26,26 @@ function validateEnv() {
 async function bootstrap() {
   validateEnv();
 
+  try {
+    console.log('[BOOTSTRAP] Running prisma generate...');
+    execSync('npx prisma generate --schema=apps/api/prisma/schema.prisma', { stdio: 'inherit' });
+    console.log('[BOOTSTRAP] prisma generate completed');
+  } catch (err: any) {
+    console.error('[BOOTSTRAP] prisma generate failed:', err.message);
+  }
+
+  try {
+    console.log('[BOOTSTRAP] Running prisma migrate deploy...');
+    execSync('npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma', { stdio: 'inherit' });
+    console.log('[BOOTSTRAP] prisma migrate deploy completed');
+  } catch (err: any) {
+    console.error('[BOOTSTRAP] prisma migrate deploy failed:', err.message);
+    // Non-blocking: continue to start so we don't hard-lock the service
+  }
+
   const app = await NestFactory.create(AppModule);
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
