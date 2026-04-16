@@ -1,11 +1,8 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToCartDto } from './dto/cart.dto';
-import Redis from 'ioredis';
 
-const CART_TTL = 7 * 24 * 3600; // 7 days
-
-interface CartItem {
+interface CartItemView {
   productId: string;
   variantId: string;
   quantity: number;
@@ -14,14 +11,7 @@ interface CartItem {
 
 @Injectable()
 export class CartService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
-  ) {}
-
-  private cartKey(userId: string) {
-    return `cart:${userId}`;
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async addItem(userId: string, dto: AddToCartDto) {
     const variant = await this.prisma.productVariant.findUnique({
@@ -33,28 +23,40 @@ export class CartService {
     if (variant.product.status !== 'ACTIVE') throw new BadRequestException('Product is not available');
     if (variant.stock < dto.quantity) throw new BadRequestException('Insufficient stock');
 
-    const key = this.cartKey(userId);
-    const itemKey = `${dto.productId}:${dto.variantId}`;
-    const item: CartItem = {
-      productId: dto.productId,
-      variantId: dto.variantId,
-      quantity: dto.quantity,
-      addedAt: new Date().toISOString(),
-    };
-
-    await this.redis.hset(key, itemKey, JSON.stringify(item));
-    await this.redis.expire(key, CART_TTL);
+    await this.prisma.cartItem.upsert({
+      where: {
+        userId_productId_variantId: {
+          userId,
+          productId: dto.productId,
+          variantId: dto.variantId,
+        },
+      },
+      update: { quantity: dto.quantity },
+      create: {
+        userId,
+        productId: dto.productId,
+        variantId: dto.variantId,
+        quantity: dto.quantity,
+      },
+    });
 
     return { message: 'Item added to cart' };
   }
 
   async getCart(userId: string) {
-    const key = this.cartKey(userId);
-    const raw = await this.redis.hgetall(key);
+    const rows = await this.prisma.cartItem.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    if (!raw || !Object.keys(raw).length) return { items: [], merchants: [] };
+    if (!rows.length) return { items: [], merchants: [] };
 
-    const items: CartItem[] = Object.values(raw).map((v) => JSON.parse(v));
+    const items: CartItemView[] = rows.map((r) => ({
+      productId: r.productId,
+      variantId: r.variantId,
+      quantity: r.quantity,
+      addedAt: r.createdAt.toISOString(),
+    }));
 
     // Enrich with current product/variant data
     const variantIds = items.map((i) => i.variantId);
@@ -95,12 +97,13 @@ export class CartService {
   }
 
   async removeItem(userId: string, productId: string, variantId: string) {
-    const key = this.cartKey(userId);
-    await this.redis.hdel(key, `${productId}:${variantId}`);
+    await this.prisma.cartItem.deleteMany({
+      where: { userId, productId, variantId },
+    });
     return { message: 'Item removed' };
   }
 
   async clearCart(userId: string) {
-    await this.redis.del(this.cartKey(userId));
+    await this.prisma.cartItem.deleteMany({ where: { userId } });
   }
 }

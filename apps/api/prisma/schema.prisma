@@ -448,6 +448,51 @@ enum AdminRole {
   STAFF
 }
 
+// ─── OTP CODES ───────────────────────────────────────────────────────────────
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String   @db.VarChar(20)
+  code      String   @db.VarChar(10)
+  purpose   String   @default("login") @db.VarChar(20)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
+
+// ─── REFRESH TOKENS ──────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ─── CART ITEMS ───────────────────────────────────────────────────────────────
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  variantId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId, variantId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
 // ─── USER ADDRESSES ──────────────────────────────────────────────────────────
 
 model UserAddress {

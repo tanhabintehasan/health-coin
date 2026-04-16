@@ -6,8 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { JwtStrategy } from './jwt.strategy';
-import { RedisModule } from '../../common/redis/redis.module';
-
 @Module({
   imports: [
     PassportModule,
@@ -19,7 +17,6 @@ import { RedisModule } from '../../common/redis/redis.module';
       }),
       inject: [ConfigService],
     }),
-    RedisModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, OtpService, JwtStrategy],

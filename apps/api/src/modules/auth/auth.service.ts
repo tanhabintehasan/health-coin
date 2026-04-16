@@ -1,10 +1,9 @@
-import { Injectable, UnauthorizedException, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OtpService } from './otp.service';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import Redis from 'ioredis';
 import { customAlphabet } from 'nanoid';
 
 const generateReferralCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8);
@@ -16,7 +15,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 
   async sendOtp(phone: string): Promise<{ message: string }> {
@@ -136,8 +134,11 @@ export class AuthService {
       });
 
       // Check refresh token not revoked
-      const stored = await this.redis.get(`refresh:${payload.sub}`);
-      if (stored !== refreshToken) {
+      const now = new Date();
+      const stored = await this.prisma.refreshToken.findFirst({
+        where: { userId: payload.sub, token: refreshToken, expiresAt: { gt: now } },
+      });
+      if (!stored) {
         throw new UnauthorizedException('Refresh token revoked or invalid');
       }
 
@@ -178,7 +179,7 @@ export class AuthService {
     }
   }
 
-  private async issueTokens(userId: string, phone: string, skipRedis = false) {
+  private async issueTokens(userId: string, phone: string, skipDbStore = false) {
     const payload = { sub: userId, phone };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -191,12 +192,14 @@ export class AuthService {
       expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
     });
 
-    if (!skipRedis) {
+    if (!skipDbStore) {
       try {
-        // Store refresh token in Redis (7d TTL)
-        await this.redis.set(`refresh:${userId}`, refreshToken, 'EX', 7 * 24 * 3600);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+        await this.prisma.refreshToken.create({
+          data: { userId, token: refreshToken, expiresAt },
+        });
       } catch {
-        // Gracefully ignore Redis failures so logins don't hard-fail when Redis is down
+        // Gracefully ignore DB failures so logins don't hard-fail
       }
     }
 

@@ -1,6 +1,5 @@
-import { Injectable, BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -11,20 +10,7 @@ export class OtpService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
-
-  private otpKey(phone: string): string {
-    return `otp:${phone}`;
-  }
-
-  private otpRateLimitKey(phone: string): string {
-    return `otp:rate:${phone}`;
-  }
-
-  private otpHourlyKey(phone: string): string {
-    return `otp:hourly:${phone}`;
-  }
 
   private async getSettings() {
     const keys = [
@@ -62,42 +48,42 @@ export class OtpService {
       throw new BadRequestException('SMS service is temporarily disabled');
     }
 
-    try {
-      // Ensure Redis is reachable
-      await this.redis.ping();
-    } catch (err: any) {
-      this.logger.error(`Redis unreachable: ${err.message}`);
-      throw new BadRequestException('Service temporarily unavailable, please try again later');
-    }
+    const now = new Date();
 
     // Rate limit: 1 per resend period
-    const rateLimitKey = this.otpRateLimitKey(phone);
-    const recentSend = await this.redis.get(rateLimitKey);
-    if (recentSend) {
+    const resendWindow = new Date(now.getTime() - settings.otpResend * 1000);
+    const recentSend = await this.prisma.otpCode.count({
+      where: { phone, createdAt: { gte: resendWindow } },
+    });
+    if (recentSend > 0) {
       throw new BadRequestException(`请等待 ${settings.otpResend} 秒后再获取验证码`);
     }
 
     // Rate limit: hourly limit
-    const hourlyKey = this.otpHourlyKey(phone);
-    const hourlyCount = await this.redis.incr(hourlyKey);
-    if (hourlyCount === 1) {
-      await this.redis.expire(hourlyKey, 3600);
-    }
-    if (hourlyCount > settings.hourlyLimit) {
+    const hourlyWindow = new Date(now.getTime() - 3600 * 1000);
+    const hourlyCount = await this.prisma.otpCode.count({
+      where: { phone, createdAt: { gte: hourlyWindow } },
+    });
+    if (hourlyCount >= settings.hourlyLimit) {
       throw new BadRequestException('验证码请求过于频繁，请稍后再试');
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(now.getTime() + settings.otpExpiry * 1000);
 
-    // Store OTP (dynamic TTL)
-    await this.redis.set(this.otpKey(phone), code, 'EX', settings.otpExpiry);
-    // Store rate limit
-    await this.redis.set(rateLimitKey, '1', 'EX', settings.otpResend);
+    // Clean up expired codes for this phone (best-effort)
+    await this.prisma.otpCode.deleteMany({
+      where: { phone, expiresAt: { lt: now } },
+    });
+
+    // Store OTP
+    await this.prisma.otpCode.create({
+      data: { phone, code, purpose: 'login', expiresAt },
+    });
 
     try {
       await this.sendSms(phone, code, settings);
     } catch (err: any) {
-      // Re-throw client-facing errors; log unexpected ones
       if (err instanceof BadRequestException) {
         throw err;
       }
@@ -107,22 +93,17 @@ export class OtpService {
   }
 
   async verifyOtp(phone: string, code: string): Promise<void> {
-    try {
-      await this.redis.ping();
-    } catch (err: any) {
-      this.logger.error(`Redis unreachable during verify: ${err.message}`);
-      throw new BadRequestException('Service temporarily unavailable, please try again later');
-    }
-
-    const stored = await this.redis.get(this.otpKey(phone));
-    if (!stored) {
-      throw new BadRequestException('验证码已过期，请重新获取');
-    }
-    if (stored !== code) {
-      throw new BadRequestException('验证码错误，请重新输入');
+    const now = new Date();
+    const record = await this.prisma.otpCode.findFirst({
+      where: { phone, code, expiresAt: { gt: now } },
+    });
+    if (!record) {
+      throw new BadRequestException('验证码已过期或错误，请重新获取');
     }
     // Single use — delete immediately after successful verification
-    await this.redis.del(this.otpKey(phone));
+    await this.prisma.otpCode.deleteMany({
+      where: { phone, code },
+    });
   }
 
   private async sendSms(phone: string, code: string, settings: any): Promise<void> {
