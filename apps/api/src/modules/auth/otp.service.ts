@@ -26,7 +26,7 @@ export class OtpService {
       otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
       otpResend: parseInt(map.otp_resend_seconds ?? '60', 10),
       hourlyLimit: parseInt(map.otp_hourly_limit ?? '5', 10),
-      provider: map.sms_provider ?? 'aliyun',
+      provider: map.sms_provider ?? 'smsbao',
       templateCode: map.sms_template_code ?? '',
       signName: map.sms_sign_name ?? '',
       smsbaoUsername: map.smsbao_username ?? '',
@@ -145,17 +145,6 @@ export class OtpService {
       return;
     }
 
-    // Env-based credentials for security
-    const accessKeyId = this.config.get('ALIYUN_ACCESS_KEY_ID');
-    const accessKeySecret = this.config.get('ALIYUN_ACCESS_KEY_SECRET');
-
-    if (settings.provider === 'aliyun') {
-      this.logger.log(
-        `[SMS Aliyun] To=${phone} Code=${code} Sign=${settings.signName} Template=${settings.templateCode}`,
-      );
-      // Production: integrate @alicloud/pop-core here using accessKeyId / accessKeySecret
-    } else {
-      this.logger.log(`[SMS ${settings.provider}] To=${phone} Code=${code} — provider not implemented yet`);
-    }
+    throw new BadRequestException(`SMS provider '${settings.provider}' is not supported. Only SMSbao is available.`);
   }
 }

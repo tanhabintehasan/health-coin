@@ -13,7 +13,7 @@ const configs = [
   { key: 'product_review_required', value: 'true' },
   { key: 'redemption_code_valid_days', value: '30' },
   { key: 'allow_partial_redemption', value: 'true' },
-  { key: 'sms_provider', value: 'aliyun' },
+  { key: 'sms_provider', value: 'smsbao' },
   { key: 'sms_enabled', value: 'true' },
   { key: 'sms_template_code', value: 'SMS_12345678' },
   { key: 'sms_sign_name', value: '健康币平台' },

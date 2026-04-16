@@ -2,7 +2,10 @@
   "name": "healthcoin-platform",
   "version": "1.0.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build:web",
     "dev:api": "npm run dev --workspace=apps/api",
@@ -15,5 +18,8 @@
     "build:admin": "npm run build --workspace=apps/admin-web",
     "build:merchant": "npm run build --workspace=apps/merchant-web",
     "build:user": "npm run build --workspace=apps/user-web"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
   }
 }

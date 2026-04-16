@@ -99,9 +99,39 @@ const CONFIG_META: Record<string, ConfigMeta> = {
     hint: 'LCSW API base URL. E.g. http://test.lcsw.cn:8010/lcsw',
     type: 'text',
   },
+  sms_enabled: {
+    label: 'SMS Enabled',
+    hint: 'Set to 1 to enable SMS OTP. Set to 0 to disable.',
+    type: 'number', min: 0, max: 1, step: 1,
+  },
+  otp_expiry_seconds: {
+    label: 'OTP Expiry Seconds',
+    hint: 'How long an OTP code remains valid. Default 300 = 5 minutes.',
+    type: 'number', min: 30, max: 3600, step: 1,
+  },
+  otp_resend_seconds: {
+    label: 'OTP Resend Cooldown',
+    hint: 'Minimum seconds between resend requests. Default 60.',
+    type: 'number', min: 10, max: 600, step: 1,
+  },
+  otp_hourly_limit: {
+    label: 'OTP Hourly Limit',
+    hint: 'Max OTP requests per phone per hour. Default 5.',
+    type: 'number', min: 1, max: 20, step: 1,
+  },
   sms_provider: {
     label: 'SMS Provider',
-    hint: 'aliyun or smsbao',
+    hint: 'Only smsbao is supported.',
+    type: 'text',
+  },
+  sms_template_code: {
+    label: 'SMS Template Code',
+    hint: 'Template code for your SMS provider (if required).',
+    type: 'text',
+  },
+  sms_sign_name: {
+    label: 'SMS Sign Name',
+    hint: 'Signature name registered with your SMS provider.',
     type: 'text',
   },
   smsbao_username: {
@@ -136,7 +166,7 @@ const COMMISSION_KEYS = ['withdrawal_commission_rate']
 const REVIEW_KEYS = ['order_approval_required']
 const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled', 'payment_coin_enabled']
 const LCSW_KEYS = ['lcsw_merchant_no', 'lcsw_terminal_id', 'lcsw_access_token', 'lcsw_base_url']
-const SMS_KEYS = ['sms_provider', 'smsbao_username', 'smsbao_password', 'smsbao_template']
+const SMS_KEYS = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name', 'smsbao_username', 'smsbao_password', 'smsbao_template']
 const WECHAT_KEYS = ['wechat_appid', 'wechat_secret']
 
 export default function SettingsPage() {
