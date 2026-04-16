@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
 import { applyRate } from '../../common/utils/money.util';
 
 export interface OrderRewardPayload {
@@ -18,15 +16,11 @@ export class CoinRewardsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletTx: WalletTransactionService,
-    @InjectQueue('coin-rewards') private readonly rewardQueue: Queue,
   ) {}
 
   async scheduleRewards(payload: OrderRewardPayload): Promise<void> {
-    await this.rewardQueue.add(
-      'process-order-rewards',
-      { ...payload, orderAmount: payload.orderAmount.toString() },
-      { attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true },
-    );
+    // Process synchronously now that Bull/Redis has been removed
+    await this.processOrderRewards(payload);
   }
 
   async processOrderRewards(payload: { orderId: string; buyerId: string; orderAmount: bigint }): Promise<void> {
@@ -108,13 +102,11 @@ export class CoinRewardsService {
       });
     }
 
-    // Regional rewards — enqueue separately (may affect thousands of users)
+    // Regional rewards — process synchronously now that queue is removed
     if (buyer.regionId) {
-      await this.rewardQueue.add(
-        'process-regional-rewards',
-        { orderId, buyerId, orderAmount: orderAmount.toString(), regionId: buyer.regionId, membershipLevel: buyer.membershipLevel },
-        { attempts: 3, backoff: { type: 'exponential', delay: 10000 }, removeOnComplete: true },
-      );
+      await this.processRegionalRewards({
+        orderId, buyerId, orderAmount: orderAmount.toString(), regionId: buyer.regionId, membershipLevel: buyer.membershipLevel,
+      });
     }
 
     // Update lifetime mutual coins for auto-upgrade check
