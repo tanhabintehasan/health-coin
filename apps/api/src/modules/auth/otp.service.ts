@@ -49,6 +49,10 @@ export class OtpService {
       throw new BadRequestException('Failed to load SMS settings');
     }
 
+    this.logger.log(
+      `[OTP] provider=${settings.provider} smsEnabled=${settings.smsEnabled} env=${this.config.get('NODE_ENV')} username=${settings.smsbaoUsername || '(empty)'} template=${settings.smsbaoTemplate || '(empty)'}`,
+    );
+
     if (!settings.smsEnabled && this.config.get('NODE_ENV') === 'production') {
       throw new BadRequestException('SMS service is temporarily disabled');
     }
@@ -152,10 +156,30 @@ export class OtpService {
       const url = `http://api.smsbao.com/sms?u=${settings.smsbaoUsername}&p=${md5Pass}&m=${phone}&c=${encodedContent}`;
       try {
         const axios = (await import('axios')).default;
+        this.logger.log(`[SMSbao] Calling gateway for ${phone}`);
         const { data } = await axios.get(url, { timeout: 10000 });
         if (data !== '0' && data !== 0) {
-          this.logger.error(`[SMSbao] Failed to send SMS, code: ${data}`);
-          throw new BadRequestException('SMS gateway error');
+          const smsbaoErrors: Record<string, string> = {
+            '-1': '没有该用户账户 (No such user account)',
+            '-2': '接口密钥不正确 (API key incorrect)',
+            '-21': 'MD5接口密钥加密不正确 (MD5 encryption incorrect)',
+            '-3': '短信数量不足 (Insufficient SMS balance)',
+            '-11': '该用户被禁用 (User disabled)',
+            '-14': '短信内容出现非法字符 (Illegal characters in content)',
+            '-4': '手机号格式不正确 (Invalid phone format)',
+            '-41': '手机号码为空 (Phone number empty)',
+            '-42': '短信内容为空 (Content empty)',
+            '-51': '短信签名有误 (Signature error)',
+            '30': '密码错误 (Password error)',
+            '40': '账号不存在 (Account does not exist)',
+            '41': '余额不足 (Insufficient balance)',
+            '42': '账户已过期 (Account expired)',
+            '43': 'IP地址限制 (IP address restricted)',
+            '50': '内容含有敏感词 (Content contains sensitive words)',
+          };
+          const errMsg = smsbaoErrors[String(data)] || `SMS gateway error code: ${data}`;
+          this.logger.error(`[SMSbao] Failed to send SMS, code: ${data} (${errMsg})`);
+          throw new BadRequestException(errMsg);
         } else {
           this.logger.log(`[SMSbao] SMS sent to ${phone}`);
         }
