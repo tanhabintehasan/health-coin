@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 
 export function generateLcswSign(params: Record<string, any>, accessToken: string): string {
   const keys = Object.keys(params)
-    .filter((k) => k !== 'key_sign' && params[k] !== undefined && params[k] !== null)
+    .filter((k) => k !== 'key_sign' && params[k] !== undefined && params[k] !== null && params[k] !== '')
     .sort();
 
   const string1 = keys.map((k) => `${k}=${params[k]}`).join('&');

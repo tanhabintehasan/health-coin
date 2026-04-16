@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
+import { UpdateLcswConfigDto } from './dto/update-lcsw-config.dto';
 import { ProductsService } from '../products/products.service';
 import { ReferralService } from '../referral/referral.service';
 import { LcswInstitutionService } from '../payments/lcsw/lcsw-institution.service';
@@ -394,15 +395,7 @@ export class AdminController {
 
   @Put('lcsw/config')
   @ApiOperation({ summary: 'Update LCSW institution configuration' })
-  async updateLcswConfig(@Body() body: {
-    instNo: string;
-    instKey?: string;
-    baseUrl: string;
-    environment?: string;
-    autoCreateSubMerchants?: boolean;
-    defaultRateCode?: string;
-    defaultSettlementType?: string;
-  }) {
+  async updateLcswConfig(@Body() body: UpdateLcswConfigDto) {
     return this.lcswInstitution.saveInstitutionConfig(body);
   }
 

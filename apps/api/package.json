@@ -2,9 +2,10 @@
   "name": "@healthcoin/api",
   "version": "1.0.0",
   "scripts": {
+    "postinstall": "prisma generate || true",
     "dev": "nest start --watch",
-    "build": "prisma generate && nest build",
-    "start": "prisma generate && prisma migrate deploy && node dist/main",
+    "build": "nest build",
+    "start": "prisma migrate deploy && node dist/main",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",

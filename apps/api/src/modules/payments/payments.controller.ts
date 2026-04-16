@@ -46,7 +46,9 @@ export class PaymentsController {
   @Post('/webhooks/lcsw/payment')
   @HttpCode(200)
   @ApiOperation({ summary: 'LCSW payment callback webhook (server-to-server)' })
-  async lcswWebhook(@Body() body: Record<string, any>) {
-    return this.paymentsService.handleLcswWebhook(body);
+  async lcswWebhook(@Body() body: Record<string, any>, @Res() res: Response) {
+    const result = await this.paymentsService.handleLcswWebhook(body);
+    const payload = `return_code=${result.return_code}&return_msg=${encodeURIComponent(result.return_msg)}`;
+    res.type('text/plain').send(payload);
   }
 }

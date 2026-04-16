@@ -161,7 +161,7 @@ export class LcswClient {
         return_msg: data.return_msg,
         result_code: data.result_code,
         payParams: data,
-        tradeNo: data.out_trade_no,
+        tradeNo: data.out_trade_no || data.trade_no || terminalTrace,
       };
     } catch (err: any) {
       return {

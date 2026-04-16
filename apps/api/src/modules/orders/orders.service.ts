@@ -181,7 +181,13 @@ export class OrdersService {
   }
 
   // Called after payment confirmed (from webhook)
-  async markPaid(orderId: string, fuiouTradeNo: string, walletType: string, amountPaid: bigint) {
+  async markPaid(
+    orderId: string,
+    providerTradeNo: string,
+    walletType: string,
+    amountPaid: bigint,
+    provider: 'fuiou' | 'lcsw' | 'coin' = 'fuiou',
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { items: { where: { productType: 'SERVICE' } } },
@@ -193,9 +199,12 @@ export class OrdersService {
     await this.prisma.$transaction(async (tx) => {
       const updateData: any = {
         status: 'PAID',
-        fuiouTradeNo,
         paidAt: new Date(),
       };
+
+      if (provider === 'lcsw') updateData.lcswTradeNo = providerTradeNo;
+      else if (provider === 'fuiou') updateData.fuiouTradeNo = providerTradeNo;
+      // coin provider uses generated reference but no trade column
 
       if (walletType === 'HEALTH_COIN') updateData.healthCoinPaid = amountPaid;
       else if (walletType === 'MUTUAL_HEALTH_COIN') updateData.mutualCoinPaid = amountPaid;

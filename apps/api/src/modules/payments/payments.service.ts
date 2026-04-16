@@ -132,7 +132,7 @@ export class PaymentsService {
         note: `Payment for order ${order.orderNo}`,
       });
 
-      await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount);
+      await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin');
       return { paymentMethod: 'coin', walletType, status: 'paid' };
     }
 
@@ -296,7 +296,7 @@ export class PaymentsService {
       return 'SUCCESS';
     }
 
-    await this.ordersService.markPaid(order.id, fuiouTradeNo, 'CASH', amountUnits);
+    await this.ordersService.markPaid(order.id, fuiouTradeNo, 'CASH', amountUnits, 'fuiou');
     await this.prisma.paymentTransaction.updateMany({
       where: { orderId: order.id, provider: 'fuiou' },
       data: { status: 'SUCCESS', providerTradeNo: fuiouTradeNo, verifiedAt: new Date() },
@@ -358,7 +358,7 @@ export class PaymentsService {
     if (body.result_code === '01') {
       if (order && order.status === 'PENDING_PAYMENT') {
         const amount = BigInt(body.total_fee || order.totalAmount);
-        await this.ordersService.markPaid(order.id, lcswTradeNo, 'CASH', amount);
+        await this.ordersService.markPaid(order.id, lcswTradeNo, 'CASH', amount, 'lcsw');
         this.logger.log(`Order ${order.orderNo} marked paid via LCSW`);
       }
 

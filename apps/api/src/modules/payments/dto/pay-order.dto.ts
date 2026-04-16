@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { WalletType } from '@prisma/client';
 
@@ -8,8 +8,8 @@ export class PayOrderDto {
   @IsEnum(WalletType)
   walletType?: WalletType;
 
-  @ApiPropertyOptional({ description: 'Cash provider method: fuiou, lcsw, wechat, alipay. If omitted, uses primary provider.' })
+  @ApiPropertyOptional({ description: 'Cash provider method: FUIOU, LCSW, WECHAT, ALIPAY. If omitted, uses primary provider.' })
   @IsOptional()
-  @IsString()
+  @IsIn(['FUIOU', 'LCSW', 'WECHAT', 'ALIPAY'])
   method?: 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY';
 }
