@@ -124,8 +124,8 @@ export const api = {
   createAddress: (data: any) => request<any>('POST', '/users/addresses', data),
 
   // Payments
-  payOrder: (orderId: string, walletType?: 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN') =>
-    request<any>('POST', `/payments/orders/${orderId}/pay`, walletType ? { walletType } : {}),
+  payOrder: (orderId: string, walletType?: 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN', method?: 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY') =>
+    request<any>('POST', `/payments/orders/${orderId}/pay`, { ...(walletType ? { walletType } : {}), ...(method ? { method } : {}) }),
 
   // Redemption (user)
   getMyCodes: () => request<any[]>('GET', '/redemption/my-codes'),

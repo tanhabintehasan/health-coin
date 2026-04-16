@@ -186,6 +186,7 @@ model Merchant {
   products       Product[]
   orders         Order[]
   redemptionLogs RedemptionLog[]
+  lcswAccount    MerchantLcswAccount?
 
   @@index([ownerUserId])
   @@index([status])
@@ -310,7 +311,8 @@ model Order {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  items       OrderItem[]
+  items              OrderItem[]
+  paymentTransaction PaymentTransaction?
 
   @@index([userId])
   @@index([merchantId])
@@ -446,6 +448,75 @@ enum AdminRole {
   ADMIN
   FINANCE
   STAFF
+}
+
+// ─── LCSW INSTITUTION CONFIG ─────────────────────────────────────────────────
+
+model LcswInstitutionConfig {
+  id                     String   @id @default(uuid())
+  instNo                 String   @db.VarChar(50)
+  instKey                String   @db.Text
+  baseUrl                String   @db.Text
+  environment            String   @default("test") @db.VarChar(10)
+  autoCreateSubMerchants Boolean  @default(false)
+  defaultRateCode        String   @default("M0060") @db.VarChar(20)
+  defaultSettlementType  String   @default("D1") @db.VarChar(10)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("lcsw_institution_configs")
+}
+
+// ─── MERCHANT LCSW ACCOUNTS ──────────────────────────────────────────────────
+
+model MerchantLcswAccount {
+  id              String   @id @default(uuid())
+  merchantId      String   @unique
+  merchant        Merchant @relation(fields: [merchantId], references: [id])
+
+  lcswMerchantNo  String   @db.VarChar(50)
+  lcswTerminalId  String   @db.VarChar(50)
+  lcswAccessToken String   @db.Text
+  lcswTraceId     String?  @db.VarChar(50)
+
+  lcswStatus      String   @default("PENDING") @db.VarChar(20)
+  auditMessage    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("merchant_lcsw_accounts")
+}
+
+// ─── PAYMENT TRANSACTIONS ────────────────────────────────────────────────────
+
+model PaymentTransaction {
+  id                   String   @id @default(uuid())
+  orderId              String   @unique
+  order                Order    @relation(fields: [orderId], references: [id])
+
+  provider             String   @db.VarChar(20)
+  providerTradeNo      String?  @db.VarChar(100)
+  amount               BigInt
+  status               String   @default("PENDING") @db.VarChar(20)
+
+  platformCommissionRate Decimal @db.Decimal(5,4)
+  platformCommissionAmt  BigInt
+  merchantNetAmount      BigInt
+
+  lcswMerchantNo       String?  @db.VarChar(50)
+  lcswTerminalId       String?  @db.VarChar(50)
+
+  webhookPayload       Json?
+  webhookReceivedAt    DateTime?
+  verifiedAt           DateTime?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([provider])
+  @@index([status])
+  @@index([lcswMerchantNo])
+  @@map("payment_transactions")
 }
 
 // ─── OTP CODES ───────────────────────────────────────────────────────────────

@@ -287,22 +287,48 @@ export class OrdersService {
     const config = await this.prisma.systemConfig.findUnique({ where: { key: 'platform_commission_rate' } });
     const rate = parseFloat(config?.value ?? '0.05');
     const commission = BigInt(Math.round(Number(orderAmount) * rate));
+    const merchantNet = orderAmount - commission;
 
-    // Log the commission as a wallet transaction note — actual payout is via withdrawal flow
-    await this.prisma.walletTransaction.create({
-      data: {
-        walletId: await this.getMerchantWalletId(merchantId),
-        userId: (await this.prisma.merchant.findUnique({ where: { id: merchantId }, select: { ownerUserId: true } }))!.ownerUserId,
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { id: merchantId },
+      select: { ownerUserId: true },
+    });
+    if (!merchant) throw new NotFoundException('Merchant not found');
+
+    // Credit merchant net earnings
+    if (merchantNet > 0n) {
+      await this.walletTx.credit({
+        userId: merchant.ownerUserId,
         walletType: 'UNIVERSAL_HEALTH_COIN',
-        amount: orderAmount - commission,
-        balanceAfter: 0n, // placeholder — actual balance updated via withdrawal
+        amount: merchantNet,
         txType: 'ORDER_REWARD',
         referenceId: orderId,
         referenceType: 'ORDER',
         appliedRate: rate,
         note: `Order settled. Net after ${(rate * 100).toFixed(0)}% platform commission.`,
-      },
-    });
+      });
+    }
+
+    // Credit platform commission to admin user (fallback: first admin)
+    if (commission > 0n) {
+      const adminUser = await this.prisma.adminUser.findFirst({
+        where: { isActive: true },
+        select: { userId: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (adminUser) {
+        await this.walletTx.credit({
+          userId: adminUser.userId,
+          walletType: 'UNIVERSAL_HEALTH_COIN',
+          amount: commission,
+          txType: 'ORDER_REWARD',
+          referenceId: orderId,
+          referenceType: 'ORDER',
+          appliedRate: rate,
+          note: `Platform commission from order ${orderId}`,
+        });
+      }
+    }
   }
 
   private async getMerchantWalletId(merchantId: string): Promise<string> {

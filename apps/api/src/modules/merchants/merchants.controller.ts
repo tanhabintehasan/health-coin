@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Post, Get, Put, Param, Body, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -36,6 +36,36 @@ export class MerchantsController {
   @ApiOperation({ summary: 'Update my merchant profile' })
   updateMyMerchant(@CurrentUser() user: { id: string }, @Body() dto: ApplyMerchantDto) {
     return this.merchantsService.updateMyMerchant(user.id, dto);
+  }
+
+  @Get('me/lcsw-status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get my LCSW payment account status' })
+  async getMyLcswStatus(@CurrentUser() user: { id: string }) {
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { ownerUserId: user.id },
+      select: { id: true, status: true },
+    });
+    if (!merchant) throw new NotFoundException('No merchant profile found');
+
+    const account = await this.prisma.merchantLcswAccount.findUnique({
+      where: { merchantId: merchant.id },
+      select: {
+        lcswMerchantNo: true,
+        lcswTerminalId: true,
+        lcswStatus: true,
+        auditMessage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      merchantStatus: merchant.status,
+      lcswStatus: account?.lcswStatus ?? 'NOT_CREATED',
+      account: account ?? null,
+    };
   }
 
   @Get('list/public')

@@ -20,7 +20,7 @@ export class PaymentsController {
     @Param('id') orderId: string,
     @Body() dto: PayOrderDto,
   ) {
-    return this.paymentsService.initiatePayment(user.id, orderId, dto.walletType);
+    return this.paymentsService.initiatePayment(user.id, orderId, dto.walletType, dto.method);
   }
 
   @Post('orders/:id/pay/lcsw-mini')

@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FuiouClient } from './fuiou/fuiou.client';
 import { LcswClient } from './lcsw/lcsw.client';
+import { LcswInstitutionService } from './lcsw/lcsw-institution.service';
+import { EncryptionService } from '../../common/encryption/encryption.service';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
 import { OrdersService } from '../orders/orders.service';
 import { WalletType } from '@prisma/client';
@@ -18,6 +20,8 @@ export class PaymentsService {
     private readonly config: ConfigService,
     private readonly fuiou: FuiouClient,
     private readonly lcsw: LcswClient,
+    private readonly lcswInstitution: LcswInstitutionService,
+    private readonly encryption: EncryptionService,
     private readonly walletTx: WalletTransactionService,
     private readonly ordersService: OrdersService,
   ) {}
@@ -34,6 +38,7 @@ export class PaymentsService {
       'lcsw_terminal_id',
       'lcsw_access_token',
       'lcsw_base_url',
+      'platform_commission_rate',
     ];
     const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
     const map: Record<string, string> = {};
@@ -49,11 +54,64 @@ export class PaymentsService {
       lcswTerminalId: map.lcsw_terminal_id || '',
       lcswAccessToken: map.lcsw_access_token || '',
       lcswBaseUrl: map.lcsw_base_url || 'http://test.lcsw.cn:8010/lcsw',
+      platformCommissionRate: parseFloat(map.platform_commission_rate ?? '0.05'),
     };
   }
 
-  async initiatePayment(userId: string, orderId: string, walletType?: WalletType) {
-    const order = await this.prisma.order.findFirst({ where: { id: orderId, userId } });
+  private async getLcswCredentials(merchantId: string, settings: any) {
+    // 1. Try sub-merchant account first
+    const account = await this.lcswInstitution.getMerchantAccount(merchantId);
+    if (account && account.lcswStatus === 'ACTIVE') {
+      return {
+        baseUrl: settings.lcswBaseUrl,
+        merchantNo: account.lcswMerchantNo,
+        terminalId: account.lcswTerminalId,
+        accessToken: account.lcswAccessToken,
+        isSubMerchant: true,
+      };
+    }
+
+    // 2. Fall back to legacy global credentials
+    if (settings.lcswMerchantNo && settings.lcswTerminalId && settings.lcswAccessToken) {
+      return {
+        baseUrl: settings.lcswBaseUrl,
+        merchantNo: settings.lcswMerchantNo,
+        terminalId: settings.lcswTerminalId,
+        accessToken: settings.lcswAccessToken,
+        isSubMerchant: false,
+      };
+    }
+
+    return null;
+  }
+
+  private async createPaymentTransaction(orderId: string, provider: string, providerTradeNo: string | null, amount: bigint, lcswMerchantNo?: string, lcswTerminalId?: string) {
+    const settings = await this.getPaymentSettings();
+    const platformCommissionRate = settings.platformCommissionRate;
+    const platformCommissionAmt = BigInt(Math.round(Number(amount) * platformCommissionRate));
+    const merchantNetAmount = amount - platformCommissionAmt;
+
+    return this.prisma.paymentTransaction.create({
+      data: {
+        orderId,
+        provider,
+        providerTradeNo,
+        amount,
+        status: 'PENDING',
+        platformCommissionRate,
+        platformCommissionAmt,
+        merchantNetAmount,
+        lcswMerchantNo,
+        lcswTerminalId,
+      },
+    });
+  }
+
+  async initiatePayment(userId: string, orderId: string, walletType?: WalletType, method?: 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY') {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { merchant: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'PENDING_PAYMENT') throw new BadRequestException('Order is not pending payment');
 
@@ -78,9 +136,11 @@ export class PaymentsService {
       return { paymentMethod: 'coin', walletType, status: 'paid' };
     }
 
-    // Cash payment — use primary provider
-    if (settings.primary === 'fuiou' && settings.fuiouEnabled) {
-      const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
+    const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
+    const selectedMethod = method ? method.toLowerCase() : settings.primary;
+
+    // Cash payment — use selected or primary provider
+    if (selectedMethod === 'fuiou' && settings.fuiouEnabled) {
       const { payParams, tradeNo } = await this.fuiou.createPayment({
         orderId,
         orderNo: order.orderNo,
@@ -94,21 +154,19 @@ export class PaymentsService {
         data: { fuiouTradeNo: tradeNo },
       });
 
+      await this.createPaymentTransaction(orderId, 'fuiou', tradeNo ?? null, order.totalAmount);
+
       return { paymentMethod: 'fuiou', provider: 'fuiou', payParams };
     }
 
-    if (settings.primary === 'lcsw' && settings.lcswEnabled) {
-      if (!settings.lcswMerchantNo || !settings.lcswTerminalId || !settings.lcswAccessToken) {
+    if (selectedMethod === 'lcsw' && settings.lcswEnabled) {
+      const lcswCreds = await this.getLcswCredentials(order.merchantId, settings);
+      if (!lcswCreds) {
         throw new BadRequestException('LCSW payment configuration is incomplete');
       }
-      const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
+
       const { payParams, tradeNo } = await this.lcsw.createPayment(
-        {
-          baseUrl: settings.lcswBaseUrl,
-          merchantNo: settings.lcswMerchantNo,
-          terminalId: settings.lcswTerminalId,
-          accessToken: settings.lcswAccessToken,
-        },
+        lcswCreds,
         {
           orderId,
           orderNo: order.orderNo,
@@ -127,15 +185,24 @@ export class PaymentsService {
         data: { lcswTradeNo: tradeNo },
       });
 
+      await this.createPaymentTransaction(
+        orderId,
+        'lcsw',
+        tradeNo ?? null,
+        order.totalAmount,
+        lcswCreds.merchantNo,
+        lcswCreds.terminalId,
+      );
+
       return { paymentMethod: 'lcsw', provider: 'lcsw', payParams };
     }
 
-    if (settings.primary === 'wechat' && settings.wechatEnabled) {
+    if (selectedMethod === 'wechat' && settings.wechatEnabled) {
       this.logger.log(`[WeChat Pay] Would initiate payment for order ${order.orderNo}`);
       return { paymentMethod: 'wechat', provider: 'wechat', payUrl: null, message: 'WeChat Pay integration pending' };
     }
 
-    if (settings.primary === 'alipay' && settings.alipayEnabled) {
+    if (selectedMethod === 'alipay' && settings.alipayEnabled) {
       this.logger.log(`[Alipay] Would initiate payment for order ${order.orderNo}`);
       return { paymentMethod: 'alipay', provider: 'alipay', payUrl: null, message: 'Alipay integration pending' };
     }
@@ -149,7 +216,10 @@ export class PaymentsService {
     openId: string,
     subAppId?: string,
   ) {
-    const order = await this.prisma.order.findFirst({ where: { id: orderId, userId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { merchant: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'PENDING_PAYMENT') throw new BadRequestException('Order is not pending payment');
 
@@ -157,18 +227,15 @@ export class PaymentsService {
     if (!settings.lcswEnabled) {
       throw new BadRequestException('LCSW payment is currently disabled');
     }
-    if (!settings.lcswMerchantNo || !settings.lcswTerminalId || !settings.lcswAccessToken) {
+
+    const lcswCreds = await this.getLcswCredentials(order.merchantId, settings);
+    if (!lcswCreds) {
       throw new BadRequestException('LCSW payment configuration is incomplete');
     }
 
     const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
     const { payParams, tradeNo } = await this.lcsw.createPayment(
-      {
-        baseUrl: settings.lcswBaseUrl,
-        merchantNo: settings.lcswMerchantNo,
-        terminalId: settings.lcswTerminalId,
-        accessToken: settings.lcswAccessToken,
-      },
+      lcswCreds,
       {
         orderId,
         orderNo: order.orderNo,
@@ -189,6 +256,15 @@ export class PaymentsService {
       where: { id: orderId },
       data: { lcswTradeNo: tradeNo },
     });
+
+    await this.createPaymentTransaction(
+      orderId,
+      'lcsw',
+      tradeNo ?? null,
+      order.totalAmount,
+      lcswCreds.merchantNo,
+      lcswCreds.terminalId,
+    );
 
     return { paymentMethod: 'lcsw', provider: 'lcsw', payParams };
   }
@@ -221,20 +297,43 @@ export class PaymentsService {
     }
 
     await this.ordersService.markPaid(order.id, fuiouTradeNo, 'CASH', amountUnits);
+    await this.prisma.paymentTransaction.updateMany({
+      where: { orderId: order.id, provider: 'fuiou' },
+      data: { status: 'SUCCESS', providerTradeNo: fuiouTradeNo, verifiedAt: new Date() },
+    });
     this.logger.log(`Order ${orderNo} marked paid via Fuiou`);
 
     return 'SUCCESS';
   }
 
   async handleLcswWebhook(body: Record<string, any>): Promise<{ return_code: string; return_msg: string }> {
-    const settings = await this.getPaymentSettings();
-    if (!settings.lcswAccessToken) {
+    const orderId = body.attach;
+    if (!orderId) {
+      return { return_code: '01', return_msg: '收到' };
+    }
+
+    // Look up the order to determine which merchant / credentials to use for signature verification
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId },
+      include: { merchant: { include: { lcswAccount: true } } },
+    });
+
+    let accessToken = '';
+    if (order?.merchant?.lcswAccount) {
+      accessToken = this.encryption.decrypt(order.merchant.lcswAccount.lcswAccessToken);
+    } else {
+      // Fallback to legacy global token
+      const settings = await this.getPaymentSettings();
+      accessToken = settings.lcswAccessToken;
+    }
+
+    if (!accessToken) {
       this.logger.warn('LCSW webhook missing access token config');
       return { return_code: '02', return_msg: 'Config missing' };
     }
 
     const sign = body.key_sign;
-    if (!verifyLcswSign(body, settings.lcswAccessToken, sign)) {
+    if (!verifyLcswSign(body, accessToken, sign)) {
       this.logger.warn('LCSW webhook signature verification failed');
       return { return_code: '02', return_msg: '签名验证失败' };
     }
@@ -243,19 +342,48 @@ export class PaymentsService {
       return { return_code: '01', return_msg: '收到' };
     }
 
-    const orderId = body.attach;
-    if (!orderId) {
-      return { return_code: '01', return_msg: '收到' };
+    const lcswTradeNo = body.out_trade_no;
+
+    // Idempotency: check if already processed
+    if (lcswTradeNo) {
+      const existingSuccess = await this.prisma.paymentTransaction.findFirst({
+        where: { providerTradeNo: lcswTradeNo, status: 'SUCCESS' },
+      });
+      if (existingSuccess) {
+        this.logger.log(`LCSW webhook duplicate for tradeNo ${lcswTradeNo}, skipping`);
+        return { return_code: '01', return_msg: '成功' };
+      }
     }
 
     if (body.result_code === '01') {
-      const order = await this.prisma.order.findFirst({ where: { id: orderId } });
       if (order && order.status === 'PENDING_PAYMENT') {
-        const lcswTradeNo = body.out_trade_no || order.lcswTradeNo;
         const amount = BigInt(body.total_fee || order.totalAmount);
         await this.ordersService.markPaid(order.id, lcswTradeNo, 'CASH', amount);
         this.logger.log(`Order ${order.orderNo} marked paid via LCSW`);
       }
+
+      // Update transaction record
+      await this.prisma.paymentTransaction.updateMany({
+        where: { orderId },
+        data: {
+          status: 'SUCCESS',
+          providerTradeNo: lcswTradeNo,
+          webhookPayload: body as any,
+          webhookReceivedAt: new Date(),
+          verifiedAt: new Date(),
+        },
+      });
+    } else {
+      // Payment failed
+      await this.prisma.paymentTransaction.updateMany({
+        where: { orderId },
+        data: {
+          status: 'FAILED',
+          webhookPayload: body as any,
+          webhookReceivedAt: new Date(),
+          verifiedAt: new Date(),
+        },
+      });
     }
 
     return { return_code: '01', return_msg: '成功' };

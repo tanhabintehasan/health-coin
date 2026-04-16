@@ -7,6 +7,7 @@ import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
 import { ProductsService } from '../products/products.service';
 import { ReferralService } from '../referral/referral.service';
+import { LcswInstitutionService } from '../payments/lcsw/lcsw-institution.service';
 import { WalletType } from '@prisma/client';
 
 @ApiTags('Admin')
@@ -19,6 +20,7 @@ export class AdminController {
     private readonly walletTx: WalletTransactionService,
     private readonly productsService: ProductsService,
     private readonly referralService: ReferralService,
+    private readonly lcswInstitution: LcswInstitutionService,
   ) {}
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -125,7 +127,20 @@ export class AdminController {
   @Patch('merchants/:id/approve')
   @ApiOperation({ summary: 'Approve a merchant' })
   async approveMerchant(@Param('id') id: string) {
-    return this.prisma.merchant.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date() } });
+    const merchant = await this.prisma.merchant.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date() } });
+
+    // Auto-create LCSW sub-merchant if institution config allows
+    try {
+      const instConfig = await this.lcswInstitution.getInstitutionConfig();
+      if (instConfig?.autoCreateSubMerchants) {
+        await this.lcswInstitution.createSubMerchant(id);
+      }
+    } catch (err: any) {
+      // Log but don't fail merchant approval if LCSW creation fails
+      console.error(`LCSW auto-creation failed for merchant ${id}:`, err.message);
+    }
+
+    return merchant;
   }
 
   @Patch('merchants/:id/reject')
@@ -361,5 +376,79 @@ export class AdminController {
       });
     }
     return { success: true };
+  }
+
+  // ── LCSW Institution Management ──────────────────────────────────────────────
+
+  @Get('lcsw/config')
+  @ApiOperation({ summary: 'Get LCSW institution configuration' })
+  async getLcswConfig() {
+    const config = await this.lcswInstitution.getInstitutionConfig();
+    if (!config) return null;
+    // Don't return decrypted key in full; mask it
+    return {
+      ...config,
+      instKey: config.instKey ? '********' : '',
+    };
+  }
+
+  @Put('lcsw/config')
+  @ApiOperation({ summary: 'Update LCSW institution configuration' })
+  async updateLcswConfig(@Body() body: {
+    instNo: string;
+    instKey?: string;
+    baseUrl: string;
+    environment?: string;
+    autoCreateSubMerchants?: boolean;
+    defaultRateCode?: string;
+    defaultSettlementType?: string;
+  }) {
+    return this.lcswInstitution.saveInstitutionConfig(body);
+  }
+
+  @Get('lcsw/merchants')
+  @ApiOperation({ summary: 'List merchant LCSW accounts' })
+  async listLcswMerchantAccounts(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('status') status?: string,
+  ) {
+    return this.lcswInstitution.listMerchantAccounts({ page: Number(page), limit: Number(limit), status });
+  }
+
+  @Post('lcsw/merchants/:id/create')
+  @ApiOperation({ summary: 'Manually create LCSW sub-merchant for a merchant' })
+  async createLcswSubMerchant(@Param('id') merchantId: string) {
+    return this.lcswInstitution.createSubMerchant(merchantId);
+  }
+
+  @Get('lcsw/transactions')
+  @ApiOperation({ summary: 'List LCSW payment transactions' })
+  async listLcswTransactions(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('status') status?: string,
+    @Query('provider') provider?: string,
+  ) {
+    const where: any = {};
+    if (status) where.status = status;
+    if (provider) where.provider = provider;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [total, data] = await Promise.all([
+      this.prisma.paymentTransaction.count({ where }),
+      this.prisma.paymentTransaction.findMany({
+        where,
+        include: { order: { select: { orderNo: true, merchant: { select: { name: true } } } } },
+        skip,
+        take: Number(limit),
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / limit) },
+    };
   }
 }
