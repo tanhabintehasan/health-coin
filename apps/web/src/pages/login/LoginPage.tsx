@@ -69,11 +69,15 @@ export default function LoginPage() {
     const phoneVal = form.getFieldValue('phone')
     setLoading(true)
     try {
-      await api.sendOtp(phoneVal)
+      const otpRes: any = await api.sendOtp(phoneVal)
       setPhone(phoneVal)
       setStep('otp')
       startCountdown()
-      message.success('OTP sent — check the API terminal for the code')
+      if (otpRes?.code) {
+        message.success(`OTP: ${otpRes.code} (SMS not configured — showing code for testing)`, 8)
+      } else {
+        message.success('OTP sent — check the API terminal for the code')
+      }
     } catch (err: any) {
       message.error(typeof err === 'string' ? err : 'Failed to send OTP')
     } finally {
@@ -84,9 +88,13 @@ export default function LoginPage() {
   const resendOtp = async () => {
     setLoading(true)
     try {
-      await api.sendOtp(phone)
+      const otpRes: any = await api.sendOtp(phone)
       startCountdown()
-      message.success('New OTP sent — check the API terminal')
+      if (otpRes?.code) {
+        message.success(`New OTP: ${otpRes.code} (SMS not configured — showing code for testing)`, 8)
+      } else {
+        message.success('New OTP sent — check the API terminal')
+      }
     } catch (err: any) {
       message.error(typeof err === 'string' ? err : 'Failed to resend OTP')
     } finally {

@@ -65,8 +65,12 @@ export default function AuthPage() {
     }
     setSendingOtp(true)
     try {
-      await api.sendOtp(phone)
-      message.success('验证码已发送')
+      const otpRes: any = await api.sendOtp(phone)
+      if (otpRes?.code) {
+        message.success(`验证码: ${otpRes.code}（短信未配置，测试模式显示验证码）`, 8)
+      } else {
+        message.success('验证码已发送')
+      }
       setCountdown(60)
       setStep(1)
     } catch (e: any) {

@@ -40,7 +40,7 @@ export class OtpService {
     };
   }
 
-  async sendOtp(phone: string): Promise<void> {
+  async sendOtp(phone: string): Promise<{ smsSent: boolean; message: string; code?: string }> {
     let settings;
     try {
       settings = await this.getSettings();
@@ -89,8 +89,18 @@ export class OtpService {
 
       try {
         await this.sendSms(phone, code, settings);
+        return { smsSent: true, message: 'OTP sent successfully' };
       } catch (err: any) {
         if (err instanceof BadRequestException) {
+          const msg: string = (err as any).response?.message || err.message;
+          if (
+            msg.includes('username is missing') ||
+            msg.includes('password is missing') ||
+            msg.includes('template is missing')
+          ) {
+            this.logger.warn(`[OTP FALLBACK] SMS not configured (${msg}). Returning code in response for testing.`);
+            return { smsSent: false, message: `SMS not configured: ${msg}`, code };
+          }
           throw err;
         }
         this.logger.error(`sendSms failed: ${err.message}`);
