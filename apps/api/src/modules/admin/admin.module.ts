@@ -4,9 +4,10 @@ import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletsModule } from '../wallets/wallets.module';
 import { ProductsModule } from '../products/products.module';
 import { ReferralModule } from '../referral/referral.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-  imports: [WalletsModule, ProductsModule, ReferralModule],
+  imports: [WalletsModule, ProductsModule, ReferralModule, PaymentsModule],
   controllers: [AdminController],
   providers: [AdminGuard],
 })
