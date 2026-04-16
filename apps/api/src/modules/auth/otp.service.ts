@@ -50,10 +50,24 @@ export class OtpService {
   }
 
   async sendOtp(phone: string): Promise<void> {
-    const settings = await this.getSettings();
+    let settings;
+    try {
+      settings = await this.getSettings();
+    } catch (err: any) {
+      this.logger.error(`Failed to load OTP settings: ${err.message}`);
+      throw new BadRequestException('Failed to load SMS settings');
+    }
 
     if (!settings.smsEnabled && this.config.get('NODE_ENV') === 'production') {
       throw new BadRequestException('SMS service is temporarily disabled');
+    }
+
+    try {
+      // Ensure Redis is reachable
+      await this.redis.ping();
+    } catch (err: any) {
+      this.logger.error(`Redis unreachable: ${err.message}`);
+      throw new BadRequestException('Service temporarily unavailable, please try again later');
     }
 
     // Rate limit: 1 per resend period
@@ -80,10 +94,26 @@ export class OtpService {
     // Store rate limit
     await this.redis.set(rateLimitKey, '1', 'EX', settings.otpResend);
 
-    await this.sendSms(phone, code, settings);
+    try {
+      await this.sendSms(phone, code, settings);
+    } catch (err: any) {
+      // Re-throw client-facing errors; log unexpected ones
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      this.logger.error(`sendSms failed: ${err.message}`);
+      throw new BadRequestException('Failed to send SMS');
+    }
   }
 
   async verifyOtp(phone: string, code: string): Promise<void> {
+    try {
+      await this.redis.ping();
+    } catch (err: any) {
+      this.logger.error(`Redis unreachable during verify: ${err.message}`);
+      throw new BadRequestException('Service temporarily unavailable, please try again later');
+    }
+
     const stored = await this.redis.get(this.otpKey(phone));
     if (!stored) {
       throw new BadRequestException('验证码已过期，请重新获取');
@@ -115,11 +145,13 @@ export class OtpService {
         const { data } = await axios.get(url, { timeout: 10000 });
         if (data !== '0' && data !== 0) {
           this.logger.error(`[SMSbao] Failed to send SMS, code: ${data}`);
+          throw new BadRequestException('SMS gateway error');
         } else {
           this.logger.log(`[SMSbao] SMS sent to ${phone}`);
         }
       } catch (err: any) {
         this.logger.error(`[SMSbao] Exception: ${err.message}`);
+        throw new BadRequestException('Failed to send SMS');
       }
       return;
     }
