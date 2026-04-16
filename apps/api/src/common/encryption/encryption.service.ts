@@ -14,11 +14,17 @@ export class EncryptionService {
   constructor(private readonly config: ConfigService) {
     const keyHex = this.config.get('LCSW_ENCRYPTION_KEY');
     if (!keyHex) {
-      if (this.config.get('NODE_ENV') === 'production') {
-        throw new Error('LCSW_ENCRYPTION_KEY is required in production');
+      const jwtSecret = this.config.get('JWT_SECRET');
+      if (jwtSecret) {
+        this.logger.warn('LCSW_ENCRYPTION_KEY not set; deriving a deterministic key from JWT_SECRET. Set LCSW_ENCRYPTION_KEY explicitly for better security isolation.');
+        this.key = crypto.createHash('sha256').update(jwtSecret).digest();
+      } else {
+        if (this.config.get('NODE_ENV') === 'production') {
+          throw new Error('LCSW_ENCRYPTION_KEY or JWT_SECRET is required in production');
+        }
+        this.logger.warn('LCSW_ENCRYPTION_KEY not set; generating a random key for this session. Data will NOT be decryptable after restart.');
+        this.key = crypto.randomBytes(32);
       }
-      this.logger.warn('LCSW_ENCRYPTION_KEY not set; generating a random key for this session. Data will NOT be decryptable after restart.');
-      this.key = crypto.randomBytes(32);
     } else {
       this.key = Buffer.from(keyHex, 'hex');
       if (this.key.length !== 32) {

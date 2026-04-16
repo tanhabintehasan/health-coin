@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { execSync } from 'child_process';
+import * as path from 'path';
 
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
 
@@ -26,9 +27,11 @@ function validateEnv() {
 async function bootstrap() {
   validateEnv();
 
+  const schemaPath = path.join(__dirname, '..', '..', 'prisma', 'schema.prisma');
+
   try {
     console.log('[BOOTSTRAP] Running prisma generate...');
-    execSync('npx prisma generate --schema=apps/api/prisma/schema.prisma', { stdio: 'inherit' });
+    execSync(`npx prisma generate --schema="${schemaPath}"`, { stdio: 'inherit' });
     console.log('[BOOTSTRAP] prisma generate completed');
   } catch (err: any) {
     console.error('[BOOTSTRAP] prisma generate failed:', err.message);
@@ -36,7 +39,7 @@ async function bootstrap() {
 
   try {
     console.log('[BOOTSTRAP] Running prisma migrate deploy...');
-    execSync('npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma', { stdio: 'inherit' });
+    execSync(`npx prisma migrate deploy --schema="${schemaPath}"`, { stdio: 'inherit' });
     console.log('[BOOTSTRAP] prisma migrate deploy completed');
   } catch (err: any) {
     console.error('[BOOTSTRAP] prisma migrate deploy failed:', err.message);
