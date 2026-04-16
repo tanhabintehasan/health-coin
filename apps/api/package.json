@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "cd ../.. && npx prisma generate --schema=apps/api/prisma/schema.prisma && cd apps/api && nest build",
-    "start": "prisma migrate deploy --schema=prisma/schema.prisma && node dist/main",
+    "start": "node dist/src/main.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
