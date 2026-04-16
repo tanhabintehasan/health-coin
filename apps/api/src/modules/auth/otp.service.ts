@@ -21,12 +21,17 @@ export class OtpService {
     const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
     const map: Record<string, string> = {};
     for (const c of configs) map[c.key] = c.value;
+    const rawProvider = map.sms_provider ?? 'smsbao';
+    const provider = rawProvider === 'smsbao' ? 'smsbao' : 'smsbao'; // force smsbao, legacy aliyun fallback
+    if (rawProvider !== 'smsbao') {
+      this.logger.warn(`Legacy SMS provider '${rawProvider}' found in config; forcing smsbao.`);
+    }
     return {
       smsEnabled: map.sms_enabled === undefined ? true : map.sms_enabled === 'true',
       otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
       otpResend: parseInt(map.otp_resend_seconds ?? '60', 10),
       hourlyLimit: parseInt(map.otp_hourly_limit ?? '5', 10),
-      provider: map.sms_provider ?? 'smsbao',
+      provider,
       templateCode: map.sms_template_code ?? '',
       signName: map.sms_sign_name ?? '',
       smsbaoUsername: map.smsbao_username ?? '',
@@ -122,8 +127,14 @@ export class OtpService {
     }
 
     if (settings.provider === 'smsbao') {
-      if (!settings.smsbaoUsername || !settings.smsbaoPassword || !settings.smsbaoTemplate) {
-        throw new BadRequestException('SMS provider not configured. Please set SMSbao credentials in admin settings.');
+      if (!settings.smsbaoUsername) {
+        throw new BadRequestException('SMSbao username is missing. Please configure it in admin settings.');
+      }
+      if (!settings.smsbaoPassword) {
+        throw new BadRequestException('SMSbao password is missing. Please configure it in admin settings.');
+      }
+      if (!settings.smsbaoTemplate) {
+        throw new BadRequestException('SMSbao template is missing. Please configure it in admin settings and use [code] as placeholder.');
       }
       const content = settings.smsbaoTemplate.replace(/\[code\]/g, code);
       const md5Pass = crypto.createHash('md5').update(settings.smsbaoPassword).digest('hex');
