@@ -22,7 +22,7 @@ export class OtpService {
     const map: Record<string, string> = {};
     for (const c of configs) map[c.key] = c.value;
     return {
-      smsEnabled: map.sms_enabled === 'true',
+      smsEnabled: map.sms_enabled === undefined ? true : map.sms_enabled === 'true',
       otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
       otpResend: parseInt(map.otp_resend_seconds ?? '60', 10),
       hourlyLimit: parseInt(map.otp_hourly_limit ?? '5', 10),
