@@ -49,6 +49,7 @@ export default function AuthPage() {
   const [otp, setOtp] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
   const [referralCode, setReferralCode] = useState('')
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function AuthPage() {
       message.error('请输入有效的手机号')
       return
     }
+    setSendingOtp(true)
     try {
       await api.sendOtp(phone)
       message.success('验证码已发送')
@@ -69,6 +71,8 @@ export default function AuthPage() {
       setStep(1)
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '发送失败，请稍后重试')
+    } finally {
+      setSendingOtp(false)
     }
   }
 
@@ -143,7 +147,7 @@ export default function AuthPage() {
             <Form.Item label="手机号">
               <Input placeholder="请输入手机号" size="large" maxLength={11} value={phone} onChange={(e) => setPhone(e.target.value)} />
             </Form.Item>
-            <Button type="primary" size="large" block onClick={sendOtp}>获取验证码</Button>
+            <Button type="primary" size="large" block loading={sendingOtp} onClick={sendOtp}>获取验证码</Button>
           </Form>
         )}
 

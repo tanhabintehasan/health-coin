@@ -10,6 +10,7 @@ interface AuthState {
   roleLoading: boolean
   initialized: boolean
   setAuth: (user: any, token: string, role?: UserRole) => void
+  setUser: (user: any) => void
   logout: () => void
   detectRole: () => Promise<UserRole>
   init: () => Promise<void>
@@ -46,6 +47,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem(USER_KEY, JSON.stringify(user))
     set({ user, token, role: role ?? get().role })
+  },
+
+  setUser: (user) => {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    set({ user })
   },
 
   logout: () => {

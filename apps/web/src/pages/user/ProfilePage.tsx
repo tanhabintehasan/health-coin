@@ -2,16 +2,38 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../store/auth.store'
-
+import { Drawer, Form, Input, Button, message, Cascader, Spin } from 'antd'
 
 const TIER_COLOR: Record<string, string> = {
   BRONZE: '#cd7f32', SILVER: '#a8a9ad', GOLD: '#ffd700', PLATINUM: '#e5e4e2', DIAMOND: '#00bfff', CROWN: '#9400d3',
 }
 
+interface RegionNode {
+  id: string
+  name: string
+  code: string
+  level: number
+  children?: RegionNode[]
+}
+
+function mapRegionTree(nodes: RegionNode[]): any[] {
+  return nodes.map((n) => ({
+    value: n.id,
+    label: n.name,
+    children: n.children && n.children.length > 0 ? mapRegionTree(n.children) : undefined,
+  }))
+}
+
 export default function ProfilePage() {
   const [membership, setMembership] = useState<any>(null)
-  const { user, logout: clearAuth } = useAuthStore()
+  const { user, logout: clearAuth, setUser } = useAuthStore()
   const navigate = useNavigate()
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [form] = Form.useForm()
+  const [saving, setSaving] = useState(false)
+  const [regionTree, setRegionTree] = useState<any[]>([])
+  const [regionsLoading, setRegionsLoading] = useState(false)
 
   useEffect(() => {
     api.getMyMembership().then(setMembership).catch(() => {})
@@ -20,6 +42,46 @@ export default function ProfilePage() {
   const logout = () => {
     const ok = window.confirm('Are you sure you want to logout?')
     if (ok) { clearAuth(); navigate('/login') }
+  }
+
+  const openEdit = async () => {
+    setEditOpen(true)
+    form.setFieldsValue({
+      nickname: user?.nickname || '',
+      regionId: user?.regionId ? [user.regionId] : undefined,
+    })
+    if (regionTree.length === 0) {
+      setRegionsLoading(true)
+      try {
+        const tree: RegionNode[] = await api.getRegionsTree()
+        setRegionTree(mapRegionTree(tree))
+      } catch {
+        message.error('Failed to load regions')
+      } finally {
+        setRegionsLoading(false)
+      }
+    }
+  }
+
+  const saveProfile = async (values: any) => {
+    setSaving(true)
+    try {
+      const payload: any = {
+        nickname: values.nickname,
+      }
+      const selectedRegion = values.regionId
+      if (Array.isArray(selectedRegion) && selectedRegion.length > 0) {
+        payload.regionId = selectedRegion[selectedRegion.length - 1]
+      }
+      const updated = await api.updateMe(payload)
+      setUser({ ...user, ...updated })
+      message.success('Profile updated successfully')
+      setEditOpen(false)
+    } catch (err: any) {
+      message.error(typeof err === 'string' ? err : 'Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const tier = membership?.currentTier
@@ -34,6 +96,9 @@ export default function ProfilePage() {
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#fff' }}>{user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : 'User'}</div>
+            {user?.nickname && (
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', marginTop: 2 }}>{user.nickname}</div>
+            )}
             {tier && (
               <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,.2)', borderRadius: 12, padding: '2px 10px', marginTop: 4 }}>
                 <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>{tier.name}</span>
@@ -85,7 +150,7 @@ export default function ProfilePage() {
         <div style={{ padding: '8px 16px 4px' }}>
           <div style={{ fontSize: 12, color: '#999', fontWeight: 500, letterSpacing: '0.5px' }}>SETTINGS</div>
         </div>
-        <div onClick={() => alert('Edit profile not implemented in this demo')} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: 48 }}>
+        <div onClick={openEdit} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: 48 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 18, color: '#666' }}>✎</span>
@@ -101,6 +166,32 @@ export default function ProfilePage() {
           Logout
         </button>
       </div>
+
+      <Drawer title="Edit Profile" open={editOpen} onClose={() => setEditOpen(false)} width={360}>
+        <Spin spinning={regionsLoading} tip="Loading regions...">
+          <Form form={form} layout="vertical" onFinish={saveProfile}>
+            <Form.Item
+              name="nickname"
+              label="Nickname"
+              rules={[{ max: 100, message: 'Nickname too long' }]}
+            >
+              <Input placeholder="Enter your nickname" />
+            </Form.Item>
+            <Form.Item name="regionId" label="Region">
+              <Cascader
+                options={regionTree}
+                placeholder="Select your region"
+                changeOnSelect
+              />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={saving} block>
+                Save
+              </Button>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Drawer>
     </div>
   )
 }

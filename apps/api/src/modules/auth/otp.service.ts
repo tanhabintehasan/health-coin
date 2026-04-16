@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -103,11 +104,10 @@ export class OtpService {
 
     if (settings.provider === 'smsbao') {
       if (!settings.smsbaoUsername || !settings.smsbaoPassword || !settings.smsbaoTemplate) {
-        this.logger.warn('[SMSbao] Configuration incomplete');
-        return;
+        throw new BadRequestException('SMS provider not configured. Please set SMSbao credentials in admin settings.');
       }
       const content = settings.smsbaoTemplate.replace(/\[code\]/g, code);
-      const md5Pass = require('crypto').createHash('md5').update(settings.smsbaoPassword).digest('hex');
+      const md5Pass = crypto.createHash('md5').update(settings.smsbaoPassword).digest('hex');
       const encodedContent = encodeURIComponent(content);
       const url = `http://api.smsbao.com/sms?u=${settings.smsbaoUsername}&p=${md5Pass}&m=${phone}&c=${encodedContent}`;
       try {
