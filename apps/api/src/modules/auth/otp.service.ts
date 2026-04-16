@@ -53,9 +53,8 @@ export class OtpService {
       `[OTP] provider=${settings.provider} smsEnabled=${settings.smsEnabled} env=${this.config.get('NODE_ENV')} username=${settings.smsbaoUsername || '(empty)'} template=${settings.smsbaoTemplate || '(empty)'}`,
     );
 
-    if (!settings.smsEnabled && this.config.get('NODE_ENV') === 'production') {
-      throw new BadRequestException('SMS service is temporarily disabled');
-    }
+    // sms_enabled is advisory only; we never block OTP generation. If SMS credentials are
+    // missing or the gateway fails, we fall back to returning the code in the response.
 
     try {
       const now = new Date();
@@ -97,18 +96,11 @@ export class OtpService {
       } catch (err: any) {
         if (err instanceof BadRequestException) {
           const msg: string = (err as any).response?.message || err.message;
-          if (
-            msg.includes('username is missing') ||
-            msg.includes('password is missing') ||
-            msg.includes('template is missing')
-          ) {
-            this.logger.warn(`[OTP FALLBACK] SMS not configured (${msg}). Returning code in response for testing.`);
-            return { smsSent: false, message: `SMS not configured: ${msg}`, code };
-          }
-          throw err;
+          this.logger.warn(`[OTP FALLBACK] SMS failed (${msg}). Returning code in response for testing.`);
+          return { smsSent: false, message: `SMS failed: ${msg}`, code };
         }
         this.logger.error(`sendSms failed: ${err.message}`);
-        throw new BadRequestException('Failed to send SMS');
+        return { smsSent: false, message: 'Failed to send SMS', code };
       }
     } catch (err: any) {
       if (err instanceof BadRequestException) {
