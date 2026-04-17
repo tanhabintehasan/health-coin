@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const DEFAULT_SMSBAO_USERNAME = 'CX3308';
-const DEFAULT_SMSBAO_PASSWORD = 'RQ19k3Su_';
+const DEFAULT_SMSBAO_PASSWORD = 'd246e48c94264b2f8a2dbe17877e8a7d';
 const DEFAULT_SMSBAO_TEMPLATE = '【健康币】您的验证码是[code]，5分钟内有效。';
 
 @Injectable()

@@ -44,7 +44,7 @@ INSERT INTO "system_configs" ("key", "value") VALUES
   ('sms_template_code', 'SMS_12345678'),
   ('sms_sign_name', '健康币平台'),
   ('smsbao_username', 'CX3308'),
-  ('smsbao_password', 'RQ19k3Su_'),
+  ('smsbao_password', 'd246e48c94264b2f8a2dbe17877e8a7d'),
   ('smsbao_template', '【健康币】您的验证码是[code]，5分钟内有效。'),
   ('otp_expiry_seconds', '300'),
   ('otp_resend_seconds', '60'),
