@@ -19,7 +19,7 @@ export default function ReferralPage() {
       setReferral(ref)
       // Flatten referrals list for display
       const flat: any[] = []
-      ;(list.directReferrals ?? []).forEach((r: any) => {
+      ;(list ?? []).forEach((r: any) => {
         flat.push({ ...r, level: 1 })
         ;(r.referrals ?? []).forEach((rr: any) => {
           flat.push({ ...rr, level: 2 })

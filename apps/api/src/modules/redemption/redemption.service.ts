@@ -59,16 +59,19 @@ export class RedemptionService {
       throw new ForbiddenException('Merchant not approved');
     }
 
-    // Atomic partial redemption — prevents race conditions
+    // Atomic partial redemption — prevents race conditions and validates merchant ownership
     const updated = await this.prisma.$executeRaw`
-      UPDATE order_items
+      UPDATE order_items oi
       SET redeemed_count = redeemed_count + ${dto.quantity}
-      WHERE id = ${dto.orderItemId}::uuid
-        AND (redeemable_count - redeemed_count) >= ${dto.quantity}
+      FROM orders o
+      WHERE oi.id = ${dto.orderItemId}::uuid
+        AND oi.order_id = o.id
+        AND o.merchant_id = ${merchant.id}::uuid
+        AND (oi.redeemable_count - oi.redeemed_count) >= ${dto.quantity}
     `;
 
     if (updated === 0) {
-      throw new BadRequestException('Insufficient remaining quantity or item not found');
+      throw new BadRequestException('Insufficient remaining quantity, item not found, or not your order');
     }
 
     const item = await this.prisma.orderItem.findUnique({
@@ -77,7 +80,6 @@ export class RedemptionService {
     });
 
     if (!item) throw new NotFoundException('Order item not found');
-    if (item.order.merchantId !== merchant.id) throw new ForbiddenException('Not your order');
 
     // Log redemption
     await this.prisma.redemptionLog.create({

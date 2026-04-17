@@ -21,11 +21,7 @@ export class OtpService {
     const configs = await this.prisma.systemConfig.findMany({ where: { key: { in: keys } } });
     const map: Record<string, string> = {};
     for (const c of configs) map[c.key] = c.value;
-    const rawProvider = map.sms_provider ?? 'smsbao';
-    const provider = rawProvider === 'smsbao' ? 'smsbao' : 'smsbao'; // force smsbao, legacy aliyun fallback
-    if (rawProvider !== 'smsbao') {
-      this.logger.warn(`Legacy SMS provider '${rawProvider}' found in config; forcing smsbao.`);
-    }
+    const provider = map.sms_provider ?? 'smsbao';
     return {
       smsEnabled: map.sms_enabled === undefined ? true : map.sms_enabled === 'true',
       otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
@@ -94,13 +90,9 @@ export class OtpService {
         await this.sendSms(phone, code, settings);
         return { smsSent: true, message: 'OTP sent successfully' };
       } catch (err: any) {
-        if (err instanceof BadRequestException) {
-          const msg: string = (err as any).response?.message || err.message;
-          this.logger.warn(`[OTP FALLBACK] SMS failed (${msg}). Returning code in response for testing.`);
-          return { smsSent: false, message: `SMS failed: ${msg}`, code };
-        }
-        this.logger.error(`sendSms failed: ${err.message}`);
-        return { smsSent: false, message: 'Failed to send SMS', code };
+        const msg = err instanceof BadRequestException ? ((err as any).response?.message || err.message) : err.message;
+        this.logger.error(`[OTP SEND FAILED] Phone: ${phone}, Error: ${msg}`);
+        throw new BadRequestException('短信发送失败，请稍后重试');
       }
     } catch (err: any) {
       if (err instanceof BadRequestException) {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { message, Spin, Empty, Button, Card, Steps, Divider } from 'antd'
-import { ArrowLeftOutlined, CheckCircleOutlined, WalletOutlined, WechatOutlined, AlipayOutlined, CreditCardOutlined, FireOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, CheckCircleOutlined, WalletOutlined, CreditCardOutlined, FireOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../store/settings.store'
 import { useResponsive } from '../../hooks/useResponsive'
 
@@ -38,7 +38,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
-  const [payMethod, setPayMethod] = useState<'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY' | CoinType>('FUIOU')
+  const [payMethod, setPayMethod] = useState<'FUIOU' | 'LCSW' | CoinType>('FUIOU')
   const [wallets, setWallets] = useState<Record<string, number>>({})
 
   useEffect(() => { fetchSettings() }, [fetchSettings])
@@ -58,11 +58,9 @@ export default function OrderDetailPage() {
   useEffect(() => { fetchOrder() }, [fetchOrder])
 
   const buildPayOptions = () => {
-    const opts: Array<{ value: 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY' | CoinType; label: string; sub: string; color: string; icon: any }> = []
+    const opts: Array<{ value: 'FUIOU' | 'LCSW' | CoinType; label: string; sub: string; color: string; icon: any }> = []
     if (settings?.payments.fuiou) opts.push({ value: 'FUIOU', label: '富友聚合支付', sub: '支持微信 / 支付宝 / 银行卡', color: '#1677ff', icon: <CreditCardOutlined /> })
     if (settings?.payments.lcsw) opts.push({ value: 'LCSW', label: '扫呗支付', sub: 'LCSW 安全支付', color: '#fa8c16', icon: <CreditCardOutlined /> })
-    if (settings?.payments.wechat) opts.push({ value: 'WECHAT', label: '微信支付', sub: '微信安全支付', color: '#07c160', icon: <WechatOutlined /> })
-    if (settings?.payments.alipay) opts.push({ value: 'ALIPAY', label: '支付宝', sub: '支付宝快捷支付', color: '#1677ff', icon: <AlipayOutlined /> })
     if (settings?.payments.coin) {
       ;(['HEALTH_COIN', 'MUTUAL_HEALTH_COIN', 'UNIVERSAL_HEALTH_COIN'] as CoinType[]).forEach((wt) => {
         const m = WALLET_META[wt]
@@ -81,7 +79,7 @@ export default function OrderDetailPage() {
     try {
       const isCoin = ['HEALTH_COIN', 'MUTUAL_HEALTH_COIN', 'UNIVERSAL_HEALTH_COIN'].includes(payMethod)
       const walletType = isCoin ? (payMethod as CoinType) : undefined
-      const method = isCoin ? undefined : (payMethod as 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY')
+      const method = isCoin ? undefined : (payMethod as 'FUIOU' | 'LCSW')
       const res: any = await api.payOrder(id, walletType, method)
       if (res.payUrl) { window.open(res.payUrl, '_blank'); message.info('正在跳转支付...') }
       else if (res.payParams) { message.success('支付参数已生成，请在收银台完成支付'); fetchOrder() }

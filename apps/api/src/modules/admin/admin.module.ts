@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AdminController } from './admin.controller';
+import { AdminCronController } from './admin-cron.controller';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletsModule } from '../wallets/wallets.module';
 import { ProductsModule } from '../products/products.module';
 import { ReferralModule } from '../referral/referral.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { MembershipModule } from '../membership/membership.module';
 
 @Module({
-  imports: [WalletsModule, ProductsModule, ReferralModule, PaymentsModule],
-  controllers: [AdminController],
+  imports: [ConfigModule, WalletsModule, ProductsModule, ReferralModule, PaymentsModule, MembershipModule],
+  controllers: [AdminController, AdminCronController],
   providers: [AdminGuard],
 })
 export class AdminModule {}

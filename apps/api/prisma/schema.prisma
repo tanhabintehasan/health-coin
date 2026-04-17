@@ -179,6 +179,7 @@ model Merchant {
   rejectionNote  String?        @db.Text
   commissionRate Decimal        @default(0.05) @db.Decimal(5, 4)
   bankAccount    Json?          // encrypted bank/payout info
+  documents      Json?          // KYC documents array
   approvedAt     DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -305,11 +306,12 @@ model Order {
   trackingNumber  String?  @db.VarChar(100)
   remark          String?  @db.Text
 
-  paidAt      DateTime?
-  completedAt DateTime?
-  cancelledAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  paidAt            DateTime?
+  rewardProcessedAt DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   items              OrderItem[]
   paymentTransaction PaymentTransaction?
@@ -350,7 +352,7 @@ model OrderItem {
   subtotal     BigInt
 
   // Redemption fields (SERVICE type only)
-  redemptionCode   String?   @unique @db.VarChar(20)
+  redemptionCode   String?   @unique @db.VarChar(32)
   redemptionQrUrl  String?   @db.Text
   redeemableCount  Int?
   redeemedCount    Int       @default(0)

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 // import { BullModule } from '@nestjs/bull';
 import { PrismaModule } from './prisma/prisma.module';
 // import { RedisModule } from './common/redis/redis.module';
@@ -26,6 +27,10 @@ import { SettingsModule } from './modules/settings/settings.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
     // BullModule.forRoot({
     //   redis: {
     //     host: process.env.REDIS_HOST ?? 'localhost',

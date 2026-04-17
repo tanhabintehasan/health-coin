@@ -5,7 +5,6 @@ interface PublicSettings {
   platform: {
     name: string
     hotline: string
-    wechat: string
     address: string
   }
   auth: {
@@ -16,8 +15,6 @@ interface PublicSettings {
   payments: {
     fuiou: boolean
     lcsw: boolean
-    wechat: boolean
-    alipay: boolean
     coin: boolean
   }
   business: {
@@ -46,9 +43,9 @@ interface SettingsState {
 }
 
 const defaultSettings: PublicSettings = {
-  platform: { name: 'HealthCoin', hotline: '', wechat: '', address: '' },
+  platform: { name: 'HealthCoin', hotline: '', address: '' },
   auth: { smsEnabled: true, otpExpirySeconds: 300, otpResendSeconds: 60 },
-  payments: { fuiou: true, lcsw: false, wechat: false, alipay: false, coin: true },
+  payments: { fuiou: true, lcsw: false, coin: true },
   business: { productReviewRequired: false, redemptionCodeValidDays: 30, allowPartialRedemption: false },
   coinRates: { mutualCoinOwnRate: 0.5, mutualCoinL1Rate: 0.25, mutualCoinL2Rate: 0.1, healthCoinMultiplier: 2.0, universalCoinOwnRate: 0.2, universalCoinL1Rate: 0.1 },
   finance: { withdrawalCommissionRate: 0.05, platformCommissionRate: 0.05 },

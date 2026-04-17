@@ -31,7 +31,7 @@ export class CartService {
           variantId: dto.variantId,
         },
       },
-      update: { quantity: dto.quantity },
+      update: { quantity: { increment: dto.quantity } },
       create: {
         userId,
         productId: dto.productId,

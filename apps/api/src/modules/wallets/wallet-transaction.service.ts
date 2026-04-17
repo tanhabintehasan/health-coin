@@ -17,18 +17,18 @@ export interface CreditParams {
 export class WalletTransactionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async credit(params: CreditParams): Promise<void> {
+  async credit(params: CreditParams, txClient?: any): Promise<void> {
     if (params.amount <= 0n) throw new BadRequestException('Credit amount must be positive');
-    await this.applyTransaction({ ...params });
+    await this.applyTransaction({ ...params }, txClient);
   }
 
-  async debit(params: CreditParams): Promise<void> {
+  async debit(params: CreditParams, txClient?: any): Promise<void> {
     if (params.amount <= 0n) throw new BadRequestException('Debit amount must be positive');
-    await this.applyTransaction({ ...params, amount: -params.amount });
+    await this.applyTransaction({ ...params, amount: -params.amount }, txClient);
   }
 
-  private async applyTransaction(params: CreditParams & { amount: bigint }): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+  private async applyTransaction(params: CreditParams & { amount: bigint }, txClient?: any): Promise<void> {
+    const run = async (tx: any) => {
       const wallets = await tx.$queryRaw<{ id: string; balance: bigint }[]>`
         SELECT id, balance FROM wallets
         WHERE user_id = ${params.userId}::uuid
@@ -64,6 +64,12 @@ export class WalletTransactionService {
           note: params.note ?? null,
         },
       });
-    });
+    };
+
+    if (txClient) {
+      await run(txClient);
+    } else {
+      await this.prisma.$transaction(async (tx) => run(tx));
+    }
   }
 }

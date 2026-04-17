@@ -56,7 +56,7 @@ export default function AuthPage() {
     setLoading(true)
     try {
       const res = await api.verifyOtp(phone, code, referralCode || undefined)
-      setAuth(res.user, res.accessToken)
+      setAuth(res.user, res.accessToken, res.refreshToken)
       navigate('/')
     } catch (err: any) {
       showToast(err || 'Invalid OTP', 'error')

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -40,11 +40,15 @@ export class AuthService {
       // Generate unique referral code with collision retry
       let referralCode = generateReferralCode();
       let attempts = 0;
-      while (attempts < 3) {
+      const maxAttempts = 100;
+      while (attempts < maxAttempts) {
         const existing = await this.prisma.user.findUnique({ where: { referralCode } });
         if (!existing) break;
         referralCode = generateReferralCode();
         attempts++;
+      }
+      if (attempts >= maxAttempts) {
+        throw new BadRequestException('无法生成唯一推荐码，请重试');
       }
 
       user = await this.prisma.$transaction(async (tx) => {
@@ -149,6 +153,11 @@ export class AuthService {
       if (!user || !user.isActive) {
         throw new UnauthorizedException('User not found or inactive');
       }
+
+      // Rotate refresh token: delete the old one before issuing a new one
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId: payload.sub, token: refreshToken },
+      });
 
       return this.issueTokens(user.id, user.phone);
     } catch (error) {

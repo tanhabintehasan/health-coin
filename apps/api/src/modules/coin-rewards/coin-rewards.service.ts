@@ -143,9 +143,16 @@ export class CoinRewardsService {
     const perUser = totalPool / BigInt(regionUsers.length);
     if (perUser === 0n) return;
 
-    for (const u of regionUsers) {
+    const remainder = totalPool - perUser * BigInt(regionUsers.length);
+
+    for (let i = 0; i < regionUsers.length; i++) {
+      const u = regionUsers[i];
+      let amount = perUser;
+      if (i === 0) {
+        amount += remainder; // first user gets the dust
+      }
       await this.walletTx.credit({
-        userId: u.id, walletType: 'UNIVERSAL_HEALTH_COIN', amount: perUser,
+        userId: u.id, walletType: 'UNIVERSAL_HEALTH_COIN', amount,
         txType: 'REGIONAL_REWARD', referenceId: payload.orderId, referenceType: 'order', appliedRate: regionalRate,
       });
     }

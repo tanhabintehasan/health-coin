@@ -17,6 +17,7 @@ export class MerchantsService {
         description: dto.description,
         logoUrl: dto.logoUrl,
         regionId: dto.regionId,
+        documents: dto.documents as any,
         status: 'PENDING',
       },
     });
@@ -43,6 +44,7 @@ export class MerchantsService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.logoUrl !== undefined && { logoUrl: dto.logoUrl }),
         ...(dto.regionId !== undefined && { regionId: dto.regionId }),
+        ...(dto.documents !== undefined && { documents: dto.documents as any }),
       },
     });
   }

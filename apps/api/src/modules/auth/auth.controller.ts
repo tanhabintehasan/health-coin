@@ -1,4 +1,5 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
@@ -37,6 +38,7 @@ export class AuthController {
   // ---------------------------------------------------------------------------
   @Post('demo-login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({ summary: 'Demo login (temporary — bypasses OTP)' })
   @ApiResponse({ status: 200, description: 'Authenticated' })
   @ApiResponse({ status: 403, description: 'Demo login disabled' })

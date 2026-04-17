@@ -22,4 +22,8 @@ export class ApplyMerchantDto {
   @IsOptional()
   @IsString()
   regionId?: string;
+
+  @ApiPropertyOptional({ description: 'KYC documents JSON array' })
+  @IsOptional()
+  documents?: any;
 }

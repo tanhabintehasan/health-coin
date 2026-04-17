@@ -7,6 +7,10 @@ import {
   DollarOutlined,
   RiseOutlined,
   TeamOutlined,
+  HeartOutlined,
+  FireOutlined,
+  BankOutlined,
+  PercentageOutlined,
 } from '@ant-design/icons'
 import client from '../../api/client'
 import dayjs from 'dayjs'
@@ -18,6 +22,11 @@ const STAT_CARD_STYLES: Record<string, React.CSSProperties> = {
   paidOut: { borderLeft: '4px solid #fa8c16' },
   mutual: { borderLeft: '4px solid #722ed1' },
   universal: { borderLeft: '4px solid #13c2c2' },
+  health: { borderLeft: '4px solid #eb2f96' },
+  healthRedeem: { borderLeft: '4px solid #1890ff' },
+  mutualBal: { borderLeft: '4px solid #faad14' },
+  universalBal: { borderLeft: '4px solid #a0d911' },
+  commission: { borderLeft: '4px solid #cf1322' },
 }
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
@@ -28,6 +37,11 @@ const ORDER_STATUS_COLOR: Record<string, string> = {
   DELIVERED: 'cyan',
   COMPLETED: 'green',
   CANCELLED: 'default',
+}
+
+function formatYuan(v: string | number | undefined) {
+  const num = Number(v ?? 0) / 100
+  return `¥${num.toFixed(2)}`
 }
 
 export default function DashboardPage() {
@@ -76,7 +90,7 @@ export default function DashboardPage() {
       title: 'Amount',
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: (v: string) => `¥${(Number(v) / 100).toFixed(2)}`,
+      render: (v: string) => formatYuan(v),
     },
     {
       title: 'Date',
@@ -113,11 +127,10 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={8}>
             <Card style={STAT_CARD_STYLES.revenue} bordered={false} styles={{ body: { background: '#f6fff6', borderRadius: 6 } }}>
               <Statistic
-                title="Total Revenue (coins)"
-                value={summary?.totalRevenue ?? '0'}
+                title="Total Revenue"
+                value={formatYuan(summary?.totalRevenue)}
                 prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
                 valueStyle={{ color: '#52c41a' }}
-                suffix="HC"
               />
             </Card>
           </Col>
@@ -134,11 +147,10 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={8}>
             <Card style={STAT_CARD_STYLES.paidOut} bordered={false} styles={{ body: { background: '#fffbf0', borderRadius: 6 } }}>
               <Statistic
-                title="Total Paid Out (coins)"
-                value={summary?.totalPaidOut ?? '0'}
+                title="Total Paid Out"
+                value={formatYuan(summary?.totalPaidOut)}
                 prefix={<PayCircleOutlined style={{ color: '#fa8c16' }} />}
                 valueStyle={{ color: '#fa8c16' }}
-                suffix="HC"
               />
             </Card>
           </Col>
@@ -161,6 +173,59 @@ export default function DashboardPage() {
                 prefix={<DollarOutlined style={{ color: '#13c2c2' }} />}
                 valueStyle={{ color: '#13c2c2' }}
                 suffix="units"
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.health} bordered={false} styles={{ body: { background: '#fff0f6', borderRadius: 6 } }}>
+              <Statistic
+                title="Health Coins Issued"
+                value={summary?.totalHealthCoinsIssued ?? '0'}
+                prefix={<HeartOutlined style={{ color: '#eb2f96' }} />}
+                valueStyle={{ color: '#eb2f96' }}
+                suffix="units"
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.healthRedeem} bordered={false} styles={{ body: { background: '#e6f7ff', borderRadius: 6 } }}>
+              <Statistic
+                title="Health Coin Redemptions"
+                value={formatYuan(summary?.totalHealthCoinRedemption)}
+                prefix={<FireOutlined style={{ color: '#1890ff' }} />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.mutualBal} bordered={false} styles={{ body: { background: '#fffbe6', borderRadius: 6 } }}>
+              <Statistic
+                title="Mutual Coin Balance (Total)"
+                value={summary?.totalMutualCoinBalance ?? '0'}
+                prefix={<TeamOutlined style={{ color: '#faad14' }} />}
+                valueStyle={{ color: '#faad14' }}
+                suffix="units"
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.universalBal} bordered={false} styles={{ body: { background: '#fcffe6', borderRadius: 6 } }}>
+              <Statistic
+                title="Universal Coin Balance (Total)"
+                value={summary?.totalUniversalCoinBalance ?? '0'}
+                prefix={<BankOutlined style={{ color: '#a0d911' }} />}
+                valueStyle={{ color: '#a0d911' }}
+                suffix="units"
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.commission} bordered={false} styles={{ body: { background: '#fff1f0', borderRadius: 6 } }}>
+              <Statistic
+                title="Platform Commission Income"
+                value={formatYuan(summary?.totalCommissionIncome)}
+                prefix={<PercentageOutlined style={{ color: '#cf1322' }} />}
+                valueStyle={{ color: '#cf1322' }}
               />
             </Card>
           </Col>

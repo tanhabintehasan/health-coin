@@ -60,35 +60,61 @@ export class MembershipService {
   @Cron(CronExpression.EVERY_HOUR)
   async autoUpgradeAll(): Promise<void> {
     this.logger.log('Running membership auto-upgrade...');
-    const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'desc' } });
-    let cursor: string | undefined;
-    let upgraded = 0;
 
-    while (true) {
-      const users = await this.prisma.user.findMany({
-        where: { isActive: true },
-        select: { id: true, membershipLevel: true, totalMutualCoinsEarned: true },
-        take: 500,
-        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-        orderBy: { id: 'asc' },
-      });
-
-      if (!users.length) break;
-
-      for (const user of users) {
-        const eligible = tiers.find(
-          (t) => t.level > user.membershipLevel && user.totalMutualCoinsEarned >= t.minCoins,
-        );
-        if (eligible) {
-          await this.prisma.user.update({ where: { id: user.id }, data: { membershipLevel: eligible.level } });
-          upgraded++;
-        }
-      }
-
-      cursor = users[users.length - 1].id;
-      if (users.length < 500) break;
+    // Distributed lock using pg_advisory_lock to prevent multiple API instances from running concurrently
+    const lockResult = await this.prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
+      SELECT pg_try_advisory_lock(4242) as "pg_try_advisory_lock"
+    `;
+    if (!lockResult[0].pg_try_advisory_lock) {
+      this.logger.log('Auto-upgrade already running on another instance, skipping.');
+      return;
     }
 
-    this.logger.log(`Auto-upgrade complete. ${upgraded} users upgraded.`);
+    try {
+      const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'desc' } });
+      let cursor: string | undefined;
+      let upgraded = 0;
+
+      while (true) {
+        const users = await this.prisma.user.findMany({
+          where: { isActive: true },
+          select: { id: true, membershipLevel: true, totalMutualCoinsEarned: true },
+          take: 500,
+          ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+          orderBy: { id: 'asc' },
+        });
+
+        if (!users.length) break;
+
+        // Batch eligible users by target level to reduce N+1 updates
+        const levelGroups = new Map<number, string[]>();
+        for (const user of users) {
+          const eligible = tiers.find(
+            (t) => t.level > user.membershipLevel && user.totalMutualCoinsEarned >= t.minCoins,
+          );
+          if (eligible) {
+            if (!levelGroups.has(eligible.level)) levelGroups.set(eligible.level, []);
+            levelGroups.get(eligible.level)!.push(user.id);
+          }
+        }
+
+        for (const [level, userIds] of levelGroups) {
+          const result = await this.prisma.user.updateMany({
+            where: { id: { in: userIds } },
+            data: { membershipLevel: level },
+          });
+          upgraded += result.count;
+        }
+
+        cursor = users[users.length - 1].id;
+        if (users.length < 500) break;
+      }
+
+      this.logger.log(`Auto-upgrade complete. ${upgraded} users upgraded.`);
+    } finally {
+      await this.prisma.$queryRaw`
+        SELECT pg_advisory_unlock(4242)
+      `;
+    }
   }
 }

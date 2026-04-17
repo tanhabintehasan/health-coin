@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { nanoid } from 'nanoid';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { assertValidTransition, canRefund } from './order-state-machine';
@@ -44,8 +45,8 @@ export class OrdersService {
       if (addr) shippingAddress = { name: addr.name, phone: addr.phone, province: addr.province, city: addr.city, district: addr.district, detail: addr.detail };
     }
 
-    // 3. Build order number
-    const orderNo = `HC${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // 3. Build order number (collision-resistant)
+    const orderNo = `HC${nanoid(12).toUpperCase()}`;
 
     // 4. Create order + items in transaction, decrement stock atomically
     const order = await this.prisma.$transaction(async (tx) => {
@@ -141,20 +142,22 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
     assertValidTransition(order.status, 'CANCELLED');
 
-    // Restore stock
-    const items = await this.prisma.orderItem.findMany({ where: { orderId } });
-    for (const item of items) {
-      if (item.variantId) {
-        await this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: { stock: { increment: item.quantity } },
-        });
+    return this.prisma.$transaction(async (tx) => {
+      // Restore stock atomically
+      const items = await tx.orderItem.findMany({ where: { orderId } });
+      for (const item of items) {
+        if (item.variantId) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       }
-    }
 
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'CANCELLED', cancelledAt: new Date() },
+      return tx.order.update({
+        where: { id: orderId },
+        data: { status: 'CANCELLED', cancelledAt: new Date() },
+      });
     });
   }
 
@@ -184,7 +187,7 @@ export class OrdersService {
   async markPaid(
     orderId: string,
     providerTradeNo: string,
-    walletType: string,
+    walletType: string | null,
     amountPaid: bigint,
     provider: 'fuiou' | 'lcsw' | 'coin' = 'fuiou',
   ) {
@@ -197,6 +200,15 @@ export class OrdersService {
     assertValidTransition(order.status, 'PAID');
 
     await this.prisma.$transaction(async (tx) => {
+      // Idempotency guard
+      const current = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { status: true, rewardProcessedAt: true },
+      });
+      if (current?.status === 'PAID' && current?.rewardProcessedAt) {
+        return;
+      }
+
       const updateData: any = {
         status: 'PAID',
         paidAt: new Date(),
@@ -219,13 +231,19 @@ export class OrdersService {
 
       // Generate redemption codes for SERVICE items
       for (const item of order.items) {
-        const code = Math.floor(10000000 + Math.random() * 90000000).toString();
+        let code: string;
+        let collision = true;
+        while (collision) {
+          code = nanoid(10).toUpperCase();
+          const existing = await tx.orderItem.findUnique({ where: { redemptionCode: code } });
+          collision = !!existing;
+        }
         const validUntil = new Date(Date.now() + validityDays * 24 * 3600 * 1000);
 
         await tx.orderItem.update({
           where: { id: item.id },
           data: {
-            redemptionCode: code,
+            redemptionCode: code!,
             redeemableCount: item.quantity,
             redeemedCount: 0,
             validFrom: new Date(),
@@ -235,12 +253,27 @@ export class OrdersService {
       }
     });
 
-    // Schedule coin rewards async
-    await this.coinRewards.scheduleRewards({
-      orderId,
-      buyerId: order.userId,
-      orderAmount: order.totalAmount,
+    // Schedule coin rewards with idempotency
+    const updatedOrder = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { rewardProcessedAt: true },
     });
+    if (!updatedOrder?.rewardProcessedAt) {
+      try {
+        await this.coinRewards.scheduleRewards({
+          orderId,
+          buyerId: order.userId,
+          orderAmount: order.totalAmount,
+        });
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { rewardProcessedAt: new Date() },
+        });
+      } catch (err: any) {
+        // Log but don't fail the payment — rewards can be retried via admin or cron
+        console.error(`[markPaid] Coin rewards failed for order ${orderId}: ${err.message}`);
+      }
+    }
   }
 
   // Merchant: get their orders (paginated)

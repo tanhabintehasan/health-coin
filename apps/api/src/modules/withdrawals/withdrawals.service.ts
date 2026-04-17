@@ -152,6 +152,14 @@ export class WithdrawalsService {
 
     // APPROVED — deduct coins + mark processing
     await this.prisma.$transaction(async (tx) => {
+      // Fetch wallet first to compute correct balanceAfter
+      const wallet = await tx.wallet.findFirst({
+        where: { userId: withdrawal.userId, walletType: 'UNIVERSAL_HEALTH_COIN' },
+      });
+      if (!wallet) throw new NotFoundException('Wallet not found');
+
+      const newBalance = wallet.balance - withdrawal.amount;
+
       // Deduct from balance and unfreeze
       await tx.wallet.updateMany({
         where: { userId: withdrawal.userId, walletType: 'UNIVERSAL_HEALTH_COIN' },
@@ -162,25 +170,19 @@ export class WithdrawalsService {
       });
 
       // Ledger entry
-      const wallet = await tx.wallet.findFirst({
-        where: { userId: withdrawal.userId, walletType: 'UNIVERSAL_HEALTH_COIN' },
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: withdrawal.userId,
+          walletType: 'UNIVERSAL_HEALTH_COIN',
+          amount: -withdrawal.amount,
+          balanceAfter: newBalance,
+          txType: 'WITHDRAWAL',
+          referenceId: withdrawalId,
+          referenceType: 'withdrawal',
+          note: `Withdrawal approved by admin`,
+        },
       });
-
-      if (wallet) {
-        await tx.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            userId: withdrawal.userId,
-            walletType: 'UNIVERSAL_HEALTH_COIN',
-            amount: -withdrawal.amount,
-            balanceAfter: wallet.balance,
-            txType: 'WITHDRAWAL',
-            referenceId: withdrawalId,
-            referenceType: 'withdrawal',
-            note: `Withdrawal approved by admin`,
-          },
-        });
-      }
 
       await tx.withdrawal.update({
         where: { id: withdrawalId },
@@ -222,6 +224,12 @@ export class WithdrawalsService {
       completedWithdrawals,
       totalMutualCoinsIssued,
       totalUniversalCoinsIssued,
+      totalHealthCoinsIssued,
+      totalHealthCoinRedemption,
+      totalMutualCoinBalance,
+      totalUniversalCoinBalance,
+      totalPlatformCommissionFromOrders,
+      totalCommissionFromWithdrawals,
     ] = await Promise.all([
       this.prisma.order.count({ where: { status: 'COMPLETED' } }),
       this.prisma.order.aggregate({
@@ -241,6 +249,30 @@ export class WithdrawalsService {
         where: { walletType: 'UNIVERSAL_HEALTH_COIN', amount: { gt: 0 } },
         _sum: { amount: true },
       }),
+      this.prisma.walletTransaction.aggregate({
+        where: { walletType: 'HEALTH_COIN', amount: { gt: 0 } },
+        _sum: { amount: true },
+      }),
+      this.prisma.order.aggregate({
+        where: { status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'COMPLETED'] } },
+        _sum: { healthCoinPaid: true },
+      }),
+      this.prisma.wallet.aggregate({
+        where: { walletType: 'MUTUAL_HEALTH_COIN' },
+        _sum: { balance: true },
+      }),
+      this.prisma.wallet.aggregate({
+        where: { walletType: 'UNIVERSAL_HEALTH_COIN' },
+        _sum: { balance: true },
+      }),
+      this.prisma.paymentTransaction.aggregate({
+        where: { status: 'SUCCESS' },
+        _sum: { platformCommissionAmt: true },
+      }),
+      this.prisma.withdrawal.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { commissionAmt: true },
+      }),
     ]);
 
     return {
@@ -250,6 +282,14 @@ export class WithdrawalsService {
       totalPaidOut: (completedWithdrawals._sum.netAmount ?? 0n).toString(),
       totalMutualCoinsIssued: (totalMutualCoinsIssued._sum.amount ?? 0n).toString(),
       totalUniversalCoinsIssued: (totalUniversalCoinsIssued._sum.amount ?? 0n).toString(),
+      totalHealthCoinsIssued: (totalHealthCoinsIssued._sum.amount ?? 0n).toString(),
+      totalHealthCoinRedemption: (totalHealthCoinRedemption._sum.healthCoinPaid ?? 0n).toString(),
+      totalMutualCoinBalance: (totalMutualCoinBalance._sum.balance ?? 0n).toString(),
+      totalUniversalCoinBalance: (totalUniversalCoinBalance._sum.balance ?? 0n).toString(),
+      totalCommissionIncome: (
+        (totalPlatformCommissionFromOrders._sum.platformCommissionAmt ?? 0n) +
+        (totalCommissionFromWithdrawals._sum.commissionAmt ?? 0n)
+      ).toString(),
     };
   }
 }

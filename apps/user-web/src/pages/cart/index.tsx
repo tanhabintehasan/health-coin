@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast'
 
 export default function CartPage() {
   const [cart, setCart] = useState<any>({ merchants: [], items: [] })
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
   const { showToast } = useToast()

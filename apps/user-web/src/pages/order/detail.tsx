@@ -29,7 +29,7 @@ const STATUS_COLOR: Record<string, string> = {
 type CoinType = 'HEALTH_COIN' | 'MUTUAL_HEALTH_COIN' | 'UNIVERSAL_HEALTH_COIN'
 
 const PAY_OPTIONS: Array<{ value: 'FUIOU' | CoinType; label: string; sub: string; color: string }> = [
-  { value: 'FUIOU', label: 'WeChat Pay', sub: 'Pay with WeChat / Alipay', color: '#07c160' },
+  { value: 'FUIOU', label: 'Fuiou Payment', sub: 'Secure cash payment', color: '#1677ff' },
   { value: 'HEALTH_COIN', label: 'HealthCoin', sub: 'HC', color: '#1677ff' },
   { value: 'MUTUAL_HEALTH_COIN', label: 'Mutual HealthCoin', sub: 'MHC', color: '#52c41a' },
   { value: 'UNIVERSAL_HEALTH_COIN', label: 'Universal HealthCoin', sub: 'UHC', color: '#722ed1' },

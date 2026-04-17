@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  VITE_API_BASE_URL = "https://health-coin.onrender.com/api/v1"
+  VITE_API_BASE_URL = "https://healthcoin-api.netlify.app/api/v1"
   VITE_DEMO_LOGIN_ENABLED = "true"
 
 # SPA redirect: send all routes to index.html

@@ -29,8 +29,6 @@ export class PaymentsService {
   private async getPaymentSettings() {
     const keys = [
       'payment_fuiou_enabled',
-      'payment_wechat_enabled',
-      'payment_alipay_enabled',
       'payment_lcsw_enabled',
       'payment_coin_enabled',
       'payment_provider_primary',
@@ -45,8 +43,6 @@ export class PaymentsService {
     for (const c of configs) map[c.key] = c.value;
     return {
       fuiouEnabled: map.payment_fuiou_enabled === 'true',
-      wechatEnabled: map.payment_wechat_enabled === 'true',
-      alipayEnabled: map.payment_alipay_enabled === 'true',
       lcswEnabled: map.payment_lcsw_enabled === 'true',
       coinEnabled: map.payment_coin_enabled === 'true',
       primary: map.payment_provider_primary ?? 'fuiou',
@@ -122,17 +118,19 @@ export class PaymentsService {
       if (!settings.coinEnabled) {
         throw new BadRequestException('Coin payment is currently disabled');
       }
-      await this.walletTx.debit({
-        userId,
-        walletType,
-        amount: order.totalAmount,
-        txType: 'ORDER_PAYMENT',
-        referenceId: orderId,
-        referenceType: 'order',
-        note: `Payment for order ${order.orderNo}`,
-      });
+      await this.prisma.$transaction(async (tx) => {
+        await this.walletTx.debit({
+          userId,
+          walletType,
+          amount: order.totalAmount,
+          txType: 'ORDER_PAYMENT',
+          referenceId: orderId,
+          referenceType: 'order',
+          note: `Payment for order ${order.orderNo}`,
+        }, tx);
 
-      await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin');
+        await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin');
+      });
       return { paymentMethod: 'coin', walletType, status: 'paid' };
     }
 
@@ -195,16 +193,6 @@ export class PaymentsService {
       );
 
       return { paymentMethod: 'lcsw', provider: 'lcsw', payParams };
-    }
-
-    if (selectedMethod === 'wechat' && settings.wechatEnabled) {
-      this.logger.log(`[WeChat Pay] Would initiate payment for order ${order.orderNo}`);
-      return { paymentMethod: 'wechat', provider: 'wechat', payUrl: null, message: 'WeChat Pay integration pending' };
-    }
-
-    if (selectedMethod === 'alipay' && settings.alipayEnabled) {
-      this.logger.log(`[Alipay] Would initiate payment for order ${order.orderNo}`);
-      return { paymentMethod: 'alipay', provider: 'alipay', payUrl: null, message: 'Alipay integration pending' };
     }
 
     throw new BadRequestException('No payment provider is currently available');
@@ -296,7 +284,7 @@ export class PaymentsService {
       return 'SUCCESS';
     }
 
-    await this.ordersService.markPaid(order.id, fuiouTradeNo, 'CASH', amountUnits, 'fuiou');
+    await this.ordersService.markPaid(order.id, fuiouTradeNo, null, amountUnits, 'fuiou');
     await this.prisma.paymentTransaction.updateMany({
       where: { orderId: order.id, provider: 'fuiou' },
       data: { status: 'SUCCESS', providerTradeNo: fuiouTradeNo, verifiedAt: new Date() },
@@ -358,7 +346,7 @@ export class PaymentsService {
     if (body.result_code === '01') {
       if (order && order.status === 'PENDING_PAYMENT') {
         const amount = BigInt(body.total_fee || order.totalAmount);
-        await this.ordersService.markPaid(order.id, lcswTradeNo, 'CASH', amount, 'lcsw');
+        await this.ordersService.markPaid(order.id, lcswTradeNo, null, amount, 'lcsw');
         this.logger.log(`Order ${order.orderNo} marked paid via LCSW`);
       }
 

@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api/v1'
 
@@ -9,7 +9,19 @@ const client = axios.create({
   },
 })
 
-client.interceptors.request.use((config) => {
+let isRefreshing = false
+let refreshSubscribers: Array<(token: string) => void> = []
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb)
+}
+
+client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -19,11 +31,50 @@ client.interceptors.request.use((config) => {
 
 client.interceptors.response.use(
   (res) => res,
-  (err: AxiosError<any>) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/auth'
+  async (err: AxiosError<any>) => {
+    const originalRequest = err.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    if (err.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (!refreshToken) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        window.location.href = '/auth'
+        const msg = err.response?.data?.message || err.message || 'Request failed'
+        return Promise.reject(msg)
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(client(originalRequest))
+          })
+        })
+      }
+
+      isRefreshing = true
+      originalRequest._retry = true
+
+      try {
+        const rs = await axios.post(`${BASE_URL}/auth/token/refresh`, { refreshToken })
+        const { accessToken } = rs.data
+        localStorage.setItem('access_token', accessToken)
+        client.defaults.headers.common.Authorization = `Bearer ${accessToken}`
+        onRefreshed(accessToken)
+        isRefreshing = false
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
+        return client(originalRequest)
+      } catch (_error) {
+        isRefreshing = false
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        window.location.href = '/auth'
+        const msg = err.response?.data?.message || err.message || 'Request failed'
+        return Promise.reject(msg)
+      }
     }
+
     const msg = err.response?.data?.message || err.message || 'Request failed'
     return Promise.reject(msg)
   }

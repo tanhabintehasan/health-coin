@@ -63,16 +63,6 @@ const CONFIG_META: Record<string, ConfigMeta> = {
     hint: 'Set to 1 to enable LCSW (Saobei) payments. Set to 0 to disable.',
     type: 'number', min: 0, max: 1, step: 1,
   },
-  payment_wechat_enabled: {
-    label: 'WeChat Pay Enabled',
-    hint: 'Set to 1 to enable WeChat Pay. Set to 0 to disable.',
-    type: 'number', min: 0, max: 1, step: 1,
-  },
-  payment_alipay_enabled: {
-    label: 'Alipay Enabled',
-    hint: 'Set to 1 to enable Alipay. Set to 0 to disable.',
-    type: 'number', min: 0, max: 1, step: 1,
-  },
   payment_coin_enabled: {
     label: 'Coin Payment Enabled',
     hint: 'Set to 1 to enable coin payments. Set to 0 to disable.',
@@ -163,7 +153,7 @@ const CONFIG_META: Record<string, ConfigMeta> = {
 const COIN_KEYS = ['mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate', 'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate']
 const COMMISSION_KEYS = ['withdrawal_commission_rate']
 const REVIEW_KEYS = ['order_approval_required']
-const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled', 'payment_coin_enabled']
+const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_coin_enabled']
 const LCSW_KEYS = ['lcsw_merchant_no', 'lcsw_terminal_id', 'lcsw_access_token', 'lcsw_base_url']
 const SMS_KEYS = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name', 'smsbao_username', 'smsbao_password', 'smsbao_template']
 const WECHAT_KEYS = ['wechat_appid', 'wechat_secret']
