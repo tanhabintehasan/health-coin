@@ -41,15 +41,16 @@ export async function bootstrap(): Promise<express.Express> {
     }),
   );
 
-  const allowedOrigins = process.env.CORS_ORIGINS
+  const rawOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
     : ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
+  const allowAll = rawOrigins.includes('*');
 
   app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
+    origin: allowAll ? true : rawOrigins,
+    credentials: !allowAll,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-cron-secret', 'x-requested-with'],
   });
 
   app.setGlobalPrefix('api/v1');
