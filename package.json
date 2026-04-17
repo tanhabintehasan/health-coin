@@ -7,17 +7,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build:web",
+    "build": "npm run build:api && npm run build:web",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
-    "dev:admin": "npm run dev --workspace=apps/admin-web",
-    "dev:merchant": "npm run dev --workspace=apps/merchant-web",
-    "dev:user": "npm run dev --workspace=apps/user-web",
     "build:api": "npm run build --workspace=apps/api",
-    "build:web": "npm run build --workspace=apps/web",
-    "build:admin": "npm run build --workspace=apps/admin-web",
-    "build:merchant": "npm run build --workspace=apps/merchant-web",
-    "build:user": "npm run build --workspace=apps/user-web"
+    "build:web": "npm run build --workspace=apps/web"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"
