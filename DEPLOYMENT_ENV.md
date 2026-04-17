@@ -106,10 +106,10 @@ JWT_REFRESH_SECRET=your_other_very_long_random_secret
 JWT_EXPIRES_IN=2h
 JWT_REFRESH_EXPIRES_IN=7d
 NODE_ENV=production
-APP_URL=https://YOUR_SITE_NAME.netlify.app
-CORS_ORIGINS=https://YOUR_SITE_NAME.netlify.app
+APP_URL=https://multifunction-health-coin.netlify.app
+CORS_ORIGINS=https://multifunction-health-coin.netlify.app
 CRON_SECRET=a_random_string_to_protect_cron_endpoints
-VITE_API_BASE_URL=https://YOUR_SITE_NAME.netlify.app/api/v1
+VITE_API_BASE_URL=/api/v1
 VITE_DEMO_LOGIN_ENABLED=true
 ```
 
@@ -146,10 +146,10 @@ Open these URLs in your browser:
 
 | URL | Expected Result |
 |-----|-----------------|
-| `https://YOUR_SITE.netlify.app/` | Public homepage with products |
-| `https://YOUR_SITE.netlify.app/shop` | Product listing |
-| `https://YOUR_SITE.netlify.app/login` | Login page with Demo Access buttons |
-| `https://YOUR_SITE.netlify.app/api/docs` | Swagger API documentation |
+| `https://multifunction-health-coin.netlify.app/` | Public homepage with products |
+| `https://multifunction-health-coin.netlify.app/shop` | Product listing |
+| `https://multifunction-health-coin.netlify.app/login` | Login page with Demo Access buttons |
+| `https://multifunction-health-coin.netlify.app/api/docs` | Swagger API documentation |
 
 ---
 
@@ -231,7 +231,7 @@ Because the API runs serverlessly, NestJS `@Cron` does not stay alive.
 ### Free Option: cron-job.org
 1. Register at https://cron-job.org
 2. Create a job:
-   - **URL:** `https://YOUR_SITE.netlify.app/api/v1/admin/cron/membership-auto-upgrade`
+   - **URL:** `https://multifunction-health-coin.netlify.app/api/v1/admin/cron/membership-auto-upgrade`
    - **Method:** `POST`
    - **Header:** `x-cron-secret: YOUR_CRON_SECRET`
    - **Schedule:** Every 60 minutes
@@ -239,7 +239,7 @@ Because the API runs serverlessly, NestJS `@Cron` does not stay alive.
 
 ### Test the Endpoint
 ```bash
-curl -X POST https://YOUR_SITE.netlify.app/api/v1/admin/cron/membership-auto-upgrade \
+curl -X POST https://multifunction-health-coin.netlify.app/api/v1/admin/cron/membership-auto-upgrade \
   -H "x-cron-secret: YOUR_CRON_SECRET"
 ```
 Expected response:
@@ -255,12 +255,12 @@ Configure these URLs in your payment provider dashboards:
 
 ### Fuiou
 ```
-https://YOUR_SITE.netlify.app/api/v1/webhooks/fuiou/payment
+https://multifunction-health-coin.netlify.app/api/v1/webhooks/fuiou/payment
 ```
 
 ### LCSW (扫呗)
 ```
-https://YOUR_SITE.netlify.app/api/v1/webhooks/lcsw/payment
+https://multifunction-health-coin.netlify.app/api/v1/webhooks/lcsw/payment
 ```
 
 ---
