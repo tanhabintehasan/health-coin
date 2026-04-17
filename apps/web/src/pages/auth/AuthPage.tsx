@@ -42,7 +42,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const from = searchParams.get('from') || ''
-  const { setAuth } = useAuthStore()
+  const { setAuth, detectRole } = useAuthStore()
 
   const [step, setStep] = useState(0)
   const [phone, setPhone] = useState('')
@@ -100,8 +100,8 @@ export default function AuthPage() {
       const res: any = await api.verifyOtp(phone, otp, referralCode || undefined)
       if (!res?.accessToken) throw new Error('登录失败')
       setAuth(res.user, res.accessToken)
-      // Role will be detected by layout/guard flow
-      doRedirect('user')
+      const role = await detectRole()
+      doRedirect(role ?? 'user')
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '登录失败')
     } finally {

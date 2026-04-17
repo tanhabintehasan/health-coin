@@ -31,8 +31,8 @@ export class WalletTransactionService {
     const run = async (tx: any) => {
       const wallets = await tx.$queryRaw<{ id: string; balance: bigint }[]>`
         SELECT id, balance FROM wallets
-        WHERE user_id = ${params.userId}::uuid
-          AND wallet_type = ${params.walletType}::"WalletType"
+        WHERE "userId" = ${params.userId}
+          AND "walletType" = ${params.walletType}::"WalletType"
         FOR UPDATE
       `;
 
@@ -46,8 +46,8 @@ export class WalletTransactionService {
       if (newBalance < 0n) throw new BadRequestException('Insufficient balance');
 
       await tx.$executeRaw`
-        UPDATE wallets SET balance = ${newBalance}, updated_at = NOW()
-        WHERE id = ${wallet.id}::uuid
+        UPDATE wallets SET balance = ${newBalance}, "updatedAt" = NOW()
+        WHERE id = ${wallet.id}
       `;
 
       await tx.walletTransaction.create({

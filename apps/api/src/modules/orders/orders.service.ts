@@ -190,6 +190,7 @@ export class OrdersService {
     walletType: string | null,
     amountPaid: bigint,
     provider: 'fuiou' | 'lcsw' | 'coin' = 'fuiou',
+    txClient?: any,
   ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -199,7 +200,7 @@ export class OrdersService {
 
     assertValidTransition(order.status, 'PAID');
 
-    await this.prisma.$transaction(async (tx) => {
+    const runInTx = async (tx: any) => {
       // Idempotency guard
       const current = await tx.order.findUnique({
         where: { id: orderId },
@@ -251,7 +252,13 @@ export class OrdersService {
           },
         });
       }
-    });
+    };
+
+    if (txClient) {
+      await runInTx(txClient);
+    } else {
+      await this.prisma.$transaction(async (tx) => runInTx(tx));
+    }
 
     // Schedule coin rewards with idempotency
     const updatedOrder = await this.prisma.order.findUnique({

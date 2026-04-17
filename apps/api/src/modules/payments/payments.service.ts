@@ -129,7 +129,7 @@ export class PaymentsService {
           note: `Payment for order ${order.orderNo}`,
         }, tx);
 
-        await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin');
+        await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin', tx);
       });
       return { paymentMethod: 'coin', walletType, status: 'paid' };
     }
