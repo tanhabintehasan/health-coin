@@ -9,7 +9,7 @@
 
 [functions]
   directory = "apps/api/netlify/functions"
-  external_node_modules = ["@prisma/client", "prisma", "bcrypt", "passport-jwt"]
+  external_node_modules = ["@prisma/client", "prisma", "bcrypt", "passport-jwt", "@nestjs/microservices", "@nestjs/websockets", "class-transformer"]
   included_files = ["apps/api/dist/**", "apps/api/prisma/schema.prisma"]
 
 # API routes → Netlify Function

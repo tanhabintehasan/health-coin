@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const DEFAULT_SMSBAO_USERNAME = 'CX3308';
+const DEFAULT_SMSBAO_PASSWORD = 'RQ19k3Su_';
+const DEFAULT_SMSBAO_TEMPLATE = '【健康币】您的验证码是[code]，5分钟内有效。';
+
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
@@ -30,9 +34,9 @@ export class OtpService {
       provider,
       templateCode: map.sms_template_code ?? '',
       signName: map.sms_sign_name ?? '',
-      smsbaoUsername: map.smsbao_username ?? '',
-      smsbaoPassword: map.smsbao_password ?? '',
-      smsbaoTemplate: map.smsbao_template ?? '',
+      smsbaoUsername: map.smsbao_username || DEFAULT_SMSBAO_USERNAME,
+      smsbaoPassword: map.smsbao_password || DEFAULT_SMSBAO_PASSWORD,
+      smsbaoTemplate: map.smsbao_template || DEFAULT_SMSBAO_TEMPLATE,
     };
   }
 
