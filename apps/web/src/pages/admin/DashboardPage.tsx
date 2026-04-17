@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Row, Col, Card, Statistic, Table, Tag, Typography, Spin, Alert } from 'antd'
-import { ShoppingOutlined, WalletOutlined, PayCircleOutlined, DollarOutlined, RiseOutlined, TeamOutlined, ShopOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { ShoppingOutlined, WalletOutlined, PayCircleOutlined, DollarOutlined, RiseOutlined, TeamOutlined, ShopOutlined, UserOutlined, ExclamationCircleOutlined, MedicineBoxOutlined, FireOutlined, GoldOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
@@ -12,6 +12,11 @@ const STAT_CARD_STYLES: Record<string, React.CSSProperties> = {
   paidOut: { borderLeft: '4px solid #fa8c16' },
   mutual: { borderLeft: '4px solid #722ed1' },
   universal: { borderLeft: '4px solid #13c2c2' },
+  healthCoinIssued: { borderLeft: '4px solid #eb2f96' },
+  healthCoinRedeemed: { borderLeft: '4px solid #ff4d4f' },
+  mutualBalance: { borderLeft: '4px solid #2f54eb' },
+  universalBalance: { borderLeft: '4px solid #36cfc9' },
+  commissionIncome: { borderLeft: '4px solid #faad14' },
 }
 
 const ORDER_STATUS_COLOR: Record<string, string> = {
@@ -142,6 +147,31 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={8}>
             <Card style={STAT_CARD_STYLES.universal} bordered={false} styles={{ body: { background: '#f0fffe', borderRadius: 6 } }}>
               <Statistic title="万能币发放总量" value={summary?.totalUniversalCoinsIssued ?? '0'} prefix={<DollarOutlined style={{ color: '#13c2c2' }} />} valueStyle={{ color: '#13c2c2' }} suffix="枚" />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.healthCoinIssued} bordered={false} styles={{ body: { background: '#fff0f6', borderRadius: 6 } }}>
+              <Statistic title="健康币发放总量" value={summary?.totalHealthCoinsIssued ?? '0'} prefix={<MedicineBoxOutlined style={{ color: '#eb2f96' }} />} valueStyle={{ color: '#eb2f96' }} suffix="枚" />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.healthCoinRedeemed} bordered={false} styles={{ body: { background: '#fff1f0', borderRadius: 6 } }}>
+              <Statistic title="健康币核销总量" value={summary?.totalHealthCoinRedemption ?? '0'} prefix={<FireOutlined style={{ color: '#ff4d4f' }} />} valueStyle={{ color: '#ff4d4f' }} suffix="枚" />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.mutualBalance} bordered={false} styles={{ body: { background: '#f0f5ff', borderRadius: 6 } }}>
+              <Statistic title="互助币总余额" value={summary?.totalMutualCoinBalance ?? '0'} prefix={<TeamOutlined style={{ color: '#2f54eb' }} />} valueStyle={{ color: '#2f54eb' }} suffix="枚" />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.universalBalance} bordered={false} styles={{ body: { background: '#e6fffb', borderRadius: 6 } }}>
+              <Statistic title="万能币总余额" value={summary?.totalUniversalCoinBalance ?? '0'} prefix={<WalletOutlined style={{ color: '#36cfc9' }} />} valueStyle={{ color: '#36cfc9' }} suffix="枚" />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card style={STAT_CARD_STYLES.commissionIncome} bordered={false} styles={{ body: { background: '#fffbe6', borderRadius: 6 } }}>
+              <Statistic title="平台佣金收入" value={summary?.totalCommissionIncome ?? '0'} prefix={<GoldOutlined style={{ color: '#faad14' }} />} valueStyle={{ color: '#faad14' }} suffix="HC" />
             </Card>
           </Col>
         </Row>
