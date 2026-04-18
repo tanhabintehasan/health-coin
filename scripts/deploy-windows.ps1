@@ -375,9 +375,11 @@ Write-Ok "API started with PM2"
 # =============================================================================
 Write-Step "Step 13/13 — Configuring Windows Firewall"
 
-# Allow HTTP/HTTPS
+# Allow HTTP/HTTPS/API/Web
 New-NetFirewallRule -DisplayName "HealthCoin-HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -ErrorAction SilentlyContinue
 New-NetFirewallRule -DisplayName "HealthCoin-HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow -ErrorAction SilentlyContinue
+New-NetFirewallRule -DisplayName "HealthCoin-API" -Direction Inbound -Protocol TCP -LocalPort $ApiPort -Action Allow -ErrorAction SilentlyContinue
+New-NetFirewallRule -DisplayName "HealthCoin-Web" -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow -ErrorAction SilentlyContinue
 
 Write-Ok "Firewall rules added"
 

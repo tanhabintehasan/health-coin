@@ -165,7 +165,24 @@ C:\tools\nginx-1.26.\nginx.exe -s reload
 ### 3.9 Open Firewall
 ```powershell
 New-NetFirewallRule -DisplayName "HealthCoin-HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
+New-NetFirewallRule -DisplayName "HealthCoin-API" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
+New-NetFirewallRule -DisplayName "HealthCoin-Web" -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow
 ```
+
+---
+
+## Cloud Firewall (Critical for Alibaba Cloud / ECS)
+
+If your server is an Alibaba Cloud ECS instance, you **must** also open ports in the **Security Group** via the Alibaba Cloud Console:
+
+1. Go to [ECS Console](https://ecs.console.aliyun.com/) → Security Groups
+2. Find the security group for your instance
+3. Add **Inbound Rules**:
+   - Port Range: `3000`, Source: `0.0.0.0/0` (API)
+   - Port Range: `8081`, Source: `0.0.0.0/0` (Web frontend)
+   - Port Range: `3389`, Source: `YOUR_IP/32` (RDP — restrict this!)
+
+Without this, Windows Firewall rules alone will NOT work — the cloud firewall drops the packets first.
 
 ---
 
