@@ -227,11 +227,8 @@ Set-Content -Path "$AppDir\apps\api\.env" -Value $envContent -Encoding UTF8
 Write-Ok "API environment file created"
 
 # Create frontend production environment file
-$webEnvContent = @"
-VITE_API_BASE_URL=http://$ServerIp`:$ApiPort/api/v1
-VITE_DEMO_LOGIN_ENABLED=true
-"@
-Set-Content -Path "$AppDir\apps\web\.env" -Value $webEnvContent -Encoding UTF8
+Set-Content -Path "$AppDir\apps\web\.env" -Value "VITE_API_BASE_URL=http://$ServerIp`:$ApiPort/api/v1" -Encoding UTF8
+Add-Content -Path "$AppDir\apps\web\.env" -Value "VITE_DEMO_LOGIN_ENABLED=true" -Encoding UTF8
 Write-Ok "Frontend environment file created"
 
 # =============================================================================
