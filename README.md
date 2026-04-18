@@ -18,6 +18,7 @@ A unified multi-merchant e-commerce platform with a three-currency reward system
 health-coin/
 ├── apps/
 │   ├── api/          ← NestJS REST API
+│   ├── miniprogram/  ← WeChat mini-program
 │   └── web/          ← Unified frontend: Public Storefront + User + Merchant + Admin
 ├── supabase/
 │   ├── schema.sql    ← PostgreSQL schema
