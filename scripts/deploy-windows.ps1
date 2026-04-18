@@ -224,7 +224,15 @@ OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
 "@
 
 Set-Content -Path "$AppDir\apps\api\.env" -Value $envContent -Encoding UTF8
-Write-Ok "Environment file created"
+Write-Ok "API environment file created"
+
+# Create frontend production environment file
+$webEnvContent = @"
+VITE_API_BASE_URL=http://$ServerIp`:$ApiPort/api/v1
+VITE_DEMO_LOGIN_ENABLED=true
+"@
+Set-Content -Path "$AppDir\apps\web\.env" -Value $webEnvContent -Encoding UTF8
+Write-Ok "Frontend environment file created"
 
 # =============================================================================
 # 8. Generate Prisma & Run Migrations
