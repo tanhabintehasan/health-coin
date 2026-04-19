@@ -41,10 +41,10 @@ INSERT INTO "system_configs" ("key", "value") VALUES
   ('allow_partial_redemption', 'true'),
   ('sms_provider', 'smsbao'),
   ('sms_enabled', 'true'),
-  ('sms_template_code', 'SMS_12345678'),
-  ('sms_sign_name', '健康币平台'),
-  ('smsbao_username', 'CX3308'),
-  ('smsbao_password', 'd246e48c94264b2f8a2dbe17877e8a7d'),
+  ('sms_template_code', ''),
+  ('sms_sign_name', ''),
+  ('smsbao_username', ''),
+  ('smsbao_password', ''),
   ('smsbao_template', '【健康币】您的验证码是[code]，5分钟内有效。'),
   ('otp_expiry_seconds', '300'),
   ('otp_resend_seconds', '60'),
@@ -61,46 +61,21 @@ INSERT INTO "system_configs" ("key", "value") VALUES
 ON CONFLICT ("key") DO NOTHING;
 
 -- -----------------------------------------------------
--- 4. Demo Users (for demo-login and testing)
+-- 4. Demo Users REMOVED — use scripts/setup-admin.js to create admin
 -- -----------------------------------------------------
-INSERT INTO "users" ("id", "phone", "nickname", "referralCode", "regionId", "membershipLevel", "isActive") VALUES
-  ('demo-admin',  '13800000001', '管理员',   'ADMIN000', 'prov-sh', 1, true),
-  ('demo-merchant','13800000002', '张商户',   'MERCH000', 'prov-sh', 2, true),
-  ('demo-merchant2','13800000003','李商户',   'MERCH001', 'prov-bj', 2, true),
-  ('demo-user',   '13800000004', '会员小王', 'USER0000', 'prov-sh', 1, true),
-  ('demo-user2',  '13800000005', '会员小刘', 'USER0001', 'prov-sh', 3, true),
-  ('demo-user3',  '13800000006', '会员小陈', 'USER0002', 'prov-sh', 1, true)
-ON CONFLICT ("phone") DO NOTHING;
 
 -- -----------------------------------------------------
--- 5. Wallets for demo users
+-- 5. Demo Wallets REMOVED
 -- -----------------------------------------------------
-INSERT INTO "wallets" ("userId", "walletType", "balance") VALUES
-  ('demo-admin',   'HEALTH_COIN', 50000),
-  ('demo-admin',   'MUTUAL_HEALTH_COIN', 30000),
-  ('demo-admin',   'UNIVERSAL_HEALTH_COIN', 20000),
-  ('demo-merchant','HEALTH_COIN', 45000),
-  ('demo-merchant','MUTUAL_HEALTH_COIN', 28000),
-  ('demo-merchant','UNIVERSAL_HEALTH_COIN', 15000),
-  ('demo-user',    'HEALTH_COIN', 12000),
-  ('demo-user',    'MUTUAL_HEALTH_COIN', 8000),
-  ('demo-user',    'UNIVERSAL_HEALTH_COIN', 5000)
-ON CONFLICT ("userId", "walletType") DO NOTHING;
 
 -- -----------------------------------------------------
--- 6. Admin record
+-- 6. Demo Admin record REMOVED
 -- -----------------------------------------------------
-INSERT INTO "admin_users" ("userId", "role", "permissions") VALUES
-  ('demo-admin', 'SUPER_ADMIN', ARRAY['*'])
-ON CONFLICT ("userId") DO NOTHING;
 
 -- -----------------------------------------------------
--- 7. Demo Merchants
+-- 7. Demo Merchants REMOVED
 -- -----------------------------------------------------
-INSERT INTO "merchants" ("ownerUserId", "name", "description", "regionId", "status", "commissionRate", "approvedAt") VALUES
-  ('demo-merchant', '康健大药房', '专注家庭健康护理，正品保障，极速发货', 'prov-sh', 'APPROVED', 0.05, NOW()),
-  ('demo-merchant2','绿源有机食品', '源头直采有机食材，会员专享优惠', 'prov-bj', 'APPROVED', 0.06, NOW())
-ON CONFLICT ("ownerUserId") DO NOTHING;
+
 
 -- -----------------------------------------------------
 -- 8. Product Categories

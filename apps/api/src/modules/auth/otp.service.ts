@@ -24,6 +24,12 @@ export class OtpService {
     const map: Record<string, string> = {};
     for (const c of configs) map[c.key] = c.value;
     const provider = map.sms_provider ?? 'smsbao';
+
+    // Read SMS credentials from DB first, fallback to .env for production security
+    const smsbaoUsername = map.smsbao_username || this.config.get('SMSBAO_USERNAME') || '';
+    const smsbaoPassword = map.smsbao_password || this.config.get('SMSBAO_PASSWORD') || '';
+    const smsbaoTemplate = map.smsbao_template || this.config.get('SMSBAO_TEMPLATE') || DEFAULT_SMSBAO_TEMPLATE;
+
     return {
       smsEnabled: map.sms_enabled === undefined ? true : map.sms_enabled === 'true',
       otpExpiry: parseInt(map.otp_expiry_seconds ?? '300', 10),
@@ -32,9 +38,9 @@ export class OtpService {
       provider,
       templateCode: map.sms_template_code ?? '',
       signName: map.sms_sign_name ?? '',
-      smsbaoUsername: map.smsbao_username || '',
-      smsbaoPassword: map.smsbao_password || '',
-      smsbaoTemplate: map.smsbao_template || DEFAULT_SMSBAO_TEMPLATE,
+      smsbaoUsername,
+      smsbaoPassword,
+      smsbaoTemplate,
     };
   }
 

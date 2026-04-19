@@ -288,6 +288,7 @@ WECHAT_SECRET=
 # ============================================
 SMSBAO_USERNAME=
 SMSBAO_PASSWORD=
+SMSBAO_TEMPLATE=【健康币】您的验证码是[code]，5分钟内有效。
 
 # ============================================
 # ALIYUN OSS (Fill in from Aliyun console)
