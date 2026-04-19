@@ -309,6 +309,8 @@ Set-Content -Path "$AppDir\apps\api\.env" -Value $apiEnv -Encoding UTF8
 Write-Ok "API .env created"
 
 # Web .env
+# IMPORTANT: Do NOT include :3000 port here. The web must call the proxy on port 80,
+# which then forwards /api requests to the API. This avoids CORS issues.
 $webEnv = @"
 VITE_API_BASE_URL=http://$ServerIp/api/v1
 "@

@@ -7,6 +7,20 @@ const app = express();
 // Trust proxy headers (important when behind a reverse proxy like Nginx or Cloudflare)
 app.set('trust proxy', true);
 
+// CORS middleware — allow all origins for API routes (proxy handles this)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-cron-secret, x-requested-with');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Handle preflight OPTIONS immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
+
 // Health check endpoint (useful for load balancers and monitoring)
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'healthcoin-proxy', timestamp: new Date().toISOString() });
