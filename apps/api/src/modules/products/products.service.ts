@@ -166,7 +166,8 @@ export class ProductsService {
   }
 
   async listPendingReview(page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+    const take = Math.min(Math.max(Number(limit), 1), 100);
+    const skip = (page - 1) * take;
     const where = { status: 'PENDING_REVIEW' as const };
     const [total, products] = await Promise.all([
       this.prisma.product.count({ where }),
@@ -174,12 +175,12 @@ export class ProductsService {
         where,
         include: { merchant: { select: { id: true, name: true } }, variants: true },
         orderBy: { createdAt: 'asc' },
-        skip, take: limit,
+        skip, take: take,
       }),
     ]);
     return {
       data: products.map(serializeProduct),
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      meta: { total, page, limit: take, totalPages: Math.ceil(total / take) },
     };
   }
 }

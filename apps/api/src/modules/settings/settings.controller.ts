@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, BadRequestException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as fs from 'fs';
@@ -85,6 +86,7 @@ export class SettingsController {
   }
 
   @Post('contact')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Submit a contact form' })
   async submitContact(@Body() body: { name: string; email: string; phone?: string; message: string }) {
     const { name, email, phone, message } = body;

@@ -116,17 +116,18 @@ export class AdminController {
   @Get('merchants')
   @ApiOperation({ summary: 'List merchants by status' })
   async listMerchants(@Query('status') status?: string, @Query('page') page = 1, @Query('limit') limit = 20) {
-    const skip = (Number(page) - 1) * Number(limit);
+    const take = this.clampLimit(limit);
+    const skip = (Number(page) - 1) * take;
     const where: any = status ? { status } : {};
     const [total, data] = await Promise.all([
       this.prisma.merchant.count({ where }),
       this.prisma.merchant.findMany({
         where,
         include: { owner: { select: { phone: true } }, region: { select: { name: true } } },
-        skip, take: Number(limit), orderBy: { createdAt: 'desc' },
+        skip, take, orderBy: { createdAt: 'desc' },
       }),
     ]);
-    return { data, meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) } };
+    return { data, meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) } };
   }
 
   @Patch('merchants/:id/approve')
@@ -185,7 +186,8 @@ export class AdminController {
   @Get('orders')
   @ApiOperation({ summary: 'List all orders' })
   async listOrders(@Query('status') status?: string, @Query('page') page = 1, @Query('limit') limit = 20) {
-    const skip = (Number(page) - 1) * Number(limit);
+    const take = this.clampLimit(limit);
+    const skip = (Number(page) - 1) * take;
     const where: any = status ? { status } : {};
     const [total, data] = await Promise.all([
       this.prisma.order.count({ where }),
@@ -195,12 +197,12 @@ export class AdminController {
           user: { select: { phone: true } },
           merchant: { select: { name: true } },
         },
-        skip, take: Number(limit), orderBy: { createdAt: 'desc' },
+        skip, take, orderBy: { createdAt: 'desc' },
       }),
     ]);
     return {
       data: data.map((o) => ({ ...o, totalAmount: o.totalAmount.toString() })),
-      meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
+      meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) },
     };
   }
 
@@ -307,7 +309,8 @@ export class AdminController {
   @Get('redemption/logs')
   @ApiOperation({ summary: 'List all redemption logs (admin, all merchants)' })
   async listRedemptionLogs(@Query('page') page = 1, @Query('limit') limit = 20) {
-    const skip = (Number(page) - 1) * Number(limit);
+    const take = this.clampLimit(limit);
+    const skip = (Number(page) - 1) * take;
     const [total, data] = await Promise.all([
       this.prisma.redemptionLog.count(),
       this.prisma.redemptionLog.findMany({
@@ -315,10 +318,10 @@ export class AdminController {
           orderItem: { select: { productName: true, variantName: true, redemptionCode: true } },
           merchant: { select: { name: true } },
         },
-        skip, take: Number(limit), orderBy: { redeemedAt: 'desc' },
+        skip, take, orderBy: { redeemedAt: 'desc' },
       }),
     ]);
-    return { data, meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) } };
+    return { data, meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) } };
   }
 
   @Get('redemption/logs/export')
