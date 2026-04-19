@@ -32,9 +32,15 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const { customAlphabet } = require('nanoid');
 
-const TARGET_PHONE = process.env.ADMIN_PHONE || '13266893239';
-const TARGET_PASSWORD = process.env.ADMIN_PASSWORD || 'coin@Health.12345';
+const TARGET_PHONE = process.env.ADMIN_PHONE;
+const TARGET_PASSWORD = process.env.ADMIN_PASSWORD;
 const TARGET_NICKNAME = process.env.ADMIN_NICKNAME || 'Administrator';
+
+if (!TARGET_PHONE || !TARGET_PASSWORD) {
+  console.error('❌ ADMIN_PHONE and ADMIN_PASSWORD environment variables are required');
+  console.error('Example: set ADMIN_PHONE=13800138000 && set ADMIN_PASSWORD=YourSecurePassword123 && node scripts/setup-admin.js');
+  process.exit(1);
+}
 
 async function main() {
   console.log('');
@@ -53,7 +59,7 @@ async function main() {
     });
 
     // Hash password
-    const passwordHash = await bcrypt.hash(TARGET_PASSWORD, 10);
+    const passwordHash = await bcrypt.hash(TARGET_PASSWORD, 12);
 
     if (user) {
       console.log('👤 User already exists. Updating password and role...');

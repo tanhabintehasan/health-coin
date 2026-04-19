@@ -24,7 +24,8 @@ export class WalletsService {
 
   async getTransactions(userId: string, query: WalletQueryDto) {
     const { type, page = 1, limit = 20 } = query;
-    const skip = (page - 1) * limit;
+    const take = Math.min(Math.max(Number(limit), 1), 100);
+    const skip = (page - 1) * take;
     const where = { userId, ...(type && { walletType: type }) };
 
     const [total, transactions] = await Promise.all([

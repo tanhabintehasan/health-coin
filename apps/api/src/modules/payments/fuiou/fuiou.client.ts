@@ -46,8 +46,8 @@ export class FuiouClient {
 
     const sign = buildFuiouSign(reqParams, this.apiKey);
 
-    // In dev mode — simulate payment params
-    if (this.config.get('NODE_ENV') !== 'production') {
+    // In dev mode — simulate payment params (only when explicitly enabled)
+    if (this.config.get('FUIOU_MOCK_PAYMENTS') === 'true') {
       this.logger.log(`[DEV PAYMENT] Order ${params.orderNo}, Amount: ${amountYuan} CNY`);
       return {
         tradeNo,

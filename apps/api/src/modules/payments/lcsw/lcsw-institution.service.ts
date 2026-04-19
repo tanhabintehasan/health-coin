@@ -148,7 +148,7 @@ export class LcswInstitutionService {
 
   async listMerchantAccounts(params: { page?: number; limit?: number; status?: string }) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 20;
+    const limit = Math.min(Math.max(Number(params.limit ?? 20), 1), 100);
     const skip = (page - 1) * limit;
 
     const where: any = {};

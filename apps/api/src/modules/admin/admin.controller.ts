@@ -24,6 +24,10 @@ export class AdminController {
     private readonly lcswInstitution: LcswInstitutionService,
   ) {}
 
+  private clampLimit(limit: number) {
+    return Math.min(Math.max(Number(limit), 1), 100);
+  }
+
   // ── Users ──────────────────────────────────────────────────────────────────
 
   @Get('users')
@@ -52,7 +56,7 @@ export class AdminController {
           region: { select: { name: true } },
         },
         skip,
-        take: Number(limit),
+        take: this.clampLimit(limit),
         orderBy: { createdAt: 'desc' },
       }),
     ]);
@@ -465,7 +469,7 @@ export class AdminController {
         where,
         include: { order: { select: { orderNo: true, merchant: { select: { name: true } } } } },
         skip,
-        take: Number(limit),
+        take: this.clampLimit(limit),
         orderBy: { createdAt: 'desc' },
       }),
     ]);

@@ -87,27 +87,45 @@ export class SettingsController {
   @Post('contact')
   @ApiOperation({ summary: 'Submit a contact form' })
   async submitContact(@Body() body: { name: string; email: string; phone?: string; message: string }) {
-    if (!body.name || !body.email || !body.message) {
+    const { name, email, phone, message } = body;
+    if (!name || !email || !message) {
       throw new BadRequestException('Name, email and message are required');
     }
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof message !== 'string') {
+      throw new BadRequestException('Invalid field types');
+    }
+    if (phone && typeof phone !== 'string') {
+      throw new BadRequestException('Invalid phone type');
+    }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
-      throw new BadRequestException('Invalid email address');
+    if (!emailRegex.test(email) || email.length > 100 || name.length > 100 || message.length > 5000) {
+      throw new BadRequestException('Invalid email or field too long');
     }
     const submission = {
       id: crypto.randomUUID(),
-      ...body,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : undefined,
+      message: message.trim(),
       createdAt: new Date().toISOString(),
     };
     const filePath = path.join(process.cwd(), 'data', 'contact-submissions.json');
     try {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      const existing = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
+      let existing: any[] = [];
+      if (fs.existsSync(filePath)) {
+        try {
+          existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (!Array.isArray(existing)) existing = [];
+        } catch {
+          existing = [];
+        }
+      }
       existing.push(submission);
       fs.writeFileSync(filePath, JSON.stringify(existing, null, 2));
     } catch (err) {
-      // If file write fails, still return success to the user but log the error
       console.error('Failed to save contact submission', err);
+      throw new BadRequestException('Unable to process submission at this time');
     }
     return { success: true, message: 'Thank you for contacting us. We will get back to you soon.' };
   }

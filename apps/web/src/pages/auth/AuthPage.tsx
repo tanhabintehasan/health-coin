@@ -60,7 +60,7 @@ export default function AuthPage() {
         })
         .then((role) => {
           if (window.opener) {
-            window.opener.postMessage({ type: 'wechat_login_success' }, '*')
+            window.opener.postMessage({ type: 'wechat_login_success' }, window.location.origin)
             window.close()
           } else {
             doRedirect(role ?? 'user')

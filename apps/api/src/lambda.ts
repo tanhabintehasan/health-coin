@@ -43,7 +43,7 @@ export async function bootstrap(): Promise<express.Express> {
 
   const rawOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
+    : [];
   const allowAll = rawOrigins.includes('*');
 
   app.enableCors({

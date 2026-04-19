@@ -14,6 +14,10 @@ export class MerchantsController {
     private readonly prisma: PrismaService,
   ) {}
 
+  private clampLimit(limit: number) {
+    return Math.min(Math.max(Number(limit), 1), 100);
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -84,7 +88,7 @@ export class MerchantsController {
           region: { select: { name: true } },
         },
         skip,
-        take: Number(limit),
+        take: this.clampLimit(limit),
         orderBy: { createdAt: 'desc' },
       }),
     ]);

@@ -1,4 +1,5 @@
 import { Controller, Post, Param, Body, UseGuards, HttpCode, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { PaymentsService } from './payments.service';
@@ -37,6 +38,7 @@ export class PaymentsController {
 
   @Post('/webhooks/fuiou/payment')
   @HttpCode(200)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Fuiou payment callback webhook (server-to-server)' })
   async fuiouWebhook(@Body() body: Record<string, string>, @Res() res: Response) {
     const result = await this.paymentsService.handleFuiouWebhook(body);
@@ -45,6 +47,7 @@ export class PaymentsController {
 
   @Post('/webhooks/lcsw/payment')
   @HttpCode(200)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'LCSW payment callback webhook (server-to-server)' })
   async lcswWebhook(@Body() body: Record<string, any>, @Res() res: Response) {
     const result = await this.paymentsService.handleLcswWebhook(body);

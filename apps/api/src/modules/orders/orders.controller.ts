@@ -56,7 +56,7 @@ export class OrdersController {
     @Query('limit') limit = 10,
   ) {
     const merchant = await this.merchantsService.assertApprovedMerchant(user.id);
-    return this.ordersService.getMerchantOrders(merchant.id, status, +page, +limit);
+    return this.ordersService.getMerchantOrders(merchant.id, status, +page, Math.min(Math.max(Number(limit), 1), 100));
   }
 
   @Patch('merchant/:id/status')

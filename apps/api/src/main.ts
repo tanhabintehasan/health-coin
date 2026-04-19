@@ -39,8 +39,12 @@ async function bootstrap() {
 
   const rawOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3002'];
+    : [];
   const allowAll = rawOrigins.includes('*');
+
+  if (!rawOrigins.length && process.env.NODE_ENV === 'production') {
+    console.warn('WARNING: CORS_ORIGINS is not set. No cross-origin requests will be allowed.');
+  }
 
   app.enableCors({
     origin: allowAll ? true : rawOrigins,

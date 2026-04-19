@@ -49,7 +49,7 @@ export class PaymentsService {
       lcswMerchantNo: map.lcsw_merchant_no || '',
       lcswTerminalId: map.lcsw_terminal_id || '',
       lcswAccessToken: map.lcsw_access_token || '',
-      lcswBaseUrl: map.lcsw_base_url || 'http://test.lcsw.cn:8010/lcsw',
+      lcswBaseUrl: map.lcsw_base_url || '',
       platformCommissionRate: parseFloat(map.platform_commission_rate ?? '0.05'),
     };
   }
@@ -310,14 +310,12 @@ export class PaymentsService {
       include: { merchant: { include: { lcswAccount: true } } },
     });
 
-    let accessToken = '';
-    if (order?.merchant?.lcswAccount) {
-      accessToken = this.encryption.decrypt(order.merchant.lcswAccount.lcswAccessToken);
-    } else {
-      // Fallback to legacy global token
-      const settings = await this.getPaymentSettings();
-      accessToken = settings.lcswAccessToken;
+    if (!order?.merchant?.lcswAccount) {
+      this.logger.warn('LCSW webhook: order has no merchant LCSW account');
+      return { return_code: '02', return_msg: 'Config missing' };
     }
+
+    const accessToken = this.encryption.decrypt(order.merchant.lcswAccount.lcswAccessToken);
 
     if (!accessToken) {
       this.logger.warn('LCSW webhook missing access token config');

@@ -13,6 +13,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class WithdrawalsController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
 
+  private clampLimit(limit: number) {
+    return Math.min(Math.max(Number(limit), 1), 100);
+  }
+
   // ── User endpoints ─────────────────────────────────────────────────────────
 
   @Post()
@@ -28,7 +32,7 @@ export class WithdrawalsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.withdrawalsService.getMyWithdrawals(user.id, +page, +limit);
+    return this.withdrawalsService.getMyWithdrawals(user.id, +page, this.clampLimit(limit));
   }
 
   // ── Admin endpoints ────────────────────────────────────────────────────────
@@ -37,7 +41,7 @@ export class WithdrawalsController {
   @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Admin: list pending withdrawal requests' })
   listPending(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.withdrawalsService.listPending(+page, +limit);
+    return this.withdrawalsService.listPending(+page, this.clampLimit(limit));
   }
 
   @Patch('admin/:id/review')

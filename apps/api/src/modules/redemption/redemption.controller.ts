@@ -42,7 +42,7 @@ export class RedemptionController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.redemptionService.getRedemptionLogs(user.id, +page, +limit);
+    return this.redemptionService.getRedemptionLogs(user.id, +page, Math.min(Math.max(Number(limit), 1), 100));
   }
 
   @Get('logs/export')
