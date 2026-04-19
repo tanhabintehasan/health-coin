@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card, Row, Col, Typography, Form, Input, Button, message } from 'antd'
 import { PhoneOutlined, MailOutlined, EnvironmentOutlined, WechatOutlined } from '@ant-design/icons'
 import { useResponsive } from '../../hooks/useResponsive'
+import { api } from '../../services/api'
 
 const { Title, Text } = Typography
 
@@ -10,13 +11,17 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false)
   const { isMobile } = useResponsive()
 
-  const onFinish = (_values: any) => {
+  const onFinish = async (values: any) => {
     setSubmitting(true)
-    setTimeout(() => {
+    try {
+      await api.submitContact(values)
       message.success('提交成功，我们的客服会尽快与您联系！')
       form.resetFields()
+    } catch (err: any) {
+      message.error(err?.message || '提交失败，请稍后重试')
+    } finally {
       setSubmitting(false)
-    }, 800)
+    }
   }
 
   return (

@@ -258,7 +258,11 @@ export class PaymentsService {
   }
 
   async handleFuiouWebhook(body: Record<string, string>): Promise<string> {
-    const apiKey = this.config.get('FUIOU_API_KEY', 'DEMO_KEY');
+    const apiKey = this.config.get('FUIOU_API_KEY');
+    if (!apiKey) {
+      this.logger.error('FUIOU_API_KEY is not configured');
+      return 'FAIL';
+    }
 
     if (!verifyFuiouSign(body, apiKey)) {
       this.logger.warn('Fuiou webhook signature verification failed');

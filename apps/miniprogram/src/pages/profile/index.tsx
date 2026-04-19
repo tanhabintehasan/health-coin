@@ -21,7 +21,9 @@ export default function ProfilePage() {
     try {
       const res = await api.getMyMembership()
       setMembership(res)
-    } catch {}
+    } catch (err: any) {
+      console.error('Failed to fetch membership', err)
+    }
   }
 
   useDidShow(() => { fetchMembership() })
@@ -47,13 +49,22 @@ export default function ProfilePage() {
       {/* Profile header */}
       <View style={{ background: `linear-gradient(135deg, ${tierColor}, #1677ff)`, padding: '32px 20px 24px' }}>
         <View style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <View style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: '28px' }}>👤</Text>
+          <View style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {user?.avatarUrl ? (
+              <Image src={user.avatarUrl} style={{ width: '100%', height: '100%' }} mode='aspectFill' />
+            ) : (
+              <Text style={{ fontSize: '28px' }}>👤</Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff', display: 'block' }}>
-              {user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : 'User'}
+              {user?.nickname || user?.name || (user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : 'User')}
             </Text>
+            {user?.email && (
+              <Text style={{ fontSize: '12px', color: 'rgba(255,255,255,.8)', display: 'block', marginTop: '2px' }}>
+                {user.email}
+              </Text>
+            )}
             {tier && (
               <View style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,.2)', borderRadius: '12px', padding: '2px 10px', marginTop: '4px' }}>
                 <Text style={{ fontSize: '12px', color: '#fff', fontWeight: '500' }}>{tier.name}</Text>
@@ -96,6 +107,7 @@ export default function ProfilePage() {
           { label: 'My Wallet', iconBg: '#f6ffed', iconColor: '#52c41a', iconChar: '\u{1F4B0}', path: '/pages/wallet/index' },
           { label: 'Referral', iconBg: '#f9f0ff', iconColor: '#722ed1', iconChar: '\u{1F465}', path: '/pages/referral/index' },
           { label: 'Health Records', iconBg: '#fff7e6', iconColor: '#fa8c16', iconChar: '\u{1F3E5}', path: '/pages/health/index' },
+          { label: 'Visit Website', iconBg: '#e6fffb', iconColor: '#13c2c2', iconChar: '\u{1F310}', path: '/pages/website/index' },
         ].map((item, idx, arr) => (
           <View
             key={item.label}
@@ -125,7 +137,7 @@ export default function ProfilePage() {
           <Text style={{ fontSize: '12px', color: '#999', fontWeight: '500', letterSpacing: '0.5px' }}>SETTINGS</Text>
         </View>
         <View
-          onClick={() => Taro.navigateTo({ url: '/pages/profile/info' })}
+          onClick={() => Taro.navigateTo({ url: '/pages/profile/info/index' })}
           style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
         >
           <View style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

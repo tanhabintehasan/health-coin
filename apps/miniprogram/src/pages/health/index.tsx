@@ -23,7 +23,9 @@ export default function HealthRecordsPage() {
     try {
       const data: any = await api.listHealthRecords()
       setRecords(data ?? [])
-    } catch {} finally { setLoading(false) }
+    } catch (err: any) {
+      Taro.showToast({ title: err || 'Failed to load records', icon: 'error' })
+    } finally { setLoading(false) }
   }
 
   useDidShow(() => { fetchRecords() })
@@ -37,13 +39,16 @@ export default function HealthRecordsPage() {
       })
 
       const filePath = res.tempFilePaths[0]
+      if (!filePath) return
       const fileName = filePath.split('/').pop() || `record-${Date.now()}.jpg`
 
       setUploading(true)
-      // Store the local temp path as the URL — in production, upload to OSS first
-      // and use the returned OSS URL here instead
+      const uploadRes = await api.uploadFile(filePath)
+      const ossUrl = uploadRes.url
+      if (!ossUrl) throw new Error('Upload did not return a URL')
+
       await api.saveHealthRecord({
-        fileUrl: filePath,
+        fileUrl: ossUrl,
         fileType: 'image',
         fileName,
       })
@@ -63,8 +68,8 @@ export default function HealthRecordsPage() {
       await api.deleteHealthRecord(id)
       Taro.showToast({ title: 'Deleted', icon: 'success' })
       fetchRecords()
-    } catch {
-      Taro.showToast({ title: 'Delete failed', icon: 'error' })
+    } catch (err: any) {
+      Taro.showToast({ title: err || 'Delete failed', icon: 'error' })
     }
   }
 

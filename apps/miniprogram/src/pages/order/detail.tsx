@@ -58,7 +58,8 @@ export default function OrderDetailPage() {
       const balMap: Record<string, number> = {}
       for (const w of walletsRes ?? []) balMap[w.walletType] = Number(w.balance)
       setWallets(balMap)
-    } catch {
+    } catch (err: any) {
+      Taro.showToast({ title: err || 'Failed to load order', icon: 'error' })
       Taro.navigateBack()
     } finally { setLoading(false) }
   }
@@ -91,13 +92,16 @@ export default function OrderDetailPage() {
         const res = await api.payLcswMini(id!, openId)
         const pp = res.payParams
         if (pp && pp.return_code === '01' && pp.result_code === '01') {
+          if (!pp.timeStamp || !pp.nonceStr || !pp.package || !pp.signType || !pp.paySign) {
+            throw new Error('Missing payment parameters from server')
+          }
           Taro.requestPayment({
             provider: 'wxpay',
-            timeStamp: pp.timeStamp || String(Math.floor(Date.now() / 1000)),
-            nonceStr: pp.nonceStr || pp.nonce_str,
-            package: pp.package || pp.package_str,
-            signType: pp.signType || 'RSA',
-            paySign: pp.paySign || pp.pay_sign,
+            timeStamp: pp.timeStamp,
+            nonceStr: pp.nonceStr,
+            package: pp.package,
+            signType: pp.signType,
+            paySign: pp.paySign,
             success: () => {
               Taro.showToast({ title: 'Payment successful', icon: 'success' })
               fetchOrder()
@@ -117,7 +121,7 @@ export default function OrderDetailPage() {
       const walletType = payMethod === 'FUIOU' ? undefined : payMethod
       const res = await api.payOrder(id!, walletType)
       if (res.payUrl) {
-        Taro.showModal({ title: 'Payment', content: 'Redirecting to payment...', showCancel: false })
+        Taro.navigateTo({ url: `/pages/payment/web?url=${encodeURIComponent(res.payUrl)}` })
       } else {
         Taro.showToast({ title: 'Payment successful', icon: 'success' })
         fetchOrder()

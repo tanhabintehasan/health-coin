@@ -8,8 +8,11 @@ export default defineAppConfig({
     'pages/order/detail',
     'pages/wallet/index',
     'pages/profile/index',
+    'pages/profile/info/index',
     'pages/referral/index',
     'pages/health/index',
+    'pages/payment/web',
+    'pages/website/index',
   ],
   tabBar: {
     color: '#999',

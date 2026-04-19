@@ -49,7 +49,14 @@ export default function OrderPage() {
   const [placing, setPlacing] = useState(false)
   const [walletBalances, setWalletBalances] = useState<Record<string, number>>({})
 
-  const checkoutItems = itemsParam ? JSON.parse(decodeURIComponent(itemsParam)) : []
+  let checkoutItems: any[] = []
+  try {
+    if (itemsParam) {
+      checkoutItems = JSON.parse(decodeURIComponent(itemsParam))
+    }
+  } catch {
+    Taro.showToast({ title: 'Invalid checkout data', icon: 'error' })
+  }
   const total = checkoutItems.reduce((sum: number, i: any) => sum + Number(i.subtotal), 0)
 
   const fetchWalletBalances = async () => {

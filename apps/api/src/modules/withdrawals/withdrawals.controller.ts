@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WithdrawalsService } from './withdrawals.service';
 import { CreateWithdrawalDto, ReviewWithdrawalDto } from './dto/withdrawal.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Withdrawals')
@@ -33,12 +34,14 @@ export class WithdrawalsController {
   // ── Admin endpoints ────────────────────────────────────────────────────────
 
   @Get('admin/pending')
+  @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Admin: list pending withdrawal requests' })
   listPending(@Query('page') page = 1, @Query('limit') limit = 20) {
     return this.withdrawalsService.listPending(+page, +limit);
   }
 
   @Patch('admin/:id/review')
+  @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Admin: approve or reject a withdrawal' })
   review(
     @CurrentUser() user: { id: string },
@@ -49,12 +52,14 @@ export class WithdrawalsController {
   }
 
   @Patch('admin/:id/complete')
+  @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Admin: mark withdrawal as completed after payout' })
   markCompleted(@Param('id') id: string, @Body('fuiouBatchNo') fuiouBatchNo?: string) {
     return this.withdrawalsService.markCompleted(id, fuiouBatchNo);
   }
 
   @Get('admin/finance-summary')
+  @UseGuards(AdminGuard)
   @ApiOperation({ summary: 'Admin: platform finance summary dashboard' })
   getFinanceSummary() {
     return this.withdrawalsService.getFinanceSummary();

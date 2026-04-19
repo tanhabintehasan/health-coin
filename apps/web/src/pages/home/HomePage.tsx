@@ -55,7 +55,7 @@ export default function HomePage() {
       {/* Footer hint */}
       <div style={{ textAlign: 'center', padding: '40px 24px', background: '#f5f5f5' }}>
         <Space direction="vertical" size={8}>
-          <Text type="secondary">Demo logins available on the login page for staging.</Text>
+          <Text type="secondary">Welcome to HealthCoin — your health, your coins.</Text>
           <MedicineBoxOutlined style={{ fontSize: 24, color: '#bbb' }} />
         </Space>
       </div>

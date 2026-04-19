@@ -10,6 +10,7 @@ export default function AuthPage() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [wxLoading, setWxLoading] = useState(false)
   const setAuth = useUserStore((s) => s.setAuth)
 
   // Capture referral code from launch params
@@ -50,11 +51,59 @@ export default function AuthPage() {
     } finally { setLoading(false) }
   }
 
+  const handleWxLogin = async () => {
+    setWxLoading(true)
+    try {
+      const loginRes: any = await new Promise((resolve) => {
+        Taro.login({ success: resolve, fail: () => resolve(null) })
+      })
+      if (!loginRes?.code) {
+        throw new Error('WeChat login failed')
+      }
+      const res = await api.wxLogin(loginRes.code, undefined, referralCode || undefined)
+      if (res.isNewUser) {
+        // Show phone binding step
+        Taro.showModal({
+          title: 'Bind Phone',
+          content: 'Please bind your phone number to complete registration.',
+          showCancel: false,
+          success: () => {
+            setStep('phone')
+          },
+        })
+      } else if (res.accessToken) {
+        setAuth(res.user, res.accessToken)
+        Taro.setStorageSync('openId', res.openId)
+        Taro.switchTab({ url: '/pages/home/index' })
+      }
+    } catch (err: any) {
+      Taro.showToast({ title: err || 'WeChat login failed', icon: 'error' })
+    } finally {
+      setWxLoading(false)
+    }
+  }
+
   return (
     <View style={{ padding: '40px 24px', minHeight: '100vh', background: '#f5f5f5' }}>
       <View style={{ textAlign: 'center', marginBottom: '40px' }}>
         <Text style={{ fontSize: '28px', fontWeight: 'bold', color: '#1677ff' }}>HealthCoin</Text>
         <View><Text style={{ color: '#999', fontSize: '14px' }}>Health & Wellness Platform</Text></View>
+      </View>
+
+      {/* WeChat Quick Login */}
+      <Button
+        onClick={handleWxLogin}
+        loading={wxLoading}
+        style={{
+          background: '#07c160', color: '#fff', borderRadius: '8px', width: '100%',
+          marginBottom: '20px', fontSize: '15px', fontWeight: '500',
+        }}
+      >
+        WeChat Quick Login
+      </Button>
+
+      <View style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <Text style={{ color: '#bbb', fontSize: '13px' }}>— or login with phone —</Text>
       </View>
 
       <View style={{ background: '#fff', borderRadius: '12px', padding: '24px' }}>

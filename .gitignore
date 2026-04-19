@@ -17,4 +17,5 @@ apps/*/build
 packages/*/dist
 .DS_Store
 Thumbs.db
+.swc/
 *.zip

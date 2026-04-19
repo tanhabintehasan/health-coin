@@ -1,42 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Card, Button, Input, Steps, Form, Typography, Divider, message, Row, Col
+  Card, Button, Input, Steps, Form, Typography, message, Tabs, Modal
 } from 'antd'
-import { SafetyOutlined, ShopOutlined, UserOutlined, ShoppingOutlined, FileTextOutlined } from '@ant-design/icons'
+import { LockOutlined, WechatOutlined, UserOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../store/auth.store'
 
 const { Title, Text } = Typography
-
-// TEMPORARY DEMO USERS — used only for client review.
-// Controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review.
-const DEMO_USERS: Record<'admin' | 'merchant' | 'user', any> = {
-  admin: {
-    id: 'demo-admin',
-    phone: '13800000001',
-    nickname: 'Demo Admin',
-    membershipLevel: 1,
-    referralCode: 'ADMIN000',
-    isNewUser: false,
-  },
-  merchant: {
-    id: 'demo-merchant',
-    phone: '13800000002',
-    nickname: 'Demo Merchant',
-    membershipLevel: 2,
-    referralCode: 'MERCH000',
-    isNewUser: false,
-  },
-  user: {
-    id: 'demo-user',
-    phone: '13800000004',
-    nickname: 'Demo User',
-    membershipLevel: 1,
-    referralCode: 'USER0000',
-    isNewUser: false,
-  },
-}
 
 export default function AuthPage() {
   const navigate = useNavigate()
@@ -44,19 +15,74 @@ export default function AuthPage() {
   const from = searchParams.get('from') || ''
   const { setAuth, detectRole } = useAuthStore()
 
+  const [activeTab, setActiveTab] = useState<'otp' | 'password'>('otp')
   const [step, setStep] = useState(0)
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
+  const [password, setPassword] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [sendingOtp, setSendingOtp] = useState(false)
   const [referralCode, setReferralCode] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+
+  const [setPasswordModalVisible, setSetPasswordModalVisible] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [setPasswordModalLoading, setSetPasswordModalLoading] = useState(false)
+  const [pendingRole, setPendingRole] = useState<string | null>(null)
 
   useEffect(() => {
     if (countdown <= 0) return
     const t = setInterval(() => setCountdown((c) => c - 1), 1000)
     return () => clearInterval(t)
   }, [countdown])
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'wechat_login_success') {
+        window.location.reload()
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [])
+
+  useEffect(() => {
+    const code = searchParams.get('wechat_code') || searchParams.get('code')
+    if (code) {
+      setLoading(true)
+      api.wechatCallback(code)
+        .then((res: any) => {
+          if (!res?.accessToken) throw new Error('登录失败')
+          setAuth(res.user, res.accessToken)
+          return detectRole()
+        })
+        .then((role) => {
+          if (window.opener) {
+            window.opener.postMessage({ type: 'wechat_login_success' }, '*')
+            window.close()
+          } else {
+            doRedirect(role ?? 'user')
+          }
+        })
+        .catch((e: any) => {
+          message.error(typeof e === 'string' ? e : '微信登录失败')
+        })
+        .finally(() => setLoading(false))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const doRedirect = (role: 'admin' | 'merchant' | 'user') => {
+    if (from && from.startsWith('/')) {
+      navigate(from, { replace: true })
+      return
+    }
+    if (role === 'admin') navigate('/portal/admin/dashboard', { replace: true })
+    else if (role === 'merchant') navigate('/portal/merchant/dashboard', { replace: true })
+    else navigate('/portal/user/home', { replace: true })
+  }
 
   const sendOtp = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
@@ -80,16 +106,6 @@ export default function AuthPage() {
     }
   }
 
-  const doRedirect = (role: 'admin' | 'merchant' | 'user') => {
-    if (from && from.startsWith('/')) {
-      navigate(from, { replace: true })
-      return
-    }
-    if (role === 'admin') navigate('/portal/admin/dashboard', { replace: true })
-    else if (role === 'merchant') navigate('/portal/merchant/dashboard', { replace: true })
-    else navigate('/portal/user/home', { replace: true })
-  }
-
   const verifyAndLogin = async () => {
     if (!/^\d{6}$/.test(otp)) {
       message.error('请输入6位验证码')
@@ -101,7 +117,12 @@ export default function AuthPage() {
       if (!res?.accessToken) throw new Error('登录失败')
       setAuth(res.user, res.accessToken)
       const role = await detectRole()
-      doRedirect(role ?? 'user')
+      if (res.user?.hasPassword === false) {
+        setPendingRole(role ?? 'user')
+        setSetPasswordModalVisible(true)
+      } else {
+        doRedirect(role ?? 'user')
+      }
     } catch (e: any) {
       message.error(typeof e === 'string' ? e : '登录失败')
     } finally {
@@ -109,32 +130,63 @@ export default function AuthPage() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // TEMPORARY DEMO ACCESS — frontend-only, bypasses OTP/Redis/SMS/backend auth.
-  // Controlled by VITE_DEMO_LOGIN_ENABLED env var.
-  // Sets a demo token and user so ProtectedRoute/RoleRoute behave normally.
-  // Safe to remove after client review is complete.
-  // ---------------------------------------------------------------------------
-  const enterDemo = async (role: 'admin' | 'merchant' | 'user') => {
-    // Try real backend demo login first.
-    // If backend fails (e.g. demo disabled, validation error, unreachable),
-    // show the actual reason and fall back to frontend-only mock mode.
-    try {
-      const res: any = await api.demoLogin(role)
-      if (res?.accessToken) {
-        setAuth(res.user, res.accessToken, role)
-        doRedirect(role)
-        return
-      }
-    } catch (e: any) {
-      const reason = typeof e === 'string' ? e : '演示登录失败'
-      message.error(`${reason}，已切换为离线演示模式`)
+  const handlePasswordLogin = async () => {
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      message.error('请输入有效的手机号')
+      return
     }
-    setAuth(DEMO_USERS[role], 'demo_token', role)
-    doRedirect(role)
+    if (!password) {
+      message.error('请输入密码')
+      return
+    }
+    setPasswordLoading(true)
+    try {
+      const res: any = await api.loginWithPassword(phone, password)
+      if (!res?.accessToken) throw new Error('登录失败')
+      setAuth(res.user, res.accessToken)
+      const role = await detectRole()
+      doRedirect(role ?? 'user')
+    } catch (e: any) {
+      message.error(typeof e === 'string' ? e : '登录失败')
+    } finally {
+      setPasswordLoading(false)
+    }
   }
 
-  const demoEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED === 'true'
+  const handleSetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      message.error('密码长度不能少于6位')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      message.error('两次输入的密码不一致')
+      return
+    }
+    setSetPasswordModalLoading(true)
+    try {
+      await api.setPassword(newPassword)
+      message.success('密码设置成功')
+      setSetPasswordModalVisible(false)
+      setNewPassword('')
+      setConfirmPassword('')
+      doRedirect(pendingRole as any ?? 'user')
+    } catch (e: any) {
+      message.error(typeof e === 'string' ? e : '设置密码失败')
+    } finally {
+      setSetPasswordModalLoading(false)
+    }
+  }
+
+  const handleWechatLogin = () => {
+    const appid = import.meta.env.VITE_WECHAT_APPID
+    if (!appid) {
+      message.error('WeChat login requires WECHAT_APPID configuration')
+      return
+    }
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth')
+    const url = `https://open.weixin.qq.com/connect/qrconnect?appid=${appid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login#wechat_redirect`
+    window.open(url, 'wechatLogin', 'width=600,height=600,left=200,top=200')
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1677ff 0%,#0958d9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -144,74 +196,96 @@ export default function AuthPage() {
           <Text type="secondary">健康币平台 · 登录 / 注册</Text>
         </div>
 
-        <Steps current={step} items={[{ title: '手机号' }, { title: '验证码' }]} style={{ marginBottom: 24 }} />
+        <Tabs
+          activeKey={activeTab}
+          onChange={(k) => setActiveTab(k as 'otp' | 'password')}
+          centered
+          items={[
+            {
+              key: 'otp',
+              label: '验证码登录',
+              children: (
+                <>
+                  <Steps current={step} items={[{ title: '手机号' }, { title: '验证码' }]} style={{ marginBottom: 24 }} />
 
-        {step === 0 && (
+                  {step === 0 && (
+                    <Form layout="vertical">
+                      <Form.Item label="手机号">
+                        <Input placeholder="请输入手机号" size="large" maxLength={11} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                      </Form.Item>
+                      <Button type="primary" size="large" block loading={sendingOtp} onClick={sendOtp}>获取验证码</Button>
+                    </Form>
+                  )}
+
+                  {step === 1 && (
+                    <Form layout="vertical">
+                      <Form.Item label="验证码">
+                        <Input placeholder="请输入6位验证码" size="large" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} />
+                      </Form.Item>
+                      <div style={{ marginBottom: 16 }}>
+                        {countdown > 0 ? (
+                          <Text type="secondary">{countdown} 秒后重新发送</Text>
+                        ) : (
+                          <Button type="link" onClick={sendOtp} style={{ padding: 0 }}>重新发送</Button>
+                        )}
+                      </div>
+                      <Form.Item label="邀请码（选填）">
+                        <Input placeholder="如有邀请码，请输入" size="large" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+                      </Form.Item>
+                      <Button type="primary" size="large" block loading={loading} onClick={verifyAndLogin}>登录 / 注册</Button>
+                      <Button style={{ marginTop: 8 }} size="large" block onClick={() => setStep(0)}>返回</Button>
+                    </Form>
+                  )}
+                </>
+              ),
+            },
+            {
+              key: 'password',
+              label: '密码登录',
+              children: (
+                <Form layout="vertical">
+                  <Form.Item label="手机号">
+                    <Input placeholder="请输入手机号" size="large" maxLength={11} value={phone} onChange={(e) => setPhone(e.target.value)} prefix={<UserOutlined />} />
+                  </Form.Item>
+                  <Form.Item label="密码">
+                    <Input.Password placeholder="请输入密码" size="large" value={password} onChange={(e) => setPassword(e.target.value)} prefix={<LockOutlined />} />
+                  </Form.Item>
+                  <Button type="primary" size="large" block loading={passwordLoading} onClick={handlePasswordLogin}>登录</Button>
+                </Form>
+              ),
+            },
+          ]}
+        />
+
+        <div style={{ marginTop: 16 }}>
+          <Button
+            block
+            size="large"
+            style={{ background: '#07c160', color: '#fff', borderColor: '#07c160' }}
+            icon={<WechatOutlined />}
+            onClick={handleWechatLogin}
+          >
+            微信登录
+          </Button>
+        </div>
+
+        <Modal
+          title="设置登录密码"
+          open={setPasswordModalVisible}
+          onCancel={() => setSetPasswordModalVisible(false)}
+          onOk={handleSetPassword}
+          confirmLoading={setPasswordModalLoading}
+          maskClosable={false}
+        >
           <Form layout="vertical">
-            <Form.Item label="手机号">
-              <Input placeholder="请输入手机号" size="large" maxLength={11} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Form.Item label="密码" required>
+              <Input.Password placeholder="请输入密码" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </Form.Item>
-            <Button type="primary" size="large" block loading={sendingOtp} onClick={sendOtp}>获取验证码</Button>
+            <Form.Item label="确认密码" required>
+              <Input.Password placeholder="请再次输入密码" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            </Form.Item>
           </Form>
-        )}
-
-        {step === 1 && (
-          <Form layout="vertical">
-            <Form.Item label="验证码">
-              <Input placeholder="请输入6位验证码" size="large" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} />
-            </Form.Item>
-            <div style={{ marginBottom: 16 }}>
-              {countdown > 0 ? (
-                <Text type="secondary">{countdown} 秒后重新发送</Text>
-              ) : (
-                <Button type="link" onClick={sendOtp} style={{ padding: 0 }}>重新发送</Button>
-              )}
-            </div>
-            <Form.Item label="邀请码（选填）">
-              <Input placeholder="如有邀请码，请输入" size="large" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
-            </Form.Item>
-            <Button type="primary" size="large" block loading={loading} onClick={verifyAndLogin}>登录 / 注册</Button>
-            <Button style={{ marginTop: 8 }} size="large" block onClick={() => setStep(0)}>返回</Button>
-          </Form>
-        )}
-
-        {/* TEMPORARY DEMO ACCESS UI — controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review. */}
-        {demoEnabled && (
-          <>
-            <Divider style={{ marginTop: 24 }}>快速演示入口</Divider>
-            <Row gutter={[12, 12]}>
-              <Col xs={24} sm={12}>
-                <Card hoverable size="small" onClick={() => enterDemo('admin')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
-                  <SafetyOutlined style={{ fontSize: 28, color: '#722ed1', marginBottom: 8 }} />
-                  <div style={{ fontWeight: 500 }}>管理员后台</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>数据概览 · 审核管理</div>
-                </Card>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Card hoverable size="small" onClick={() => enterDemo('merchant')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
-                  <ShopOutlined style={{ fontSize: 28, color: '#52c41a', marginBottom: 8 }} />
-                  <div style={{ fontWeight: 500 }}>商户工作台</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>商品订单 · 核销结算</div>
-                </Card>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Card hoverable size="small" onClick={() => enterDemo('user')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
-                  <UserOutlined style={{ fontSize: 28, color: '#1677ff', marginBottom: 8 }} />
-                  <div style={{ fontWeight: 500 }}>会员首页</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>购物下单 · 钱包健康</div>
-                </Card>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Card hoverable size="small" onClick={() => navigate('/shop')} bodyStyle={{ textAlign: 'center', padding: '16px 8px' }}>
-                  <ShoppingOutlined style={{ fontSize: 28, color: '#fa8c16', marginBottom: 8 }} />
-                  <div style={{ fontWeight: 500 }}>积分商城</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>浏览商品 · 分类筛选</div>
-                </Card>
-              </Col>
-            </Row>
-            <Button block style={{ marginTop: 12 }} icon={<FileTextOutlined />} onClick={() => navigate('/merchant-join')}>预览商户入驻页</Button>
-          </>
-        )}
+        </Modal>
       </Card>
     </div>
   )

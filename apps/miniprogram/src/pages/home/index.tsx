@@ -14,15 +14,17 @@ export default function HomePage() {
   const fetchProducts = async (reset = true) => {
     setLoading(true)
     try {
-      const params: any = { page: reset ? 1 : page, limit: 20 }
+      const currentPage = reset ? 1 : page
+      const params: any = { page: currentPage, limit: 20 }
       if (search) params.search = search
       if (selectedCategory) params.categoryId = selectedCategory
       const res: any = await api.listProducts(params)
       const newItems = res.data ?? []
       setProducts(reset ? newItems : (prev) => [...prev, ...newItems])
-      if (!reset) setPage((p) => p + 1)
-    } catch {}
-    finally { setLoading(false) }
+      setPage(currentPage + 1)
+    } catch (err: any) {
+      Taro.showToast({ title: err || 'Failed to load products', icon: 'error' })
+    } finally { setLoading(false) }
   }
 
   useEffect(() => {

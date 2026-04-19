@@ -22,6 +22,7 @@ import { ReferralModule } from './modules/referral/referral.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { HealthRecordsModule } from './modules/health-records/health-records.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { OssModule } from './common/oss/oss.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     AdminModule,
     HealthRecordsModule,
     SettingsModule,
+    OssModule,
   ],
 })
 export class AppModule {}

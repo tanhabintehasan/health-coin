@@ -20,9 +20,13 @@ export class FuiouClient {
   private readonly gatewayUrl: string;
 
   constructor(private readonly config: ConfigService) {
-    this.merchantNo = config.get('FUIOU_MERCHANT_NO', 'DEMO_MERCHANT');
-    this.apiKey = config.get('FUIOU_API_KEY', 'DEMO_KEY');
+    this.merchantNo = config.get('FUIOU_MERCHANT_NO');
+    this.apiKey = config.get('FUIOU_API_KEY');
     this.gatewayUrl = config.get('FUIOU_GATEWAY_URL', 'https://pay.fuiou.com');
+
+    if (!this.merchantNo || !this.apiKey) {
+      this.logger.warn('FUIOU_MERCHANT_NO or FUIOU_API_KEY is not configured. Fuiou payments will fail.');
+    }
   }
 
   async createPayment(params: FuiouPayParams): Promise<{ payParams: Record<string, string>; tradeNo: string }> {

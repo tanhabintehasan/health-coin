@@ -37,7 +37,40 @@ export const api = {
   // Auth
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
   verifyOtp: (phone: string, code: string, referralCode?: string) =>
-    request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/otp/verify', { phone, code, referralCode }),
+    request<{ accessToken: string; refreshToken: string; user: any; hasPassword?: boolean }>('POST', '/auth/otp/verify', { phone, code, referralCode }),
+
+  wxLogin: (code: string, phone?: string, referralCode?: string) =>
+    request<{ user: any; accessToken: string; refreshToken: string; isNewUser: boolean; openId: string }>('POST', '/auth/wx-login', { code, phone, referralCode }),
+
+  refreshToken: (refreshToken: string) =>
+    request<{ accessToken: string; refreshToken: string }>('POST', '/auth/token/refresh', { refreshToken }),
+
+  // Upload
+  uploadFile: (filePath: string) => {
+    return new Promise<{ url: string }>((resolve, reject) => {
+      Taro.uploadFile({
+        url: `${BASE_URL}/upload`,
+        filePath,
+        name: 'file',
+        header: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+        success: (res) => {
+          try {
+            const data = JSON.parse(res.data)
+            if (res.statusCode >= 400) {
+              reject(data?.message || 'Upload failed')
+            } else {
+              resolve(data)
+            }
+          } catch {
+            reject('Invalid upload response')
+          }
+        },
+        fail: (err) => reject(err.errMsg || 'Upload network error'),
+      })
+    })
+  },
 
   // Users
   getMe: () => request<any>('GET', '/users/me'),
@@ -109,9 +142,6 @@ export const api = {
   // LCSW mini-program payment
   payLcswMini: (orderId: string, openId: string, subAppId?: string) =>
     request<any>('POST', `/payments/orders/${orderId}/pay/lcsw-mini`, { openId, subAppId }),
-
-  // WeChat login
-  wxLogin: (code: string) => request<any>('POST', '/auth/wx-login', { code }),
 
   // Redemption
   getMyCodes: () => request<any[]>('GET', '/redemption/my-codes'),

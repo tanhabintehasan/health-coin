@@ -1,6 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @ApiTags('Settings')
 @Controller('settings')
@@ -80,5 +82,33 @@ export class SettingsController {
         platformCommissionRate: parseFloat(map.platform_commission_rate ?? '0.05'),
       },
     };
+  }
+
+  @Post('contact')
+  @ApiOperation({ summary: 'Submit a contact form' })
+  async submitContact(@Body() body: { name: string; email: string; phone?: string; message: string }) {
+    if (!body.name || !body.email || !body.message) {
+      throw new BadRequestException('Name, email and message are required');
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
+      throw new BadRequestException('Invalid email address');
+    }
+    const submission = {
+      id: crypto.randomUUID(),
+      ...body,
+      createdAt: new Date().toISOString(),
+    };
+    const filePath = path.join(process.cwd(), 'data', 'contact-submissions.json');
+    try {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      const existing = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
+      existing.push(submission);
+      fs.writeFileSync(filePath, JSON.stringify(existing, null, 2));
+    } catch (err) {
+      // If file write fails, still return success to the user but log the error
+      console.error('Failed to save contact submission', err);
+    }
+    return { success: true, message: 'Thank you for contacting us. We will get back to you soon.' };
   }
 }

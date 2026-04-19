@@ -59,8 +59,14 @@ model SystemConfig {
 model User {
   id              String   @id @default(uuid())
   phone           String   @unique @db.VarChar(20)
+  password        String?  @db.VarChar(255)
   nickname        String?  @db.VarChar(100)
+  name            String?  @db.VarChar(100)
   avatarUrl       String?  @db.Text
+  gender          String?  @db.VarChar(10)
+  birthday        DateTime?
+  email           String?  @unique @db.VarChar(255)
+  bio             String?  @db.Text
   referralCode    String   @unique @db.VarChar(12)
   referrerId      String?
   referrer        User?    @relation("ReferralTree", fields: [referrerId], references: [id])
@@ -585,3 +591,4 @@ model UserAddress {
   @@index([userId])
   @@map("user_addresses")
 }
+

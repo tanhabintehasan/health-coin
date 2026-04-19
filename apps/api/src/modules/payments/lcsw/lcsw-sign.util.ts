@@ -11,5 +11,11 @@ export function generateLcswSign(params: Record<string, any>, accessToken: strin
 }
 
 export function verifyLcswSign(params: Record<string, any>, accessToken: string, sign: string): boolean {
-  return generateLcswSign(params, accessToken) === sign;
+  const computed = generateLcswSign(params, accessToken);
+  if (!sign || sign.length !== computed.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(sign));
+  } catch {
+    return false;
+  }
 }

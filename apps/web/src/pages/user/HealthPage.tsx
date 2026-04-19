@@ -27,13 +27,14 @@ export default function HealthPage() {
     if (!file) return
     const fileName = file.name || `record-${Date.now()}.jpg`
     const fileType = file.type.startsWith('image/') ? 'image' : 'pdf'
-    const fileUrl = URL.createObjectURL(file)
     setUploading(true)
     try {
+      const uploadRes: any = await api.uploadFile(file)
+      const fileUrl = uploadRes.url
       await api.saveHealthRecord({ fileUrl, fileType, fileName })
       message.success('Saved successfully')
       fetchRecords()
-    } catch (err: any) { message.error(err || 'Save failed') } finally {
+    } catch (err: any) { message.error(err?.message || 'Save failed') } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

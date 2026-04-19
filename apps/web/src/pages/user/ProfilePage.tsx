@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../store/auth.store'
-import { Drawer, Form, Input, Button, message, Cascader, Spin } from 'antd'
+import { Drawer, Form, Input, Button, message, Cascader, Spin, Modal, Select, DatePicker } from 'antd'
+import { UserOutlined, LockOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 
 const TIER_COLOR: Record<string, string> = {
   BRONZE: '#cd7f32', SILVER: '#a8a9ad', GOLD: '#ffd700', PLATINUM: '#e5e4e2', DIAMOND: '#00bfff', CROWN: '#9400d3',
@@ -35,6 +37,15 @@ export default function ProfilePage() {
   const [regionTree, setRegionTree] = useState<any[]>([])
   const [regionsLoading, setRegionsLoading] = useState(false)
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+
   useEffect(() => {
     api.getMyMembership().then(setMembership).catch(() => {})
   }, [])
@@ -48,6 +59,11 @@ export default function ProfilePage() {
     setEditOpen(true)
     form.setFieldsValue({
       nickname: user?.nickname || '',
+      name: user?.name || '',
+      gender: user?.gender || undefined,
+      birthday: user?.birthday ? dayjs(user.birthday) : undefined,
+      email: user?.email || '',
+      bio: user?.bio || '',
       regionId: user?.regionId ? [user.regionId] : undefined,
     })
     if (regionTree.length === 0) {
@@ -68,6 +84,11 @@ export default function ProfilePage() {
     try {
       const payload: any = {
         nickname: values.nickname,
+        name: values.name,
+        gender: values.gender,
+        birthday: values.birthday ? values.birthday.format('YYYY-MM-DD') : undefined,
+        email: values.email,
+        bio: values.bio,
       }
       const selectedRegion = values.regionId
       if (Array.isArray(selectedRegion) && selectedRegion.length > 0) {
@@ -84,6 +105,61 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      message.error('请上传图片文件')
+      return
+    }
+    setUploadingAvatar(true)
+    try {
+      const { url } = await api.uploadFile(file)
+      const updated = await api.updateMe({ avatarUrl: url })
+      setUser({ ...user, ...updated })
+      message.success('头像上传成功')
+    } catch (err: any) {
+      message.error(typeof err === 'string' ? err : '上传失败')
+    } finally {
+      setUploadingAvatar(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      message.error('请填写所有密码字段')
+      return
+    }
+    if (newPassword.length < 6) {
+      message.error('新密码长度不能少于6位')
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      message.error('两次输入的新密码不一致')
+      return
+    }
+    setSecurityLoading(true)
+    try {
+      await api.changePassword(oldPassword, newPassword)
+      message.success('密码修改成功')
+      setSecurityOpen(false)
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+    } catch (err: any) {
+      message.error(typeof err === 'string' ? err : '修改密码失败')
+    } finally {
+      setSecurityLoading(false)
+    }
+  }
+
   const tier = membership?.currentTier
   const tierColor = tier ? TIER_COLOR[tier.name] ?? '#1677ff' : '#1677ff'
 
@@ -91,9 +167,37 @@ export default function ProfilePage() {
     <div style={{ minHeight: '100%' }}>
       <div style={{ background: `linear-gradient(135deg, ${tierColor}, #1677ff)`, padding: '32px 20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 28 }}>👤</span>
-          </div>
+          <Spin spinning={uploadingAvatar}>
+            <div
+              onClick={handleAvatarClick}
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <UserOutlined style={{ fontSize: 28, color: '#fff' }} />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleAvatarChange}
+              />
+            </div>
+          </Spin>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#fff' }}>{user?.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : 'User'}</div>
             {user?.nickname && (
@@ -161,6 +265,21 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <div style={{ background: '#fff', margin: 12, borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ padding: '8px 16px 4px' }}>
+          <div style={{ fontSize: 12, color: '#999', fontWeight: 500, letterSpacing: '0.5px' }}>ACCOUNT SECURITY</div>
+        </div>
+        <div onClick={() => setSecurityOpen(true)} style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: 48 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LockOutlined style={{ fontSize: 18, color: '#666' }} />
+            </div>
+            <div style={{ fontSize: 15, color: '#333' }}>Change Password</div>
+          </div>
+          <span style={{ color: '#bbb', fontSize: 16 }}>›</span>
+        </div>
+      </div>
+
       <div style={{ margin: 12, paddingBottom: 24 }}>
         <button onClick={logout} style={{ width: '100%', background: '#fff', color: '#ff4d4f', border: '1.5px solid #ff4d4f', borderRadius: 10, padding: '14px 12px', fontSize: 15, fontWeight: 500, cursor: 'pointer', minHeight: 48 }}>
           Logout
@@ -177,6 +296,32 @@ export default function ProfilePage() {
             >
               <Input placeholder="Enter your nickname" />
             </Form.Item>
+            <Form.Item name="name" label="姓名">
+              <Input placeholder="请输入真实姓名" />
+            </Form.Item>
+            <Form.Item name="gender" label="Gender">
+              <Select
+                placeholder="请选择性别"
+                options={[
+                  { value: 'male', label: '男' },
+                  { value: 'female', label: '女' },
+                  { value: 'other', label: '其他' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="birthday" label="Birthday">
+              <DatePicker placeholder="请选择生日" style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[{ type: 'email', message: '请输入有效的邮箱地址' }]}
+            >
+              <Input placeholder="Enter your email" />
+            </Form.Item>
+            <Form.Item name="bio" label="个人简介">
+              <Input.TextArea rows={3} placeholder="介绍一下自己" />
+            </Form.Item>
             <Form.Item name="regionId" label="Region">
               <Cascader
                 options={regionTree}
@@ -192,6 +337,27 @@ export default function ProfilePage() {
           </Form>
         </Spin>
       </Drawer>
+
+      <Modal
+        title="Change Password"
+        open={securityOpen}
+        onCancel={() => setSecurityOpen(false)}
+        onOk={handleChangePassword}
+        confirmLoading={securityLoading}
+        maskClosable={false}
+      >
+        <Form layout="vertical">
+          <Form.Item label="Current Password" required>
+            <Input.Password placeholder="Enter current password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+          </Form.Item>
+          <Form.Item label="New Password" required>
+            <Input.Password placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </Form.Item>
+          <Form.Item label="Confirm New Password" required>
+            <Input.Password placeholder="Confirm new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

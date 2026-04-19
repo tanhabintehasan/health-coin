@@ -25,18 +25,13 @@ client.interceptors.response.use(
   (res) => res,
   (err: AxiosError<any>) => {
     if (err.response?.status === 401) {
-      const token = localStorage.getItem('healthcoin_token')
-      // TEMPORARY DEMO MODE: don't logout demo users on 401.
-      // Controlled by VITE_DEMO_LOGIN_ENABLED. Safe to remove after client review.
-      if (token !== 'demo_token') {
-        localStorage.removeItem('healthcoin_token')
-        try {
-          window.dispatchEvent(new Event('healthcoin:logout'))
-        } catch {}
-        const pathname = window.location.pathname
-        if (!isPublicPath(pathname) && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
-          window.location.href = '/login'
-        }
+      localStorage.removeItem('healthcoin_token')
+      try {
+        window.dispatchEvent(new Event('healthcoin:logout'))
+      } catch {}
+      const pathname = window.location.pathname
+      if (!isPublicPath(pathname) && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
+        window.location.href = '/login'
       }
     }
     const rawMsg = err.response?.data?.message
@@ -62,16 +57,34 @@ export const api = {
   verifyOtp: (phone: string, code: string, referralCode?: string) =>
     request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/otp/verify', { phone, code, referralCode }),
 
-  // TEMPORARY DEMO LOGIN — bypasses OTP/Redis/SMS for client review.
-  // Controlled by VITE_DEMO_LOGIN_ENABLED env var on the frontend
-  // and DEMO_LOGIN_ENABLED on the backend.
-  // Safe to remove after client review is complete.
-  demoLogin: (role: 'admin' | 'merchant' | 'user') =>
-    request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/demo-login', { role }),
+  loginWithPassword: (phone: string, password: string) =>
+    request<{ accessToken: string; refreshToken: string; user: any }>('POST', '/auth/login', { phone, password }),
+
+  setPassword: (password: string) =>
+    request<{ success: boolean; message: string }>('POST', '/auth/password/set', { password }),
+
+  changePassword: (oldPassword: string, newPassword: string) =>
+    request<{ success: boolean; message: string }>('POST', '/auth/password/change', { oldPassword, newPassword }),
+
+  submitContact: (data: { name: string; email: string; phone?: string; message: string }) =>
+    request<any>('POST', '/settings/contact', data),
 
   // Users / Me
   getMe: () => request<any>('GET', '/users/me'),
   updateMe: (data: any) => request<any>('PUT', '/users/me', data),
+
+  // Upload
+  uploadFile: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((res) => res.data as { url: string })
+  },
+
+  // WeChat
+  wxLogin: (code: string) => request<any>('POST', '/auth/wx-login', { code }),
+  wechatCallback: (code: string) => request<any>('GET', `/auth/wechat/callback?code=${code}`),
 
   // Role probes
   getMyMerchant: () => request<any>('GET', '/merchants/me'),

@@ -208,9 +208,33 @@ export class AdminController {
     return this.prisma.systemConfig.findMany({ orderBy: { key: 'asc' } });
   }
 
+  private readonly ALLOWED_CONFIG_KEYS = new Set([
+    'site_name', 'site_description', 'contact_phone', 'contact_email',
+    'support_hours', 'banner_text', 'home_page_title',
+    'membership_bronze_rate', 'membership_silver_rate', 'membership_gold_rate',
+    'smsbao_username', 'smsbao_template',
+    'wechat_appid', 'wechat_mini_appid',
+    'lcsw_merchant_no', 'lcsw_appid',
+    'fuiou_merchant_no',
+  ]);
+
+  private readonly SENSITIVE_CONFIG_KEYS = new Set([
+    'smsbao_password', 'wechat_secret', 'wechat_mini_secret',
+    'lcsw_app_secret', 'lcsw_access_token', 'fuiou_api_key',
+    'jwt_secret', 'jwt_refresh_secret', 'database_url',
+  ]);
+
   @Put('configs')
   @ApiOperation({ summary: 'Update system configs (bulk)' })
   async updateConfigs(@Body() body: Record<string, string>) {
+    for (const key of Object.keys(body)) {
+      if (this.SENSITIVE_CONFIG_KEYS.has(key)) {
+        throw new BadRequestException(`Config key "${key}" is sensitive and cannot be updated via this endpoint`);
+      }
+      if (!this.ALLOWED_CONFIG_KEYS.has(key)) {
+        throw new BadRequestException(`Config key "${key}" is not allowed`);
+      }
+    }
     const updates = Object.entries(body).map(([key, value]) =>
       this.prisma.systemConfig.upsert({
         where: { key },
@@ -251,10 +275,17 @@ export class AdminController {
 
   // ── Orders (admin force-change) ────────────────────────────────────────────
 
+  private readonly VALID_ORDER_STATUSES = new Set([
+    'PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'REFUNDING', 'REFUNDED',
+  ]);
+
   @Patch('orders/:id/status')
   @ApiOperation({ summary: 'Admin: force-change order status' })
   async forceOrderStatus(@Param('id') id: string, @Body('status') status: string) {
     if (!status) throw new BadRequestException('status is required');
+    if (!this.VALID_ORDER_STATUSES.has(status)) {
+      throw new BadRequestException(`Invalid status "${status}". Valid: ${[...this.VALID_ORDER_STATUSES].join(', ')}`);
+    }
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new BadRequestException('Order not found');
     return this.prisma.order.update({
