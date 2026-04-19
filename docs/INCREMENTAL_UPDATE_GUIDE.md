@@ -50,7 +50,40 @@ Before starting, ensure you have:
 
 ---
 
-## Step 1: Backup (Strongly Recommended)
+## Quick Start — One-Click Update (Recommended)
+
+We provide an **automated PowerShell script** that performs the entire update for you.
+
+```powershell
+# RDP into your server, open PowerShell as Administrator
+
+# 1. Backup first (strongly recommended)
+$env:PGPASSWORD = "your_postgres_password"
+& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -h localhost -U postgres -d healthcoin -F c -f "C:\backups\healthcoin-pre-update-$(Get-Date -Format yyyyMMdd-HHmmss).dump"
+Compress-Archive -Path "C:\healthcoin" -DestinationPath "C:\backups\healthcoin-code-$(Get-Date -Format yyyyMMdd-HHmmss).zip" -Force
+
+# 2. Run the automated update script
+cd C:\healthcoin
+.\scripts\update-and-setup-admin.ps1 -AppDir "C:\healthcoin" -AdminPhone "13266893239" -AdminPassword "coin@Health.12345"
+```
+
+This script will:
+- Stop running services
+- Pull the latest `main` branch
+- Install all dependencies
+- Add missing environment variables (with placeholders)
+- Apply database migrations
+- Set up / update the admin account
+- Build API, Web, and Mini-program
+- Restart all services via PM2
+
+**After the script finishes, you MUST edit `apps\api\.env` and fill in all empty values before production use!**
+
+---
+
+## Manual Steps (If you prefer to run each step yourself)
+
+### Step 1: Backup (Strongly Recommended)
 
 ```powershell
 # RDP into your server, open PowerShell as Administrator
@@ -65,7 +98,7 @@ Compress-Archive -Path "C:\healthcoin" -DestinationPath "C:\backups\healthcoin-c
 
 ---
 
-## Step 2: Pull Latest Code
+### Step 2: Pull Latest Code
 
 ```powershell
 cd C:\healthcoin
@@ -75,7 +108,7 @@ git pull origin main
 
 ---
 
-## Step 3: Install Dependencies
+### Step 3: Install Dependencies
 
 ```powershell
 # From project root
@@ -85,7 +118,7 @@ npm install
 
 ---
 
-## Step 4: Update Environment Variables
+### Step 4: Update Environment Variables
 
 ### `apps\api\.env` — Add/Update These Keys
 
@@ -158,7 +191,7 @@ VITE_API_BASE_URL=https://your-api-domain.com/api/v1
 
 ---
 
-## Step 5: Apply Database Migration
+### Step 5: Apply Database Migration
 
 This migration adds `password`, `name`, `gender`, `birthday`, `email`, and `bio` to the `User` table.
 
@@ -182,7 +215,7 @@ npx prisma generate
 
 ---
 
-## Step 6: Set Up / Update Admin Account
+### Step 6: Set Up / Update Admin Account
 
 The setup script now **requires** `ADMIN_PHONE` and `ADMIN_PASSWORD` environment variables.
 
@@ -210,7 +243,7 @@ Nickname: Administrator
 
 ---
 
-## Step 7: Build All Applications
+### Step 7: Build All Applications
 
 ```powershell
 # Build API
@@ -230,7 +263,7 @@ All three should complete with no errors.
 
 ---
 
-## Step 8: Restart Production Services
+### Step 8: Restart Production Services
 
 ### Option A: Using PM2 (Recommended)
 
