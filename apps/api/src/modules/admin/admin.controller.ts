@@ -218,15 +218,22 @@ export class AdminController {
     'site_name', 'site_description', 'contact_phone', 'contact_email',
     'support_hours', 'banner_text', 'home_page_title',
     'membership_bronze_rate', 'membership_silver_rate', 'membership_gold_rate',
-    'smsbao_username', 'smsbao_template',
-    'wechat_appid', 'wechat_mini_appid',
-    'lcsw_merchant_no', 'lcsw_appid',
-    'fuiou_merchant_no',
+    'sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit',
+    'sms_provider', 'sms_template_code', 'sms_sign_name',
+    'smsbao_username', 'smsbao_password', 'smsbao_template',
+    'wechat_appid', 'wechat_secret', 'wechat_mini_appid', 'wechat_mini_secret',
+    'lcsw_merchant_no', 'lcsw_appid', 'lcsw_app_secret', 'lcsw_access_token',
+    'fuiou_merchant_no', 'fuiou_api_key',
+    'platform_name', 'platform_hotline', 'platform_wechat', 'platform_address',
+    'payment_fuiou_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled',
+    'payment_lcsw_enabled', 'payment_coin_enabled',
+    'product_review_required', 'redemption_code_valid_days', 'allow_partial_redemption',
+    'mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate',
+    'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate',
+    'withdrawal_commission_rate', 'platform_commission_rate',
   ]);
 
   private readonly SENSITIVE_CONFIG_KEYS = new Set([
-    'smsbao_password', 'wechat_secret', 'wechat_mini_secret',
-    'lcsw_app_secret', 'lcsw_access_token', 'fuiou_api_key',
     'jwt_secret', 'jwt_refresh_secret', 'database_url',
   ]);
 
