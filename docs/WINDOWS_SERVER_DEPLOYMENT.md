@@ -1,558 +1,817 @@
-# Windows Server Deployment Guide — HealthCoin Platform
+# HealthCoin — Complete Windows Server Production Deployment Guide
 
-> Deploy HealthCoin to a Windows Server (RDP) with local PostgreSQL database.
+> **Platform:** HealthCoin Multi-Vendor E-Commerce with HealthCoin Rewards  
+> **Server:** Windows Server 2019/2022 via RDP  
+> **Target IP:** `39.98.241.141`  
+> **Last Updated:** April 2026
 
 ---
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Prerequisites](#prerequisites)
-3. [Step 1: Connect to Your Server](#step-1-connect-to-your-server)
-4. [Step 2: Automated Deployment](#step-2-automated-deployment)
-5. [Step 3: Configure Your Domain](#step-3-configure-your-domain)
-6. [Step 4: Configure SMS (OTP Login)](#step-4-configure-sms-otp-login)
-7. [Step 5: Configure Payments](#step-5-configure-payments)
-8. [Step 6: SSL / HTTPS](#step-6-ssl--https)
-9. [Step 7: Backups](#step-7-backups)
-10. [Manual Deployment (Fallback)](#manual-deployment-fallback)
-11. [Troubleshooting](#troubleshooting)
-12. [Security Recommendations](#security-recommendations)
+1. [Architecture Overview](#1-architecture-overview)
+2. [Prerequisites](#2-prerequisites)
+3. [Server Setup](#3-server-setup)
+4. [Database Setup](#4-database-setup)
+5. [Project Deployment](#5-project-deployment)
+6. [Environment Configuration](#6-environment-configuration)
+7. [Database Migration & Admin Setup](#7-database-migration--admin-setup)
+8. [Building Applications](#8-building-applications)
+9. [Process Management (PM2)](#9-process-management-pm2)
+10. [IIS Reverse Proxy (Optional)](#10-iis-reverse-proxy-optional)
+11. [Firewall Configuration](#11-firewall-configuration)
+12. [SSL / HTTPS Setup](#12-ssl--https-setup)
+13. [Domain Configuration](#13-domain-configuration)
+14. [Verification](#14-verification)
+15. [Post-Deployment Security Checklist](#15-post-deployment-security-checklist)
+16. [Backup Strategy](#16-backup-strategy)
+17. [Troubleshooting](#17-troubleshooting)
+18. [Rollback Procedure](#18-rollback-procedure)
 
 ---
 
-## Architecture Overview
+## 1. Architecture Overview
 
 ```
-Internet ──► [Cloud Firewall :80, :443]
-                │
-                ▼
-           [Windows Firewall]
-                │
-                ▼
-           [Express Proxy :80]
-                │
-        ┌───────┴───────┐
-        ▼               ▼
-   /api/* ──►    /* ──►
-   [NestJS API]   [React SPA]
-   :3000          (static files)
-        │
-        ▼
-   [PostgreSQL :5432]
+User / Mini-Program
+       │
+       ▼
+  [ Domain / IP ]
+       │
+       ▼
+  [ Nginx / IIS / Proxy Server (Port 80/443) ]
+       │
+       ├──► Web Frontend (Vite + React) → Port 3001
+       │
+       ├──► API (NestJS + Prisma) → Port 3000
+       │         │
+       │         ▼
+       │    [ PostgreSQL 17 ]
+       │
+       └──► Proxy Server (Express) → Port 80
 ```
 
-| Component | Technology | Port | Note |
-|-----------|------------|------|------|
-| API | NestJS + Prisma | 3000 | Internal only (proxied) |
-| Web App | Vite + React + Ant Design | 80 (via proxy) | Unified portal (Public/User/Merchant/Admin) |
-| Proxy | Express + http-proxy-middleware | 80 | Serves static files + API proxy |
-| Database | PostgreSQL 17 | 5432 | Local on same server |
+### Components
+| Component | Technology | Port | Description |
+|-----------|-----------|------|-------------|
+| API | NestJS + Prisma | 3000 | REST API, payments, auth, admin |
+| Web | Vite + React | 3001 | Customer web app, admin dashboard |
+| Proxy | Express | 80 | Reverse proxy, API routing |
+| Database | PostgreSQL 17 | 5432 | All platform data |
+| Mini-Program | Taro 4.0 | N/A | WeChat mini-program (built locally) |
 
 ---
 
-## Prerequisites
+## 2. Prerequisites
 
-- **Windows Server 2019/2022** or Windows 10/11
-- **Administrator access** inside RDP
-- **Internet connection** on the server
-- **Server public IP address** (e.g., `39.98.241.141`)
-- **RDP credentials** (username + password from your cloud provider)
-- **Domain name** (optional but recommended for production)
+### Software Requirements
+
+| Software | Version | Download |
+|----------|---------|----------|
+| Windows Server | 2019 or 2022 | - |
+| Node.js | 20.x LTS | https://nodejs.org/ |
+| Git for Windows | Latest | https://git-scm.com/download/win |
+| PostgreSQL | 17 | https://www.postgresql.org/download/windows/ |
+| PM2 | Latest | `npm install -g pm2` |
+
+### Account Requirements
+
+Before deployment, ensure you have accounts/credentials for:
+
+1. **Aliyun OSS** (for file uploads)
+2. **Fuiou Payment** (for WeChat/Alipay payments)
+3. **LCSW / 扫呗** (for mini-program payments)
+4. **WeChat Mini Program** (for `wx.login`)
+5. **WeChat Open Platform** (for web OAuth QR login)
+6. **SMSbao** (for OTP SMS delivery)
+7. **Domain name** with DNS access (for SSL)
 
 ---
 
-## Step 1: Connect to Your Server
+## 3. Server Setup
 
-### From Windows:
-1. Press `Win + R`, type `mstsc`, press Enter
-2. Enter your server's **public IP address**
-3. Click **Connect**
-4. Enter your **username** and **password**
-
-### From Mac:
-1. Download **Microsoft Remote Desktop** from App Store
-2. Add PC with your **public IP address**
-3. Enter your credentials
-
----
-
-## Step 2: Automated Deployment
-
-Inside the RDP session, open **PowerShell as Administrator** and run:
+### 3.1 Install Node.js
 
 ```powershell
-# Download the deployment script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/tanhabintehasan/health-coin/main/scripts/deploy-windows.ps1" -OutFile "C:\deploy-windows.ps1"
-
-# Run it
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-C:\deploy-windows.ps1
+# Download Node.js 20.x MSI installer and run it
+# Verify installation:
+node --version  # Should print v20.x.x
+npm --version   # Should print 10.x.x
 ```
 
-The script will prompt you for:
-- **Server IP** — your public IP (or domain if you already have one)
-- **PostgreSQL password** — create a strong password
-- **JWT_SECRET** — 32+ random characters (generate at https://randomkeygen.com/)
-- **JWT_REFRESH_SECRET** — different from JWT_SECRET, also 32+ chars
-- **CRON_SECRET** — any random string
+### 3.2 Install Git
 
-The script will automatically:
-1. Install Chocolatey
-2. Install PostgreSQL 17, Node.js LTS, Git
-3. Create database and user
-4. Clone the repository
-5. Install dependencies
-6. Create `.env` files
-7. Run database migrations
-8. Apply seed data (demo users, system configs)
-9. Build API and Web app
-10. Configure Windows Firewall
-11. Start services with PM2
+```powershell
+# Download Git for Windows and install with default options
+# Verify:
+git --version
+```
 
-After completion, verify:
-- `http://YOUR_SERVER_IP/` → Should show the HealthCoin homepage
-- `http://YOUR_SERVER_IP/api/docs` → Should show Swagger API docs
-- `http://YOUR_SERVER_IP/login` → Should show login page
+### 3.3 Configure Git (Global)
 
-### ⚠️ Cloud Firewall (Critical!)
+```powershell
+git config --global user.name "Deploy Bot"
+git config --global user.email "deploy@yourdomain.com"
+```
 
-If your server is from **Alibaba Cloud / AWS / Azure / GCP**, you **must** also open ports in the **cloud provider's Security Group**:
+### 3.4 Install PM2 Globally
 
-| Port Range | Source | Purpose |
-|------------|--------|---------|
-| `80` | `0.0.0.0/0` | HTTP traffic |
-| `443` | `0.0.0.0/0` | HTTPS traffic (future) |
-| `3389` | `YOUR_IP/32` | RDP — **restrict this to your IP only!** |
+```powershell
+npm install -g pm2
+pm2 --version
+```
 
-**Without this**, Windows Firewall rules alone will NOT work — the cloud firewall drops packets first.
+### 3.5 Create Deployment Directory
+
+```powershell
+New-Item -ItemType Directory -Path "C:\healthcoin" -Force
+cd C:\healthcoin
+```
 
 ---
 
-## Step 3: Configure Your Domain
+## 4. Database Setup
 
-Once deployment is working via IP, point your domain:
+### 4.1 Install PostgreSQL 17
 
-### 3.1 Update DNS Records
+1. Download PostgreSQL 17 installer from https://www.postgresql.org/download/windows/
+2. Run installer with these settings:
+   - **Installation Directory:** `C:\Program Files\PostgreSQL\17`
+   - **Data Directory:** `C:\Program Files\PostgreSQL\17\data`
+   - **Password:** Set a strong password and **remember it**
+   - **Port:** 5432 (default)
+   - **Locale:** Default
+3. Complete installation
 
-At your domain registrar / DNS provider:
-- Create an **A record** pointing your domain (e.g., `yourdomain.com`) to your server IP
-- Optional: Create a **CNAME** for `www` → `yourdomain.com`
-
-### 3.2 Update Environment Files
-
-On your server, edit the `.env` files:
-
-```powershell
-# Update API .env
-notepad C:\healthcoin\apps\api\.env
-```
-
-Change:
-```env
-APP_URL=https://yourdomain.com
-```
+### 4.2 Create Database
 
 ```powershell
-# Update Web .env
-notepad C:\healthcoin\apps\web\.env
+# Add PostgreSQL bin to PATH (or use full path)
+$env:Path += ";C:\Program Files\PostgreSQL\17\bin"
+$env:PGPASSWORD = "your_postgres_password"
+
+# Create database
+psql -U postgres -c "CREATE DATABASE healthcoin_db;"
+psql -U postgres -c "CREATE USER healthcoin_user WITH PASSWORD 'your_app_password';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE healthcoin_db TO healthcoin_user;"
 ```
 
-Change:
-```env
-VITE_API_BASE_URL=https://yourdomain.com/api/v1
+### 4.3 Verify Database Connection
+
+```powershell
+psql -U healthcoin_user -d healthcoin_db -c "SELECT 1;"
 ```
 
-### 3.3 Rebuild and Restart
+---
+
+## 5. Project Deployment
+
+### 5.1 Clone Repository
 
 ```powershell
 cd C:\healthcoin
-npm run build:web
-pm2 restart all
+git clone https://github.com/tanhabintehasan/health-coin.git .
 ```
 
----
-
-## Step 4: Configure SMS (OTP Login)
-
-The platform uses **SMSbao** for OTP (One-Time Password) login.
-
-### 4.1 Sign up for SMSbao
-
-1. Go to [https://www.smsbao.com](https://www.smsbao.com)
-2. Register an account
-3. Recharge your account with SMS credits
-4. Note your **username** and **password**
-
-### 4.2 Configure in Admin Portal
-
-1. Login to the admin portal: `http://YOUR_SERVER_IP/login`
-   - Use demo account: `13800000001` → click "Demo Login"
-2. Navigate to **Admin Portal → Settings**
-3. Find the **SMS** section and fill in:
-
-| Setting | Value | Example |
-|---------|-------|---------|
-| `sms_provider` | `smsbao` | smsbao |
-| `smsbao_username` | Your SMSbao username | CX3308 |
-| `smsbao_password` | Your SMSbao password | your_plain_password |
-| `smsbao_template` | Template with `[code]` placeholder | `【健康币】您的验证码是[code]，5分钟内有效。` |
-| `sms_enabled` | `true` | true |
-| `otp_expiry_seconds` | `300` | 300 (5 minutes) |
-| `otp_resend_seconds` | `60` | 60 (1 minute) |
-| `otp_hourly_limit` | `5` | 5 per hour per phone |
-
-### 4.3 Test OTP
-
-1. Log out
-2. Go to `/login`
-3. Enter your real phone number
-4. Click "Get OTP"
-5. Check your phone for the SMS
-
-### 4.4 SMS Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| "SMSbao username is missing" | Check Admin Settings → `smsbao_username` is filled |
-| "短信发送失败" | Check SMSbao account balance at smsbao.com |
-| "密码错误" or "账号不存在" | Verify username/password in settings |
-| "短信数量不足" | Recharge your SMSbao account |
-| OTP not received | Check if your phone number format is correct (11 digits, China mobile) |
-
----
-
-## Step 5: Configure Payments
-
-The platform supports three payment methods:
-- **Fuiou (富友)** — Bank card payments
-- **LCSW (扫呗 / 利楚商务)** — WeChat Pay, Alipay, mini-program payments
-- **Health Coin** — Internal wallet payment (works immediately, no config needed)
-
-### 5.1 Fuiou Payment Setup
-
-#### Get Credentials from Fuiou:
-1. Contact Fuiou Payment ([https://www.fuiou.com](https://www.fuiou.com)) to apply for a merchant account
-2. They will provide:
-   - **Merchant Number** (`mer_no`)
-   - **API Key** (signature key)
-   - **Gateway URL** (production or sandbox)
-
-#### Configure in Environment File:
-
-Edit `C:\healthcoin\apps\api\.env`:
-
-```env
-FUIOU_MERCHANT_NO=YOUR_MERCHANT_NUMBER
-FUIOU_API_KEY=YOUR_API_KEY
-FUIOU_GATEWAY_URL=https://pay.fuiou.com
-```
-
-Then restart the API:
-```powershell
-pm2 restart healthcoin-api
-```
-
-#### Enable in Admin Portal:
-1. Login as Admin → Settings
-2. Set `payment_fuiou_enabled` = `true`
-3. Set `payment_provider_primary` = `fuiou` (if Fuiou is your primary provider)
-
-#### Fuiou Webhook:
-Fuiou will send payment notifications to:
-```
-https://yourdomain.com/api/v1/webhooks/fuiou/payment
-```
-Make sure this URL is accessible from the internet and returns `SUCCESS` for successful payments.
-
-### 5.2 LCSW (扫呗) Payment Setup
-
-#### Get Credentials from LCSW:
-1. Contact LCSW / 扫呗 ([https://www.lcsw.cn](https://www.lcsw.cn)) to apply for a merchant account
-2. They will provide:
-   - **Merchant Number** (`merchant_no`)
-   - **Terminal ID** (`terminal_id`)
-   - **Access Token** (`access_token`)
-   - **Base URL** (test or production)
-
-#### Option A: Global LCSW Configuration (simple)
-
-Configure in **Admin Portal → Settings**:
-
-| Setting | Value | Example |
-|---------|-------|---------|
-| `payment_lcsw_enabled` | `true` | true |
-| `lcsw_merchant_no` | Your LCSW merchant number | 8220000123 |
-| `lcsw_terminal_id` | Your terminal ID | 10000001 |
-| `lcsw_access_token` | Your access token | abc123def456 |
-| `lcsw_base_url` | LCSW API base URL | `https://pay.lcsw.cn/lcsw` |
-
-#### Option B: Sub-Merchant Configuration (advanced)
-
-For platforms where each merchant has their own LCSW account:
-
-1. Go to **Admin Portal → Merchants**
-2. Each merchant can have their own LCSW account linked
-3. The system will automatically use the merchant's LCSW credentials for their orders
-
-#### LCSW Webhook:
-LCSW sends notifications to:
-```
-https://yourdomain.com/api/v1/webhooks/lcsw/payment
-```
-
-#### LCSW Mini-Program Payments:
-For WeChat mini-program payments, the platform supports LCSW's mini-program payment flow. Requires:
-- Mini-program `appId`
-- User's `openid`
-- Sub-merchant configuration (if applicable)
-
-### 5.3 Coin Payment Setup
-
-Coin payment uses the internal wallet system and works **immediately** with no external configuration:
-
-1. In **Admin Portal → Settings**, set `payment_coin_enabled` = `true`
-2. Users can pay with:
-   - **Health Coin** (健康币)
-   - **Mutual Health Coin** (互助健康币)
-   - **Universal Health Coin** (通用健康币)
-
-### 5.4 Payment Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| "No payment provider is currently available" | Check Admin Settings → enable at least one payment provider |
-| "Fuiou payment initiation failed" | Verify `FUIOU_MERCHANT_NO` and `FUIOU_API_KEY` in `.env` |
-| "LCSW payment configuration is incomplete" | Check `lcsw_merchant_no`, `lcsw_terminal_id`, `lcsw_access_token` in Admin Settings |
-| Webhook not received | Ensure your server URL is public and firewall allows port 80/443 |
-| Payment marked as paid but order not updated | Check `pm2 logs healthcoin-api` for webhook processing errors |
-
----
-
-## Step 6: SSL / HTTPS
-
-For production, you **must** use HTTPS.
-
-### Option A: Cloudflare (Easiest & Recommended)
-
-1. Buy a domain (Namecheap, GoDaddy, Alibaba Cloud, etc.)
-2. Point domain A-record to your server IP
-3. Add domain to [Cloudflare](https://dash.cloudflare.com) (free plan)
-4. Change DNS nameservers to Cloudflare
-5. In Cloudflare SSL/TLS settings, choose **"Full (strict)"** mode
-6. Done — Cloudflare provides free SSL automatically
-
-### Option B: Let's Encrypt (via reverse proxy on another server)
-
-Since Let's Encrypt on Windows directly is complex, use a Linux server as reverse proxy, or use a tool like `win-acme`.
-
-### Option C: Buy an SSL Certificate
-
-1. Purchase a certificate for your domain
-2. Install it in Windows certificate store
-3. Update the proxy or use IIS as reverse proxy with the certificate
-
----
-
-## Step 7: Backups
-
-### Database Backup Script
+### 5.2 Install Dependencies
 
 ```powershell
-# Create backup directory
-New-Item -ItemType Directory -Path "C:\backups" -Force
-
-# Create backup script
-$backupScript = @'
-$date = Get-Date -Format "yyyyMMdd_HHmmss"
-$env:PGPASSWORD = "YOUR_DB_PASSWORD"
-& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -U healthcoin_user -h localhost -d healthcoin_db -F c -f "C:\backups\healthcoin_$date.dump"
-# Keep only last 7 backups
-Get-ChildItem "C:\backups" | Sort-Object CreationTime -Descending | Select-Object -Skip 7 | Remove-Item -Force
-'@
-Set-Content -Path "C:\backup-db.ps1" -Value $backupScript
-
-# Schedule daily backup at 3 AM
-schtasks /Create /TN "HealthCoin DB Backup" /TR "powershell.exe -File C:\backup-db.ps1" /SC DAILY /ST 03:00 /RU SYSTEM
-```
-
-### Restore from Backup
-
-```powershell
-$env:PGPASSWORD = "YOUR_DB_PASSWORD"
-& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -U healthcoin_user -d healthcoin_db -c "C:\backups\healthcoin_20240115_030000.dump"
-```
-
----
-
-## Manual Deployment (Fallback)
-
-If the automated script fails, follow these steps manually:
-
-### 1. Install Chocolatey
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-```
-
-### 2. Install Dependencies
-```powershell
-choco install postgresql17 --params "/Password:YOUR_DB_PASSWORD" -y
-choco install nodejs-lts -y
-choco install git -y
-```
-
-### 3. Start PostgreSQL
-```powershell
-Start-Service postgresql-x64-17
-Set-Service postgresql-x64-17 -StartupType Automatic
-```
-
-### 4. Create Database
-```powershell
-$env:PGPASSWORD = "YOUR_DB_PASSWORD"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -c "CREATE USER healthcoin_user WITH PASSWORD 'YOUR_DB_PASSWORD';"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -c "CREATE DATABASE healthcoin_db OWNER healthcoin_user;"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -d healthcoin_db -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-```
-
-### 5. Clone and Build
-```powershell
-cd C:\
-git clone https://github.com/tanhabintehasan/health-coin.git
-cd healthcoin
+cd C:\healthcoin
 npm install
-cd apps/api
-npx prisma generate
-npx prisma migrate deploy
-cd C:\healthcoin
-npm run build:api
-npm run build:web
 ```
 
-### 6. Create Environment File
+---
+
+## 6. Environment Configuration
+
+### 6.1 Create API Environment File
+
 Create `C:\healthcoin\apps\api\.env`:
+
 ```env
-DATABASE_URL=postgresql://healthcoin_user:YOUR_DB_PASSWORD@localhost:5432/healthcoin_db
-JWT_SECRET=your_very_long_random_secret_min_32_chars
-JWT_REFRESH_SECRET=your_other_very_long_random_secret
-JWT_EXPIRES_IN=2h
-JWT_REFRESH_EXPIRES_IN=7d
+# ============================================
+# NODE ENVIRONMENT
+# ============================================
 NODE_ENV=production
 PORT=3000
-APP_URL=http://YOUR_SERVER_IP
-CORS_ORIGINS=*
-CRON_SECRET=a_random_string
-DEMO_LOGIN_ENABLED=true
+
+# ============================================
+# DATABASE
+# ============================================
+DATABASE_URL=postgresql://healthcoin_user:your_app_password@localhost:5432/healthcoin_db
+
+# ============================================
+# JWT (CRITICAL: Generate strong random strings, minimum 32 characters)
+# Use: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# ============================================
+JWT_SECRET=your-super-random-jwt-secret-min-32-chars-change-me
+JWT_REFRESH_SECRET=your-different-refresh-secret-min-32-chars-change-me
+JWT_EXPIRES_IN=2h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# ============================================
+# CORS (Your actual domains — NO localhost in production)
+# ============================================
+CORS_ORIGINS=https://yourdomain.com,https://admin.yourdomain.com
+
+# ============================================
+# ADMIN SETUP (Required for setup-admin.js)
+# ============================================
+ADMIN_PHONE=13266893239
+ADMIN_PASSWORD=your-secure-admin-password
+ADMIN_NICKNAME=Administrator
+
+# ============================================
+# FUIOU PAYMENT (Get from Fuiou merchant portal)
+# ============================================
+FUIOU_MERCHANT_NO=your_fuiou_merchant_no
+FUIOU_API_KEY=your_fuiou_api_key
+FUIOU_GATEWAY_URL=https://pay.fuiou.com
+# ONLY set to true for sandbox testing without real gateway:
+FUIOU_MOCK_PAYMENTS=false
+
+# ============================================
+# LCSW / 扫呗 PAYMENT (Get from LCSW merchant portal)
+# ============================================
+LCSW_MERCHANT_NO=your_lcsw_merchant_no
+LCSW_APPID=your_lcsw_appid
+LCSW_APP_SECRET=your_lcsw_app_secret
+LCSW_ACCESS_TOKEN=your_lcsw_access_token
+LCSW_BASE_URL=https://openapi.lcsw.cn
+LCSW_ENCRYPTION_KEY=your_lcsw_encryption_key
+
+# ============================================
+# WECHAT MINI PROGRAM (From WeChat MP admin console)
+# ============================================
+WECHAT_MINI_APPID=wxYOURMINIAPPID
+WECHAT_MINI_SECRET=your_mini_program_secret
+
+# ============================================
+# WECHAT WEB OAUTH (From WeChat Open Platform)
+# ============================================
+WECHAT_APPID=wxYOURWEBAPPID
+WECHAT_SECRET=your_web_oauth_secret
+
+# ============================================
+# SMSBAO (From smsbao.com)
+# ============================================
+SMSBAO_USERNAME=your_smsbao_username
+SMSBAO_PASSWORD=your_smsbao_password_md5
+
+# ============================================
+# ALIYUN OSS (For file uploads)
+# ============================================
+OSS_REGION=oss-cn-hangzhou
+OSS_ACCESS_KEY_ID=your_aliyun_access_key
+OSS_ACCESS_KEY_SECRET=your_aliyun_access_secret
+OSS_BUCKET=your-bucket-name
+OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+
+# ============================================
+# PLATFORM
+# ============================================
+PLATFORM_NAME=HealthCoin
+PLATFORM_COMMISSION_RATE=0.05
 ```
+
+> **⚠️ CRITICAL:** Never commit `.env` files to Git. The `.gitignore` already excludes them.
+
+### 6.2 Create Web Frontend Environment File
 
 Create `C:\healthcoin\apps\web\.env`:
+
 ```env
-VITE_API_BASE_URL=http://YOUR_SERVER_IP/api/v1
-VITE_DEMO_LOGIN_ENABLED=true
+VITE_API_BASE_URL=https://your-api-domain.com/api/v1
 ```
 
-### 7. Start Services
+### 6.3 Create Mini-Program Config
+
+Edit `C:\healthcoin\apps\miniprogram\project.config.json`:
+
+```json
+{
+  "description": "HealthCoin Mini Program",
+  "packOptions": { "ignore": [] },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true,
+    "showShadowRootInWebhookView": true,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "enableEngineNative": false,
+    "useIsolateContext": true,
+    "minifyWXSS": true,
+    "minifyWXML": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.0.0",
+  "appid": "wxYOURAPPIDHERE",
+  "projectname": "healthcoin",
+  "condition": {}
+}
+```
+
+Replace `wxYOURAPPIDHERE` with your actual WeChat mini-program AppID.
+
+---
+
+## 7. Database Migration & Admin Setup
+
+### 7.1 Generate Prisma Client
+
 ```powershell
 cd C:\healthcoin\apps\api
-npm install -g pm2
-pm2 start dist/src/main.js --name healthcoin-api
-pm2 save
-pm2 startup windows
+npx prisma generate
+```
 
+### 7.2 Apply Migrations
+
+```powershell
+cd C:\healthcoin\apps\api
+npx prisma migrate deploy
+```
+
+### 7.3 Seed Database (Optional)
+
+```powershell
+cd C:\healthcoin\apps\api
+npx prisma db seed
+```
+
+### 7.4 Set Up Admin Account
+
+The admin setup script requires `ADMIN_PHONE` and `ADMIN_PASSWORD` from `.env`.
+
+```powershell
+cd C:\healthcoin
+$env:ADMIN_PHONE = "13266893239"
+$env:ADMIN_PASSWORD = "your-secure-admin-password"
+$env:ADMIN_NICKNAME = "Administrator"
+node scripts\setup-admin.js
+```
+
+**Expected output:**
+```
+🔧 HealthCoin Admin Setup
+==========================
+Phone:    13266893239
+Nickname: Administrator
+
+👤 Creating new admin user...
+✅ User created with 3 wallets.
+✅ Admin role (SUPER_ADMIN) assigned.
+
+🎉 Admin setup complete!
+```
+
+---
+
+## 8. Building Applications
+
+### 8.1 Build API
+
+```powershell
+cd C:\healthcoin\apps\api
+npm run build
+```
+
+Expected: NestJS compiles to `dist/` with no errors.
+
+### 8.2 Build Web Frontend
+
+```powershell
+cd C:\healthcoin\apps\web
+npm run build
+```
+
+Expected: Vite builds to `dist/` with no errors.
+
+### 8.3 Build Mini-Program
+
+```powershell
+cd C:\healthcoin\apps\miniprogram
+npm run build:weapp
+```
+
+Expected: Taro compiles to `dist/` with no errors.
+
+> **Note:** The mini-program build output is uploaded to WeChat Developer Tools, not served from the server.
+
+---
+
+## 9. Process Management (PM2)
+
+### 9.1 Start API
+
+```powershell
+cd C:\healthcoin\apps\api
+pm2 start dist\src\main.js --name healthcoin-api --restart-delay 3000 --max-restarts 5
+```
+
+### 9.2 Start Proxy Server
+
+```powershell
 cd C:\healthcoin
 pm2 start proxy-server.js --name healthcoin-proxy
+```
+
+### 9.3 Save PM2 Configuration
+
+```powershell
+pm2 save
+pm2 startup
+```
+
+Follow the output instructions to make PM2 auto-start on Windows boot.
+
+### 9.4 PM2 Useful Commands
+
+```powershell
+pm2 status              # View running processes
+pm2 logs healthcoin-api # View API logs
+pm2 restart all         # Restart all processes
+pm2 stop all            # Stop all processes
+pm2 delete all          # Remove all processes from PM2
+```
+
+---
+
+## 10. IIS Reverse Proxy (Optional)
+
+If you prefer IIS over the Node.js proxy server:
+
+### 10.1 Install IIS and URL Rewrite Module
+
+1. Open **Server Manager** → **Manage** → **Add Roles and Features**
+2. Select **Web Server (IIS)** role
+3. Install **URL Rewrite Module** from: https://www.iis.net/downloads/microsoft/url-rewrite
+
+### 10.2 Configure Application Request Routing (ARR)
+
+1. Install ARR from: https://www.iis.net/downloads/microsoft/application-request-routing
+2. Open IIS Manager → Server → **Application Request Routing Cache**
+3. Click **Server Proxy Settings** → Check **Enable proxy**
+
+### 10.3 Create Website
+
+1. Open IIS Manager → Sites → **Add Website**
+   - **Site name:** HealthCoin
+   - **Physical path:** `C:\healthcoin\apps\web\dist`
+   - **Port:** 80
+   - **Host name:** yourdomain.com
+
+2. Add URL Rewrite rules for API:
+   - Select site → **URL Rewrite** → **Add Rule(s)**
+   - **Reverse Proxy**
+   - **Inbound rules:** `api/*` → `http://localhost:3000/api/{R:1}`
+
+### 10.4 Start Website
+
+```powershell
+iisreset /start
+```
+
+---
+
+## 11. Firewall Configuration
+
+### 11.1 Allow Required Ports
+
+```powershell
+# HTTP
+New-NetFirewallRule -DisplayName "HealthCoin HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
+
+# HTTPS
+New-NetFirewallRule -DisplayName "HealthCoin HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+
+# API (if exposed directly)
+New-NetFirewallRule -DisplayName "HealthCoin API" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
+```
+
+### 11.2 Block Direct Database Access
+
+```powershell
+# Ensure PostgreSQL is NOT exposed externally (bind to localhost only)
+# Edit: C:\Program Files\PostgreSQL\17\data\postgresql.conf
+# Set: listen_addresses = 'localhost'
+```
+
+---
+
+## 12. SSL / HTTPS Setup
+
+### 12.1 Using Let's Encrypt (Certbot)
+
+```powershell
+# Download Certbot for Windows
+# https://dl.eff.org/certbot-beta-installer-win_amd64.exe
+
+# Install certificate
+certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
+```
+
+### 12.2 Configure Proxy Server for HTTPS
+
+Edit `C:\healthcoin\proxy-server.js` to add HTTPS:
+
+```javascript
+const fs = require('fs');
+const https = require('https');
+
+const sslOptions = {
+  key: fs.readFileSync('C:/Certbot/live/yourdomain.com/privkey.pem'),
+  cert: fs.readFileSync('C:/Certbot/live/yourdomain.com/fullchain.pem'),
+};
+
+https.createServer(sslOptions, app).listen(443, () => {
+  console.log('Proxy server running on HTTPS port 443');
+});
+```
+
+### 12.3 Auto-Renewal
+
+Set up a Windows Task Scheduler job to run:
+
+```powershell
+certbot renew
+```
+
+Every 60 days.
+
+---
+
+## 13. Domain Configuration
+
+### 13.1 DNS Records
+
+| Type | Host | Value | TTL |
+|------|------|-------|-----|
+| A | @ | 39.98.241.141 | 600 |
+| A | www | 39.98.241.141 | 600 |
+| A | api | 39.98.241.141 | 600 |
+
+### 13.2 WeChat Mini-Program Domain Whitelist
+
+In WeChat MP Admin Console:
+1. Go to **开发 → 开发管理 → 开发设置**
+2. Add to **request合法域名**:
+   - `https://yourdomain.com`
+   - `https://api.yourdomain.com`
+
+### 13.3 WeChat Web OAuth Callback
+
+In WeChat Open Platform:
+1. Set **授权回调域** to: `yourdomain.com`
+
+---
+
+## 14. Verification
+
+### 14.1 API Health Check
+
+```powershell
+curl http://localhost:3000/api/v1/settings/public
+```
+
+Expected: JSON response with platform settings.
+
+### 14.2 Web Frontend
+
+Open browser to `http://localhost:3001` or `https://yourdomain.com`.
+
+### 14.3 Admin Login Test
+
+1. Navigate to `https://yourdomain.com/login`
+2. Switch to **密码登录** (Password Login) tab
+3. Enter:
+   - Phone: `13266893239`
+   - Password: your admin password
+4. Should log in and redirect to Admin Dashboard
+
+### 14.4 Payment Webhook Test
+
+```powershell
+curl -X POST http://localhost:3000/api/v1/payments/webhooks/fuiou/payment \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "test=value"
+```
+
+Expected: `FAIL` (signature invalid) — confirms webhook is listening.
+
+---
+
+## 15. Post-Deployment Security Checklist
+
+Before declaring production-ready, verify ALL of these:
+
+### Authentication & Authorization
+- [ ] `JWT_SECRET` is a random string ≥32 characters
+- [ ] `JWT_REFRESH_SECRET` is different from `JWT_SECRET`
+- [ ] Admin withdrawal endpoints require `AdminGuard`
+- [ ] All public auth endpoints have `@Throttle` rate limiting
+- [ ] `DEMO_LOGIN_ENABLED` and `VITE_DEMO_LOGIN_ENABLED` are removed from ALL `.env` files
+- [ ] No hardcoded credentials in any source file
+
+### Payments
+- [ ] `FUIOU_MOCK_PAYMENTS=false` in production
+- [ ] Fuiou webhook uses real `FUIOU_API_KEY` (not `DEMO_KEY`)
+- [ ] LCSW webhook uses merchant-specific access token (no global fallback)
+- [ ] Payment webhook endpoints have rate limiting
+
+### CORS & Networking
+- [ ] `CORS_ORIGINS` contains ONLY your production domains
+- [ ] No `localhost` in `CORS_ORIGINS` on production server
+- [ ] PostgreSQL binds to `localhost` only
+- [ ] Firewall blocks port 5432 externally
+
+### Data Protection
+- [ ] `.env` files are NOT in Git repository
+- [ ] Database backups are automated
+- [ ] Contact submissions file (`data/contact-submissions.json`) is outside web root
+- [ ] File uploads go to OSS, not local disk
+
+### Admin & Config
+- [ ] Admin account has `SUPER_ADMIN` role
+- [ ] `forceOrderStatus` validates against `OrderStatus` enum
+- [ ] `updateConfigs` blocks sensitive keys (`jwt_secret`, `fuiou_api_key`, etc.)
+- [ ] Swagger docs are disabled or protected in production
+
+### Mini-Program
+- [ ] `project.config.json` has correct `appid`
+- [ ] Domain whitelist configured in WeChat MP console
+- [ ] Build output uploaded via WeChat Developer Tools
+
+---
+
+## 16. Backup Strategy
+
+### 16.1 Automated Database Backup
+
+Create `C:\healthcoin\scripts\backup-db.ps1`:
+
+```powershell
+$date = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupDir = "C:\backups"
+$pgBin = "C:\Program Files\PostgreSQL\17\bin"
+$env:PGPASSWORD = "your_postgres_password"
+
+New-Item -ItemType Directory -Path $backupDir -Force
+& "$pgBin\pg_dump.exe" -h localhost -U postgres -d healthcoin_db -F c -f "$backupDir\healthcoin-$date.dump"
+
+# Keep only last 30 backups
+Get-ChildItem $backupDir -Filter "healthcoin-*.dump" | Sort-Object Name -Descending | Select-Object -Skip 30 | Remove-Item -Force
+```
+
+### 16.2 Schedule Daily Backup
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-File C:\healthcoin\scripts\backup-db.ps1"
+$trigger = New-ScheduledTaskTrigger -Daily -At 2am
+Register-ScheduledTask -TaskName "HealthCoin Daily Backup" -Action $action -Trigger $trigger
+```
+
+### 16.3 Backup Verification
+
+Test restoring from backup monthly:
+
+```powershell
+$env:PGPASSWORD = "your_postgres_password"
+& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -h localhost -U postgres -d healthcoin_test -c "C:\backups\healthcoin-YYYYMMDD-HHmmss.dump"
+```
+
+---
+
+## 17. Troubleshooting
+
+### "JWT_SECRET is not configured"
+```powershell
+# Add to apps\api\.env
+JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+JWT_REFRESH_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+```
+
+### "Connection refused" to PostgreSQL
+```powershell
+# Check PostgreSQL service
+Get-Service postgresql*
+# Start if stopped
+Start-Service postgresql-x64-17
+```
+
+### "Port 80 already in use"
+```powershell
+# Find process using port 80
+netstat -ano | findstr :80
+# Stop IIS if running
+iisreset /stop
+Stop-Service W3SVC
+```
+
+### PM2 processes won't start
+```powershell
+# Clear PM2 logs and dump
+pm2 flush
+pm2 cleardump
+# Re-save config
 pm2 save
 ```
 
-### 8. Open Firewall
+### Build fails with Prisma errors
 ```powershell
-New-NetFirewallRule -DisplayName "HealthCoin-HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
-New-NetFirewallRule -DisplayName "HealthCoin-API" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
-New-NetFirewallRule -DisplayName "HealthCoin-HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+cd C:\healthcoin\apps\api
+npx prisma generate
+npx prisma migrate deploy
+npm run build
 ```
+
+### CORS errors in browser
+1. Check `CORS_ORIGINS` in `apps\api\.env` includes your exact domain
+2. Restart API: `pm2 restart healthcoin-api`
+3. Clear browser cache
 
 ---
 
-## Troubleshooting
+## 18. Rollback Procedure
 
-| Problem | Solution |
-|---------|----------|
-| "PostgreSQL service not found" | Check if installed at `C:\Program Files\PostgreSQL\17\`. If different version, update paths. |
-| "npm not recognized" | Restart PowerShell after Node.js installation |
-| "Port 80 already in use" | Run `netstat -ano \| findstr :80` and kill the process, or stop IIS: `iisreset /stop` |
-| "API returns 404" | Check if API is running: `pm2 status`. Restart with `pm2 restart healthcoin-api` |
-| "Cannot connect from internet" | Check Windows Firewall AND cloud provider Security Group |
-| "Database connection failed" | Verify PostgreSQL is running: `Get-Service postgresql*`. Check `.env` connection string. |
-| "Build fails" | Run `npm install` again, then `npm run build:api` and `npm run build:web` separately |
-| "CORS error in browser" | Check `CORS_ORIGINS` in API `.env`. Use `*` for testing, your domain for production. |
+### 18.1 Quick Rollback (Code Only)
 
----
-
-## Managing the Server
-
-### Check Service Status
-```powershell
-pm2 status
-```
-
-### View API Logs
-```powershell
-pm2 logs healthcoin-api --lines 100
-```
-
-### View Proxy Logs
-```powershell
-pm2 logs healthcoin-proxy --lines 100
-```
-
-### Restart Services
-```powershell
-pm2 restart all
-```
-
-### Update Code (After Git Push)
 ```powershell
 cd C:\healthcoin
-git pull origin main
+git log --oneline -10
+# Find the commit hash before deployment
+git reset --hard <previous-commit-hash>
 npm install
 npm run build:api
 npm run build:web
 pm2 restart all
 ```
 
----
+### 18.2 Full Rollback (Code + Database)
 
-## Security Recommendations
+```powershell
+# Stop services
+pm2 stop all
 
-1. **Change RDP password** immediately if it's a default/random password
-2. **Disable default Administrator account** and create a new admin user
-3. **Restrict RDP access** to your IP only in Windows Firewall and cloud Security Group
-4. **Enable Windows Defender** and keep it updated
-5. **Set strong database password** (not the same as RDP password)
-6. **Use Cloudflare** in front of your server for DDoS protection and SSL
-7. **Enable PostgreSQL SSL** for encrypted connections
-8. **Regular backups** — set up the scheduled backup script above
-9. **Disable DEMO_LOGIN_ENABLED** after going live:
-   ```powershell
-   # Edit .env files
-   notepad C:\healthcoin\apps\api\.env
-   notepad C:\healthcoin\apps\web\.env
-   # Change DEMO_LOGIN_ENABLED=true to false
-   # Rebuild and restart
-   npm run build:web
-   pm2 restart all
-   ```
-10. **Set strong CRON_SECRET** and JWT secrets — do not use easy-to-guess strings
+# Restore code from backup
+Expand-Archive -Path "C:\backups\healthcoin-code-YYYYMMdd-HHmmss.zip" -DestinationPath "C:\" -Force
+
+# Restore database
+$env:PGPASSWORD = "your_postgres_password"
+& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -h localhost -U postgres -d healthcoin_db -c --clean "C:\backups\healthcoin-YYYYMMdd-HHmmss.dump"
+
+# Restart
+pm2 restart all
+```
 
 ---
 
-## Need Help?
+## Support & Maintenance
 
-If you encounter any errors during deployment:
-1. Copy the exact error message
-2. Check `pm2 logs healthcoin-api` for API errors
-3. Check Windows Event Viewer for system errors
-4. Verify your cloud provider's Security Group rules
-5. Check that all required ports (80, 443, 3000) are open
+### Regular Maintenance Tasks
+
+| Frequency | Task |
+|-----------|------|
+| Daily | Check PM2 logs for errors |
+| Daily | Verify database backup completed |
+| Weekly | Review contact submissions |
+| Weekly | Check disk space |
+| Monthly | Update SSL certificate |
+| Monthly | Review and rotate logs |
+| Quarterly | Update Node.js dependencies |
+| Quarterly | Security audit of dependencies |
+
+### Log Locations
+
+| Component | Log Path |
+|-----------|----------|
+| API | `C:\Users\<user>\.pm2\logs\healthcoin-api-*.log` |
+| Proxy | `C:\Users\<user>\.pm2\logs\healthcoin-proxy-*.log` |
+| PostgreSQL | `C:\Program Files\PostgreSQL\17\data\log\` |
+
+### Emergency Contacts
+
+Keep these handy:
+- Server provider (RDP access issues)
+- Domain registrar (DNS issues)
+- Fuiou / LCSW support (payment issues)
+- WeChat MP support (mini-program issues)
+- SMSbao support (SMS delivery issues)
+
+---
+
+**End of Document**
+
+*Last verified: April 2026*
