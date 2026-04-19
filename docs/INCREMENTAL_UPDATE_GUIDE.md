@@ -1,39 +1,41 @@
-# HealthCoin — Incremental Windows Server RDP Update Guide
+# HealthCoin — Complete Incremental Windows Server RDP Update Guide
 
 > **For:** Updating an existing HealthCoin deployment on Windows Server RDP  
-> **From:** Previous version (before security hardening)  
-> **To:** Latest `main` branch (post-security audit)  
+> **From:** First deployed version (before password auth, WeChat login, profile expansion, OSS, mini-program completion, and security hardening)  
+> **To:** Latest `main` branch (all features + post-security audit)  
 > **Target IP:** `39.98.241.141`
 
 ---
 
-## What Changed (Summary)
+## Overview
 
-This update contains **critical security fixes** and new features. You must apply it before going to production.
+This guide covers updating your **already-deployed** HealthCoin instance from the original version to the **latest** version. The update includes **two major phases** combined into one:
 
-### Critical Security Fixes
-- **Admin withdrawal endpoints** now properly protected with `AdminGuard`
-- **Rate limiting** added to all auth endpoints (OTP, login, WeChat, refresh)
-- **Hardcoded SMSbao credentials** removed — must configure via System Settings
-- **Fuiou/LCSW payment DEMO fallbacks** removed — must configure real credentials
-- **JWT secrets** no longer have unsafe fallbacks — must set in `.env`
-- **Demo login** completely removed from backend and frontend
-- **Mock WeChat openid** fallback removed — requires real WeChat app credentials
-- **Admin config updates** now use a whitelist + block sensitive keys
-- **Order status force-change** now validates against valid state machine values
+### Phase 1 — Previous Update (Features)
+- **Password authentication** (set, change, and login with phone + password)
+- **WeChat mini-program login** (`wx.login` code exchange for JWT tokens)
+- **Web OAuth WeChat login** (QR code scan for web users)
+- **OSS file upload endpoint** (Aliyun OSS for health records and documents)
+- **Expanded user profile** (name, gender, birthday, email, bio fields)
+- **Mini-program completion** (assets, auth, health records upload, payment webview, profile info page, token refresh)
+- **Admin setup script** (`scripts/setup-admin.js`)
+- **Database migration** (`20260419085653_add_password_and_profile_fields`)
+
+### Phase 2 — Current Update (Security Hardening)
+- **AdminGuard** added to withdrawal admin endpoints
+- **Rate limiting** (`@Throttle`) on all public auth endpoints
+- **Hardcoded credentials removed** — SMSbao, Fuiou DEMO_KEY, JWT fallbacks
+- **Demo login completely removed** from backend and all frontend code
+- **Mock WeChat openid fallback removed** — requires real WeChat credentials
+- **Admin config whitelist** — blocks injection of sensitive payment keys
+- **Order status validation** — `forceOrderStatus` validates against state machine
 - **bcrypt rounds** increased from 10 → 12
 - **CORS** no longer defaults to localhost in production
 - **Payment webhooks** now have rate limiting
-- **File uploads** in health records now go to OSS instead of local blob URLs
-
-### New Features
-- Password authentication (set/change/login)
-- WeChat mini-program login (`wx.login` + JWT)
-- Web OAuth WeChat login
-- OSS file upload endpoint
-- Expanded user profile (name, gender, birthday, email, bio)
-- Contact form with real backend storage
-- Mini-program token refresh on app resume
+- **LCSW webhook** no longer falls back to global access token
+- **Pagination limits** (`@Max(100)` / `clampLimit`) on all list endpoints
+- **Contact form** now has a real backend endpoint with validation and rate limiting
+- **Health records** now upload to OSS instead of sending local blob URLs
 
 ---
 
@@ -47,46 +49,21 @@ Before starting, ensure you have:
 4. **PostgreSQL 17** running and accessible
 5. **Existing project** already cloned at `C:\healthcoin` (or your deploy path)
 6. **Proxy server (pm2)** already running the previous version
+7. **PowerShell** running as **Administrator**
 
 ---
 
-## Quick Start — One-Click Update (Recommended)
+## Method 1: One-Click Automated Update (Recommended)
 
-We provide an **automated PowerShell script** that performs the entire update for you.
-
-```powershell
-# RDP into your server, open PowerShell as Administrator
-
-# 1. Backup first (strongly recommended)
-$env:PGPASSWORD = "your_postgres_password"
-& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -h localhost -U postgres -d healthcoin -F c -f "C:\backups\healthcoin-pre-update-$(Get-Date -Format yyyyMMdd-HHmmss).dump"
-Compress-Archive -Path "C:\healthcoin" -DestinationPath "C:\backups\healthcoin-code-$(Get-Date -Format yyyyMMdd-HHmmss).zip" -Force
-
-# 2. Run the automated update script
-cd C:\healthcoin
-.\scripts\update-and-setup-admin.ps1 -AppDir "C:\healthcoin" -AdminPhone "13266893239" -AdminPassword "coin@Health.12345"
-```
-
-This script will:
-- Stop running services
-- Pull the latest `main` branch
-- Install all dependencies
-- Add missing environment variables (with placeholders)
-- Apply database migrations
-- Set up / update the admin account
-- Build API, Web, and Mini-program
-- Restart all services via PM2
-
-**After the script finishes, you MUST edit `apps\api\.env` and fill in all empty values before production use!**
-
----
-
-## Manual Steps (If you prefer to run each step yourself)
+We provide an **automated PowerShell script** (`scripts/update-and-setup-admin.ps1`) that performs the **entire** update for you — both Phase 1 (features) and Phase 2 (security) combined.
 
 ### Step 1: Backup (Strongly Recommended)
 
 ```powershell
 # RDP into your server, open PowerShell as Administrator
+
+# Create backup directory if not exists
+New-Item -ItemType Directory -Path "C:\backups" -Force
 
 # Backup the database
 $env:PGPASSWORD = "your_postgres_password"
@@ -96,128 +73,172 @@ $env:PGPASSWORD = "your_postgres_password"
 Compress-Archive -Path "C:\healthcoin" -DestinationPath "C:\backups\healthcoin-code-$(Get-Date -Format yyyyMMdd-HHmmss).zip" -Force
 ```
 
----
-
-### Step 2: Pull Latest Code
+### Step 2: Run the Automated Script
 
 ```powershell
 cd C:\healthcoin
-git stash
-git pull origin main
+.\scripts\update-and-setup-admin.ps1 -AppDir "C:\healthcoin" -AdminPhone "13266893239" -AdminPassword "coin@Health.12345"
 ```
 
----
+The script will perform all 8 steps automatically:
+1. Validate existing deployment
+2. Stop PM2 services
+3. Pull latest `main` branch
+4. Install all dependencies
+5. Update `.env` files (add new required vars, remove old demo vars)
+6. Apply database migrations
+7. Set up / update admin account with `SUPER_ADMIN` role
+8. Build API, Web, and Mini-program
+9. Restart all services via PM2
 
-### Step 3: Install Dependencies
+### Step 3: Fill in Environment Variables
+
+**After the script finishes, you MUST edit these files and fill in all empty values:**
 
 ```powershell
-# From project root
-cd C:\healthcoin
-npm install
+notepad C:\healthcoin\apps\api\.env
 ```
 
----
-
-### Step 4: Update Environment Variables
-
-### `apps\api\.env` — Add/Update These Keys
+Required values to fill in before production:
 
 ```env
-# ================================
-# JWT (REQUIRED — no fallbacks anymore)
-# ================================
+# JWT (generate long random strings, minimum 32 characters each)
 JWT_SECRET=your-super-random-jwt-secret-min-32-chars
 JWT_REFRESH_SECRET=your-different-refresh-secret-min-32-chars
 
-# ================================
-# CORS (REQUIRED in production)
-# ================================
-# Comma-separated list of allowed origins
-# Example: https://yourdomain.com,https://admin.yourdomain.com
-CORS_ORIGINS=http://localhost:5173,http://localhost:3001
+# CORS (your actual domains — NO localhost in production)
+CORS_ORIGINS=https://yourdomain.com,https://admin.yourdomain.com
 
-# ================================
-# Admin Setup (REQUIRED for setup-admin.js)
-# ================================
+# Admin (already set by script, verify they are correct)
 ADMIN_PHONE=13266893239
 ADMIN_PASSWORD=coin@Health.12345
-ADMIN_NICKNAME=Administrator
 
-# ================================
-# Fuiou Payment (REQUIRED for real payments)
-# ================================
+# Fuiou Payment (real credentials from Fuiou)
 FUIOU_MERCHANT_NO=your_real_merchant_no
 FUIOU_API_KEY=your_real_api_key
 FUIOU_GATEWAY_URL=https://pay.fuiou.com
-# Only set to true for testing WITHOUT calling real gateway:
-# FUIOU_MOCK_PAYMENTS=false
+FUIOU_MOCK_PAYMENTS=false
 
-# ================================
-# LCSW / 扫呗 Payment (REQUIRED for real payments)
-# ================================
+# LCSW / 扫呗 Payment (real credentials from LCSW)
 LCSW_MERCHANT_NO=your_lcsw_merchant_no
 LCSW_APPID=your_lcsw_appid
 LCSW_APP_SECRET=your_lcsw_app_secret
 LCSW_ACCESS_TOKEN=your_lcsw_access_token
 LCSW_BASE_URL=https://openapi.lcsw.cn
+LCSW_ENCRYPTION_KEY=your-encryption-key
 
-# ================================
-# WeChat Mini Program (REQUIRED for wx.login)
-# ================================
-WECHAT_MINI_APPID=your_wx_appid
-WECHAT_MINI_SECRET=your_wx_secret
+# WeChat Mini Program (from WeChat MP admin console)
+WECHAT_MINI_APPID=wxYOURAPPID
+WECHAT_MINI_SECRET=your_mini_program_secret
 
-# ================================
-# WeChat Web OAuth (REQUIRED for web QR login)
-# ================================
-WECHAT_APPID=your_web_wx_appid
-WECHAT_SECRET=your_web_wx_secret
+# WeChat Web OAuth (from WeChat Open Platform)
+WECHAT_APPID=wxYOURWEBAPPID
+WECHAT_SECRET=your_web_oauth_secret
 
-# ================================
-# SMSbao (REQUIRED for OTP SMS)
-# ================================
+# SMSbao (from smsbao.com)
 SMSBAO_USERNAME=your_smsbao_username
 SMSBAO_PASSWORD=your_smsbao_password_md5
+
+# Aliyun OSS (for file uploads)
+OSS_REGION=oss-cn-hangzhou
+OSS_ACCESS_KEY_ID=your_access_key
+OSS_ACCESS_KEY_SECRET=your_access_secret
+OSS_BUCKET=your-bucket-name
+OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
 ```
 
-> **Important:** Remove any old `DEMO_LOGIN_ENABLED=true` or `VITE_DEMO_LOGIN_ENABLED=true` lines.
+Also verify the web env:
 
-### `apps\web\.env` — Update
+```powershell
+notepad C:\healthcoin\apps\web\.env
+```
 
 ```env
 VITE_API_BASE_URL=https://your-api-domain.com/api/v1
-# Remove: VITE_DEMO_LOGIN_ENABLED
+```
+
+### Step 4: Restart Services After Editing .env
+
+```powershell
+cd C:\healthcoin
+pm2 restart all
+pm2 save
 ```
 
 ---
 
-### Step 5: Apply Database Migration
+## Method 2: Manual Step-by-Step Update
 
-This migration adds `password`, `name`, `gender`, `birthday`, `email`, and `bio` to the `User` table.
+If you prefer to run each step manually instead of using the automated script, follow these steps:
+
+### Step 1: Backup
+
+```powershell
+New-Item -ItemType Directory -Path "C:\backups" -Force
+$env:PGPASSWORD = "your_postgres_password"
+& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -h localhost -U postgres -d healthcoin -F c -f "C:\backups\healthcoin-pre-update-$(Get-Date -Format yyyyMMdd-HHmmss).dump"
+Compress-Archive -Path "C:\healthcoin" -DestinationPath "C:\backups\healthcoin-code-$(Get-Date -Format yyyyMMdd-HHmmss).zip" -Force
+```
+
+### Step 2: Stop Services
+
+```powershell
+cd C:\healthcoin
+pm2 stop all
+```
+
+### Step 3: Pull Latest Code
+
+```powershell
+cd C:\healthcoin
+git stash 2>$null
+git pull origin main
+```
+
+### Step 4: Install Dependencies
+
+```powershell
+cd C:\healthcoin
+npm install
+
+cd C:\healthcoin\apps\api
+npm install
+
+cd C:\healthcoin\apps\miniprogram
+npm install
+```
+
+### Step 5: Update Environment Files
+
+Add all the new environment variables listed in **Method 1 Step 3** above to:
+- `C:\healthcoin\apps\api\.env`
+- `C:\healthcoin\apps\web\.env`
+
+**Also remove any old lines like:**
+```env
+DEMO_LOGIN_ENABLED=true
+VITE_DEMO_LOGIN_ENABLED=true
+```
+
+### Step 6: Apply Database Migration
+
+This migration adds `password`, `name`, `gender`, `birthday`, `email`, and `bio` columns to the `User` table.
 
 ```powershell
 cd C:\healthcoin\apps\api
+npx prisma generate
 npx prisma migrate deploy
 ```
 
-If `prisma migrate deploy` fails due to the shadow database issue, apply the migration SQL directly:
-
+If `migrate deploy` fails:
 ```powershell
-cd C:\healthcoin\apps\api
 npx prisma migrate resolve --applied 20260419085653_add_password_and_profile_fields
-```
-
-Then regenerate the client:
-
-```powershell
 npx prisma generate
 ```
 
----
+### Step 7: Set Up / Update Admin Account
 
-### Step 6: Set Up / Update Admin Account
-
-The setup script now **requires** `ADMIN_PHONE` and `ADMIN_PASSWORD` environment variables.
+The setup script **requires** `ADMIN_PHONE` and `ADMIN_PASSWORD` environment variables (no hardcoded fallbacks).
 
 ```powershell
 cd C:\healthcoin
@@ -241,107 +262,111 @@ Nickname: Administrator
 🎉 Admin setup complete!
 ```
 
----
-
-### Step 7: Build All Applications
+### Step 8: Build All Applications
 
 ```powershell
-# Build API
+# API
 cd C:\healthcoin\apps\api
 npm run build
 
-# Build Web Frontend
+# Web
 cd C:\healthcoin\apps\web
 npm run build
 
-# Build Mini-Program ( WeChat )
+# Mini-program
 cd C:\healthcoin\apps\miniprogram
 npm run build:weapp
 ```
 
-All three should complete with no errors.
+All three must complete with **no errors**.
 
----
-
-### Step 8: Restart Production Services
-
-### Option A: Using PM2 (Recommended)
+### Step 9: Restart Services
 
 ```powershell
+# Stop IIS if running
+iisreset /stop 2>$null
+Stop-Service W3SVC -ErrorAction SilentlyContinue
+
+# Restart via PM2
 cd C:\healthcoin
-pm2 stop all
-pm2 start proxy-server.js --name healthcoin-proxy
+pm2 delete healthcoin-api 2>$null
+pm2 start "C:\healthcoin\apps\api\dist\src\main.js" --name healthcoin-api --restart-delay 3000 --max-restarts 5
+
+pm2 delete healthcoin-proxy 2>$null
+pm2 start "C:\healthcoin\proxy-server.js" --name healthcoin-proxy
+
 pm2 save
 ```
 
-### Option B: Using the Provided PowerShell Script
-
-```powershell
-cd C:\healthcoin
-.\scripts\start-all.ps1
-```
-
 ---
 
-## Step 9: Verify Deployment
+## Verification
 
-Check these endpoints in a browser or with curl:
+After the update, verify these endpoints:
 
 ```powershell
 # API health
 curl http://localhost:3000/api/v1/settings/public
 
-# Swagger docs (if enabled)
-curl http://localhost:3000/api/v1/api/docs
-
 # Web frontend
 curl http://localhost:3001
 ```
 
----
+### Admin Login Test
+- Open `https://your-domain.com/login`
+- Switch to **密码登录** (Password Login) tab
+- Phone: `13266893239`
+- Password: `coin@Health.12345`
+- Should log in successfully and redirect to Admin Dashboard
 
-## Step 10: Configure System Settings (Admin Panel)
+### System Settings Configuration
 
-Log in to the admin panel at `https://your-domain.com/login` with:
-- **Phone:** `13266893239`
-- **Password:** `coin@Health.12345`
+After logging in as admin, go to **Settings** and configure:
 
-Then go to **Settings** and configure:
-
-| Setting | Required Value |
-|---------|---------------|
-| `smsbao_username` | Your SMSbao username |
-| `smsbao_password` | (Set via env var only — blocked from UI) |
+| Setting | Purpose |
+|---------|---------|
+| `smsbao_username` | SMS service username |
 | `wechat_appid` | Web OAuth app ID |
 | `wechat_mini_appid` | Mini-program app ID |
-| `fuiou_merchant_no` | Fuiou merchant number |
-| `lcsw_merchant_no` | LCSW merchant number |
+| `fuiou_merchant_no` | Fuiou payment merchant |
+| `lcsw_merchant_no` | LCSW payment merchant |
 | `lcsw_appid` | LCSW app ID |
 | `platform_name` | Your brand name |
 | `platform_hotline` | Customer service phone |
+
+> **Note:** Sensitive keys like `smsbao_password`, `jwt_secret`, `fuiou_api_key`, `lcsw_access_token` are **blocked** from being set via the admin UI and must be configured in `apps\api\.env` only.
 
 ---
 
 ## Troubleshooting
 
-### "JWT_SECRET is not configured" error
+### "JWT_SECRET is not configured"
 ```powershell
 # Add to apps\api\.env
 JWT_SECRET=your-very-long-random-string-at-least-32-characters
 JWT_REFRESH_SECRET=another-very-long-random-string
 ```
 
-### "WeChat mini-program login is not configured" error
+### "WeChat mini-program login is not configured"
 ```powershell
 # Add to apps\api\.env
 WECHAT_MINI_APPID=wxYOURAPPID
 WECHAT_MINI_SECRET=your_secret
 ```
 
+### "Admin user not found" when running setup-admin.js
+```powershell
+# Ensure ADMIN_PHONE and ADMIN_PASSWORD are set as environment variables
+$env:ADMIN_PHONE = "13266893239"
+$env:ADMIN_PASSWORD = "coin@Health.12345"
+node scripts\setup-admin.js
+```
+
 ### Database migration fails
 ```powershell
-# Mark as applied manually if already in DB
+cd C:\healthcoin\apps\api
 npx prisma migrate resolve --applied 20260419085653_add_password_and_profile_fields
+npx prisma generate
 ```
 
 ### Build fails with "cannot find module"
@@ -350,22 +375,31 @@ cd C:\healthcoin
 npm install
 ```
 
+### Mini-program build fails
+```powershell
+cd C:\healthcoin\apps\miniprogram
+npm install
+npm run build:weapp
+```
+
 ---
 
 ## Post-Update Security Checklist
 
-- [ ] `JWT_SECRET` and `JWT_REFRESH_SECRET` are set to long random strings
-- [ ] `CORS_ORIGINS` is set to your actual domain(s), not localhost
-- [ ] `ADMIN_PHONE` and `ADMIN_PASSWORD` are configured before running `setup-admin.js`
+Before going to production, verify:
+
+- [ ] `JWT_SECRET` and `JWT_REFRESH_SECRET` are set to long random strings (≥32 chars)
+- [ ] `CORS_ORIGINS` is set to your actual domain(s), NOT localhost
+- [ ] `ADMIN_PHONE` and `ADMIN_PASSWORD` are configured
 - [ ] `FUIOU_MOCK_PAYMENTS` is `false` or unset in production
-- [ ] `DEMO_LOGIN_ENABLED` and `VITE_DEMO_LOGIN_ENABLED` are removed
-- [ ] SMSbao credentials are configured via env vars
-- [ ] WeChat app IDs/secrets are configured
+- [ ] `DEMO_LOGIN_ENABLED` and `VITE_DEMO_LOGIN_ENABLED` are removed from all `.env` files
+- [ ] SMSbao credentials are configured via `.env` (not hardcoded)
+- [ ] WeChat app IDs and secrets are configured
 - [ ] Database migration is applied
-- [ ] All three builds pass
+- [ ] All three builds pass (API, Web, Mini-program)
 - [ ] Admin account has `SUPER_ADMIN` role
-- [ ] Swagger is disabled or protected in production
 - [ ] Contact submissions file `data/contact-submissions.json` is outside web root
+- [ ] Swagger docs are disabled or protected in production
 
 ---
 
@@ -387,6 +421,7 @@ $env:PGPASSWORD = "your_postgres_password"
 # Restart old version
 cd C:\healthcoin
 pm2 start proxy-server.js --name healthcoin-proxy
+pm2 save
 ```
 
 ---
@@ -394,7 +429,8 @@ pm2 start proxy-server.js --name healthcoin-proxy
 ## Support
 
 If you encounter issues during the update:
-1. Check `C:\healthcoin\apps\api\logs` or pm2 logs: `pm2 logs healthcoin-proxy`
+1. Check PM2 logs: `pm2 logs healthcoin-api`
 2. Verify `.env` values are correct
 3. Ensure PostgreSQL is running: `services.msc` → PostgreSQL
 4. Re-run builds individually to identify which app fails
+5. Run the setup-admin script again if the admin account is missing
