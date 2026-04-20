@@ -29,7 +29,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { customAlphabet } = require('nanoid');
 
 const TARGET_PHONE = process.env.ADMIN_PHONE;

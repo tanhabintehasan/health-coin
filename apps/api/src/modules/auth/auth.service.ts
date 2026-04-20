@@ -7,7 +7,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SetPasswordDto, ChangePasswordDto, LoginWithPasswordDto } from './dto/set-password.dto';
 import { WxLoginDto } from './dto/wx-login.dto';
 import { customAlphabet } from 'nanoid';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 const generateReferralCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8);
 
