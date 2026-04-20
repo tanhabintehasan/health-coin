@@ -1,9 +1,6 @@
 import {
   Controller,
   Post,
-  Get,
-  Param,
-  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -11,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { Response } from 'express';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { UploadService } from './upload.service';
@@ -41,12 +37,5 @@ export class UploadController {
 
     const url = await this.uploadService.uploadFile(file.buffer, file.originalname, file.mimetype);
     return { url };
-  }
-
-  @Get('uploads/:filename')
-  @ApiOperation({ summary: 'Serve a locally uploaded file' })
-  serveFile(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = this.uploadService.getLocalFilePath(filename);
-    res.sendFile(filePath);
   }
 }

@@ -31,10 +31,12 @@ export class UploadService {
       this.logger.warn('OSS not fully configured. Using local file storage for uploads.');
     }
 
-    this.localUploadDir = join(process.cwd(), 'uploads');
+    const uploadDirFromEnv = this.config.get('UPLOAD_DIR');
+    this.localUploadDir = uploadDirFromEnv ? uploadDirFromEnv : join(process.cwd(), 'uploads');
     if (!fs.existsSync(this.localUploadDir)) {
       fs.mkdirSync(this.localUploadDir, { recursive: true });
     }
+    this.logger.log(`Local upload directory: ${this.localUploadDir}`);
   }
 
   async uploadFile(file: Buffer, originalName: string, mimetype: string): Promise<string> {
@@ -72,5 +74,9 @@ export class UploadService {
 
   getLocalFilePath(filename: string): string {
     return join(this.localUploadDir, filename);
+  }
+
+  getLocalUploadDir(): string {
+    return this.localUploadDir;
   }
 }

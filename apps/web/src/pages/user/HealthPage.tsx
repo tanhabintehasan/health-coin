@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api'
-import { message, Spin, Empty } from 'antd'
+import { message, Spin, Empty, Modal, Image } from 'antd'
 
 const FILE_TYPE_LABEL: Record<string, string> = { image: 'Image', pdf: 'PDF' }
 const FILE_TYPE_COLOR: Record<string, string> = { image: '#1677ff', pdf: '#ff4d4f' }
@@ -9,6 +9,12 @@ export default function HealthPage() {
   const [records, setRecords] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [preview, setPreview] = useState<{ open: boolean; url: string; type: string; name: string }>({
+    open: false,
+    url: '',
+    type: '',
+    name: '',
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchRecords = async () => {
@@ -49,7 +55,11 @@ export default function HealthPage() {
     catch { message.error('Delete failed') }
   }
 
-  const handleView = (record: any) => { window.open(record.fileUrl, '_blank') }
+  const handleView = (record: any) => {
+    setPreview({ open: true, url: record.fileUrl, type: record.fileType, name: record.fileName })
+  }
+
+  const isImage = preview.type === 'image'
 
   return (
     <div style={{ minHeight: '100%' }}>
@@ -75,9 +85,18 @@ export default function HealthPage() {
         {records.map((record: any) => (
           <div key={record.id} style={{ background: '#fff', margin: '8px 12px', borderRadius: 10, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: FILE_TYPE_COLOR[record.fileType] + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 11, color: FILE_TYPE_COLOR[record.fileType], fontWeight: 'bold' }}>{FILE_TYPE_LABEL[record.fileType]}</span>
-              </div>
+              {record.fileType === 'image' && record.fileUrl ? (
+                <Image
+                  src={record.fileUrl}
+                  alt={record.fileName}
+                  style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0, cursor: 'pointer' }}
+                  preview={{ src: record.fileUrl }}
+                />
+              ) : (
+                <div style={{ width: 48, height: 48, borderRadius: 8, background: FILE_TYPE_COLOR[record.fileType] + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, color: FILE_TYPE_COLOR[record.fileType], fontWeight: 'bold' }}>{FILE_TYPE_LABEL[record.fileType]}</span>
+                </div>
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.fileName}>{record.fileName}</div>
                 <div style={{ fontSize: 12, color: '#999' }}>{new Date(record.createdAt).toLocaleDateString('zh-CN')}</div>
@@ -90,6 +109,25 @@ export default function HealthPage() {
           </div>
         ))}
       </div>
+
+      <Modal
+        open={preview.open}
+        title={preview.name}
+        footer={null}
+        onCancel={() => setPreview({ ...preview, open: false })}
+        width={isImage ? 720 : 900}
+        centered
+      >
+        {isImage ? (
+          <Image src={preview.url} alt={preview.name} style={{ width: '100%' }} preview={false} />
+        ) : (
+          <iframe
+            src={preview.url}
+            title={preview.name}
+            style={{ width: '100%', height: '70vh', border: 'none' }}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
