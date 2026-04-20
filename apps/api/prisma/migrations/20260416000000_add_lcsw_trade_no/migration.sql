@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Order" ADD COLUMN "lcswTradeNo" VARCHAR(100);
+ALTER TABLE "orders" ADD COLUMN "lcswTradeNo" VARCHAR(100);

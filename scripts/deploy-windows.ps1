@@ -108,7 +108,7 @@ $env:PGPASSWORD = $DbPassword
 & "$pgBin\psql.exe" -U postgres -c "CREATE USER $DbUser WITH PASSWORD '$DbPassword';"
 & "$pgBin\psql.exe" -U postgres -c "CREATE DATABASE $DbName OWNER $DbUser;"
 & "$pgBin\psql.exe" -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DbName TO $DbUser;"
-& "$pgBin\psql.exe" -U postgres -d $DbName -c "CREATE EXTENSION IF NOT EXISTS 'uuid-ossp';"
+& "$pgBin\psql.exe" -U postgres -d $DbName -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 Write-Ok "Database created"
 
 # =============================================================================
@@ -117,31 +117,37 @@ Write-Ok "Database created"
 Write-Step "Step 5/12 - Cloning Repository"
 
 # Method 1: Git clone into temp, then move
+$cloneSuccess = $false
 try {
     $tempDir = "$env:TEMP\healthcoin_clone_$(Get-Random)"
-    if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
-    git clone --depth 1 --branch $Branch $RepoUrl $tempDir 2>&1
+    if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue }
+    git clone --depth 1 --branch $Branch $RepoUrl $tempDir 2>&1 | Out-Null
     if (Test-Path "$tempDir\package.json") {
-        # Clean target and move
-        if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir }
+        if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir -ErrorAction SilentlyContinue }
         Move-Item -Path $tempDir -Destination $AppDir -Force
+        $cloneSuccess = $true
         Write-Ok "Git clone successful"
-    } else {
-        throw "Git clone incomplete"
     }
-} catch {
+} catch { }
+
+if (-not $cloneSuccess) {
     Write-Warn "Git clone failed, trying ZIP download..."
-    # Method 2: Download ZIP
     $zipPath = "$env:TEMP\healthcoin.zip"
-    Invoke-WebRequest -Uri "https://github.com/tanhabintehasan/health-coin/archive/refs/heads/$Branch.zip" -OutFile $zipPath -UseBasicParsing
     $zipExtract = "$env:TEMP\healthcoin_zip_$(Get-Random)"
-    Expand-Archive -Path $zipPath -DestinationPath $zipExtract -Force
-    $innerDir = Get-ChildItem -Path $zipExtract -Directory | Select-Object -First 1
-    if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir }
-    Move-Item -Path $innerDir.FullName -Destination $AppDir -Force
-    Remove-Item -Path $zipPath -Force
-    Remove-Item -Path $zipExtract -Recurse -Force
-    Write-Ok "ZIP download successful"
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri "https://github.com/tanhabintehasan/health-coin/archive/refs/heads/$Branch.zip" -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
+        Expand-Archive -Path $zipPath -DestinationPath $zipExtract -Force
+        $innerDir = Get-ChildItem -Path $zipExtract -Directory | Select-Object -First 1
+        if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir -ErrorAction SilentlyContinue }
+        Move-Item -Path $innerDir.FullName -Destination $AppDir -Force
+        Write-Ok "ZIP download successful"
+    } catch {
+        Write-Err "Both git clone and ZIP download failed. Check internet connection."
+    } finally {
+        if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue }
+        if (Test-Path $zipExtract) { Remove-Item -Path $zipExtract -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 # Verify
@@ -160,6 +166,11 @@ Set-Location "$AppDir\apps\api"; npm install
 Set-Location "$AppDir\apps\miniprogram"; npm install
 Set-Location $AppDir
 Write-Ok "Dependencies installed"
+
+# Try to auto-fix vulnerabilities (non-fatal)
+Write-Step "Step 6b/12 - Fixing npm vulnerabilities"
+npm audit fix --force 2>$null | Out-Null
+Write-Ok "npm audit fix attempted (some upstream deps may remain)"
 
 # =============================================================================
 # 7. Create Environment Files
@@ -197,8 +208,8 @@ WECHAT_MINI_APPID=wxYOURAPPIDHERE
 WECHAT_MINI_SECRET=
 WECHAT_APPID=wxYOURWEBAPPID
 WECHAT_SECRET=
-SMSBAO_USERNAME=
-SMSBAO_PASSWORD=
+SMSBAO_USERNAME=CX3308
+SMSBAO_PASSWORD=d246e48c94264b2f8a2dbe17877e8a7d
 SMSBAO_TEMPLATE=【健康币】您的验证码是[code]，5分钟内有效。
 OSS_REGION=oss-cn-hangzhou
 OSS_ACCESS_KEY_ID=
