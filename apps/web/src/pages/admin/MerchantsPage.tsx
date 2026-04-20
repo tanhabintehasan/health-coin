@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Button, Typography, Space, message, Popconfirm, Tabs, Drawer, Descriptions, Input } from 'antd'
-import { CheckOutlined, CloseOutlined, StopOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { Table, Tag, Button, Typography, Space, message, Popconfirm, Tabs, Drawer, Descriptions, Input, Modal, Form, InputNumber, Select } from 'antd'
+import { CheckOutlined, CloseOutlined, StopOutlined, PlayCircleOutlined, PlusOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -26,6 +26,10 @@ export default function MerchantsPage() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<any>(null)
   const [rejectNote, setRejectNote] = useState('')
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [addLoading, setAddLoading] = useState(false)
+  const [regions, setRegions] = useState<any[]>([])
+  const [addForm] = Form.useForm()
 
   const fetchMerchants = async (status = activeTab, p = 1) => {
     setLoading(true)
@@ -36,7 +40,14 @@ export default function MerchantsPage() {
     } catch { setMerchants([]) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchMerchants() }, [])
+  const fetchRegions = async () => {
+    try {
+      const res: any = await api.getRegionsTree()
+      setRegions(res ?? [])
+    } catch { setRegions([]) }
+  }
+
+  useEffect(() => { fetchMerchants(); fetchRegions() }, [])
 
   const handleApprove = async (id: string) => {
     try { await api.approveMerchant(id); message.success('Merchant approved'); fetchMerchants(); if (selected?.id === id) setSelected(null) }
@@ -51,6 +62,26 @@ export default function MerchantsPage() {
   const handleSuspend = async (id: string, suspend: boolean) => {
     try { await api.suspendMerchant(id, suspend); message.success(suspend ? 'Merchant suspended' : 'Merchant reactivated'); fetchMerchants(); if (selected?.id === id) setSelected(null) }
     catch { message.error('Action failed') }
+  }
+
+  const handleAddMerchant = async (values: any) => {
+    setAddLoading(true)
+    try {
+      await api.createMerchant({
+        ownerPhone: values.ownerPhone,
+        name: values.name,
+        description: values.description,
+        logoUrl: values.logoUrl,
+        regionId: values.regionId,
+        commissionRate: values.commissionRate ?? 0.05,
+      })
+      message.success('Merchant created successfully')
+      setIsAddModalOpen(false)
+      addForm.resetFields()
+      fetchMerchants()
+    } catch (err: any) {
+      message.error(err || 'Failed to create merchant')
+    } finally { setAddLoading(false) }
   }
 
   const columns = [
@@ -91,7 +122,12 @@ export default function MerchantsPage() {
 
   return (
     <div>
-      <Typography.Title level={4} style={{ marginBottom: 16 }}>Merchants</Typography.Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>Merchants</Typography.Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsAddModalOpen(true)}>
+          Add Merchant
+        </Button>
+      </div>
       <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key); setPage(1); fetchMerchants(key, 1) }} style={{ marginBottom: 16 }} items={STATUS_TABS.map((t) => ({ key: t.key, label: t.label }))} />
       <div className="table-responsive">
         <Table rowKey="id" columns={columns} dataSource={merchants} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchMerchants(activeTab, p) } }} scroll={{ x: 'max-content' }} />
@@ -139,6 +175,37 @@ export default function MerchantsPage() {
           </>
         )}
       </Drawer>
+
+      <Modal
+        title="Add Merchant"
+        open={isAddModalOpen}
+        onCancel={() => { setIsAddModalOpen(false); addForm.resetFields() }}
+        onOk={() => addForm.submit()}
+        confirmLoading={addLoading}
+        okText="Create"
+        width={560}
+      >
+        <Form form={addForm} layout="vertical" onFinish={handleAddMerchant}>
+          <Form.Item name="ownerPhone" label="Owner Phone" rules={[{ required: true, message: 'Phone is required' }]}>
+            <Input placeholder="e.g. 13800138000" />
+          </Form.Item>
+          <Form.Item name="name" label="Store Name" rules={[{ required: true, message: 'Store name is required' }]}>
+            <Input placeholder="Merchant display name" />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={2} placeholder="Optional description" />
+          </Form.Item>
+          <Form.Item name="logoUrl" label="Logo URL">
+            <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item name="regionId" label="Region">
+            <Select placeholder="Select region" allowClear options={regions.map((r: any) => ({ value: r.id, label: r.name }))} />
+          </Form.Item>
+          <Form.Item name="commissionRate" label="Commission Rate" initialValue={0.05}>
+            <InputNumber min={0} max={1} step={0.01} style={{ width: '100%' }} placeholder="0.05 = 5%" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

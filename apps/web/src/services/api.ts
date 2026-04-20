@@ -183,6 +183,7 @@ export const api = {
   approveMerchant: (id: string) => request<any>('PATCH', `/admin/merchants/${id}/approve`),
   rejectMerchant: (id: string, note?: string) => request<any>('PATCH', `/admin/merchants/${id}/reject`, { rejectionNote: note }),
   suspendMerchant: (id: string, suspend: boolean) => request<any>('PATCH', `/admin/merchants/${id}/suspend`, { suspend }),
+  createMerchant: (data: any) => request<any>('POST', '/admin/merchants', data),
 
   getPendingProducts: (params?: any) => request<any>('GET', '/admin/products/pending', undefined, params),
   approveProduct: (id: string) => request<any>('PATCH', `/admin/products/${id}/approve`),
