@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
 import { UpdateLcswConfigDto } from './dto/update-lcsw-config.dto';
+import { CreateMerchantDto } from './dto/create-merchant.dto';
+import { customAlphabet } from 'nanoid';
 import { ProductsService } from '../products/products.service';
 import { ReferralService } from '../referral/referral.service';
 import { LcswInstitutionService } from '../payments/lcsw/lcsw-institution.service';
@@ -159,6 +161,80 @@ export class AdminController {
   @ApiOperation({ summary: 'Suspend or unsuspend a merchant' })
   async suspendMerchant(@Param('id') id: string, @Body('suspend') suspend: boolean) {
     return this.prisma.merchant.update({ where: { id }, data: { status: suspend ? 'SUSPENDED' : 'APPROVED' } });
+  }
+
+  @Post('merchants')
+  @ApiOperation({ summary: 'Manually create a merchant (admin). Creates owner user if phone not found.' })
+  async createMerchant(@Body() dto: CreateMerchantDto) {
+    const generateReferralCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8);
+
+    // 1. Find or create owner user
+    let user = await this.prisma.user.findUnique({ where: { phone: dto.ownerPhone } });
+
+    if (!user) {
+      // Generate unique referral code
+      let referralCode = generateReferralCode();
+      let attempts = 0;
+      while (attempts < 100) {
+        const existing = await this.prisma.user.findUnique({ where: { referralCode } });
+        if (!existing) break;
+        referralCode = generateReferralCode();
+        attempts++;
+      }
+
+      user = await this.prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            phone: dto.ownerPhone,
+            referralCode,
+            membershipLevel: 1,
+          },
+        });
+        await tx.wallet.createMany({
+          data: [
+            { userId: newUser.id, walletType: 'HEALTH_COIN', balance: 0n },
+            { userId: newUser.id, walletType: 'MUTUAL_HEALTH_COIN', balance: 0n },
+            { userId: newUser.id, walletType: 'UNIVERSAL_HEALTH_COIN', balance: 0n },
+          ],
+        });
+        return newUser;
+      });
+    }
+
+    // 2. Check if user already owns a merchant
+    const existingMerchant = await this.prisma.merchant.findUnique({ where: { ownerUserId: user.id } });
+    if (existingMerchant) {
+      throw new BadRequestException(`User ${dto.ownerPhone} already owns merchant "${existingMerchant.name}"`);
+    }
+
+    // 3. Create merchant (directly approved)
+    const merchant = await this.prisma.merchant.create({
+      data: {
+        ownerUserId: user.id,
+        name: dto.name,
+        description: dto.description,
+        logoUrl: dto.logoUrl,
+        regionId: dto.regionId,
+        commissionRate: dto.commissionRate ?? 0.05,
+        bankAccount: dto.bankAccount ?? undefined,
+        documents: dto.documents ?? undefined,
+        status: 'APPROVED',
+        approvedAt: new Date(),
+      },
+      include: { owner: { select: { phone: true, nickname: true } }, region: { select: { name: true } } },
+    });
+
+    // 4. Auto-create LCSW sub-merchant if configured
+    try {
+      const instConfig = await this.lcswInstitution.getInstitutionConfig();
+      if (instConfig?.autoCreateSubMerchants) {
+        await this.lcswInstitution.createSubMerchant(merchant.id);
+      }
+    } catch (err: any) {
+      console.error(`LCSW auto-creation failed for merchant ${merchant.id}:`, err.message);
+    }
+
+    return merchant;
   }
 
   // ── Products Review ────────────────────────────────────────────────────────
