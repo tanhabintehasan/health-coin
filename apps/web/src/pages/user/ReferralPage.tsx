@@ -25,18 +25,46 @@ export default function ReferralPage() {
     fetchData()
   }, [])
 
+  const fallbackCopy = (text: string): boolean => {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    let success = false
+    try { success = document.execCommand('copy') } catch {}
+    document.body.removeChild(textarea)
+    return success
+  }
+
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(text); return true } catch {}
+    }
+    return fallbackCopy(text)
+  }
+
   const copyCode = async () => {
     if (!referral?.referralCode) return
-    try { await navigator.clipboard.writeText(referral.referralCode); message.success('Code copied!') }
-    catch { message.error('Copy failed') }
+    const ok = await copyToClipboard(referral.referralCode)
+    if (ok) message.success('Code copied!')
+    else message.error('Copy failed — please copy manually')
   }
 
   const shareLink = async () => {
     if (!referral?.referralUrl) return
     try {
-      if ((navigator as any).share) { await (navigator as any).share({ title: 'Join HealthCoin', url: referral.referralUrl }) }
-      else { await navigator.clipboard.writeText(referral.referralUrl); message.success('Link copied!') }
-    } catch { message.error('Share failed') }
+      if ((navigator as any).share) {
+        await (navigator as any).share({ title: 'Join HealthCoin', url: referral.referralUrl })
+        return
+      }
+    } catch {}
+    const ok = await copyToClipboard(referral.referralUrl)
+    if (ok) message.success('Link copied to clipboard!')
+    else message.error('Share failed — please copy link manually')
   }
 
   const level1 = referrals.filter((r: any) => r.level === 1)
