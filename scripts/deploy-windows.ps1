@@ -76,7 +76,7 @@ if ($JwtSecret.Length -lt 8 -or $JwtRefreshSecret.Length -lt 8) {
 }
 
 # ── 1. Stop Services ──────────────────────────────────────────────────────────
-Write-Step "Step 1/10 — Stopping Services"
+Write-Step "Step 1/11 — Stopping Services"
 try { pm2 stop all 2>$null } catch {}
 try { pm2 delete all 2>$null } catch {}
 try { iisreset /stop 2>$null } catch {}
@@ -84,7 +84,7 @@ try { Stop-Service W3SVC -ErrorAction SilentlyContinue } catch {}
 Write-Ok "Services stopped"
 
 # ── 2. Clean Old Directory ────────────────────────────────────────────────────
-Write-Step "Step 2/10 — Cleaning Old Directory"
+Write-Step "Step 2/11 — Cleaning Old Directory"
 if (Test-Path $AppDir) {
     try {
         Remove-Item -Recurse -Force $AppDir -ErrorAction Stop
@@ -98,7 +98,7 @@ if (Test-Path $AppDir) {
 }
 
 # ── 3. Clone Repository ───────────────────────────────────────────────────────
-Write-Step "Step 3/10 — Cloning Repository"
+Write-Step "Step 3/11 — Cloning Repository"
 $cloneOk = $false
 try {
     $tempDir = "$env:TEMP\hc_clone_$(Get-Random)"
@@ -134,7 +134,7 @@ Set-Location $AppDir
 Write-Ok "Repository ready at $AppDir"
 
 # ── 4. Install Dependencies ───────────────────────────────────────────────────
-Write-Step "Step 4/10 — Installing Dependencies"
+Write-Step "Step 4/11 — Installing Dependencies"
 npm install --legacy-peer-deps
 if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed" }
 
@@ -151,7 +151,7 @@ if (-not (Test-Path "$AppDir\node_modules\prisma\package.json")) {
 Write-Ok "Prisma verified"
 
 # ── 5. Database Setup ─────────────────────────────────────────────────────────
-Write-Step "Step 5/10 — Database Setup"
+Write-Step "Step 5/11 — Database Setup"
 $pgBin = "C:\Program Files\PostgreSQL\17\bin"
 $env:PGPASSWORD = $DbPassword
 
@@ -164,7 +164,7 @@ $env:PGPASSWORD = $DbPassword
 Write-Ok "Database created"
 
 # ── 6. Environment Files ──────────────────────────────────────────────────────
-Write-Step "Step 6/10 — Creating Environment Files"
+Write-Step "Step 6/11 — Creating Environment Files"
 
 New-Item -ItemType Directory -Path "$AppDir\apps\api" -Force | Out-Null
 New-Item -ItemType Directory -Path "$AppDir\apps\web" -Force | Out-Null
@@ -215,7 +215,7 @@ Set-Content -Path "$AppDir\apps\web\.env" -Value $webEnv -Encoding UTF8
 Write-Ok "Environment files created"
 
 # ── 7. Prisma Generate & Migrate ──────────────────────────────────────────────
-Write-Step "Step 7/10 — Database Migration"
+Write-Step "Step 7/11 — Database Migration"
 Set-Location "$AppDir\apps\api"
 npm run prisma:generate
 if ($LASTEXITCODE -ne 0) { Write-Err "prisma generate failed" }
@@ -233,8 +233,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "Migration applied"
 
-# ── 8. Admin Setup ────────────────────────────────────────────────────────────
-Write-Step "Step 8/10 — Setting Up Admin Account"
+# ── 8. Seed Essential Data ────────────────────────────────────────────────────
+Write-Step "Step 8/11 — Seeding Essential Data (Tiers, Regions, Configs)"
+Set-Location $AppDir
+node scripts\seed-essential.js
+if ($LASTEXITCODE -ne 0) { Write-Err "Essential seeding failed" }
+Write-Ok "Essential data seeded"
+
+# ── 9. Admin Setup ────────────────────────────────────────────────────────────
+Write-Step "Step 9/11 — Setting Up Admin Account"
 Set-Location $AppDir
 $env:ADMIN_PHONE = $AdminPhone
 $env:ADMIN_PASSWORD = $AdminPassword
@@ -244,7 +251,7 @@ if ($LASTEXITCODE -ne 0) { Write-Err "Admin setup failed" }
 Write-Ok "Admin account created"
 
 # ── 9. Build ──────────────────────────────────────────────────────────────────
-Write-Step "Step 9/10 — Building Applications"
+Write-Step "Step 10/11 — Building Applications"
 Set-Location "$AppDir\apps\api"
 npm run build
 if ($LASTEXITCODE -ne 0) { Write-Err "API build failed" }
@@ -261,7 +268,7 @@ if ($LASTEXITCODE -ne 0) { Write-Warn "Mini-program build failed (optional)" }
 else { Write-Ok "Mini-program build complete" }
 
 # ── 10. Start Services ────────────────────────────────────────────────────────
-Write-Step "Step 10/10 — Starting Services"
+Write-Step "Step 11/11 — Starting Services"
 
 iisreset /stop 2>$null
 Stop-Service W3SVC -ErrorAction SilentlyContinue
