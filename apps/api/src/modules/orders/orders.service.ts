@@ -332,7 +332,7 @@ export class OrdersService {
     return updated;
   }
 
-  private async settleCommission(orderId: string, merchantId: string, orderAmount: bigint) {
+  async settleCommission(orderId: string, merchantId: string, orderAmount: bigint) {
     const config = await this.prisma.systemConfig.findUnique({ where: { key: 'platform_commission_rate' } });
     const rate = parseFloat(config?.value ?? '0.05');
     const commission = BigInt(Math.round(Number(orderAmount) * rate));

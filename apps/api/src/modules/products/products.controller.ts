@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { MerchantsService } from '../merchants/merchants.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -47,9 +48,13 @@ export class ProductsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get my merchant products' })
-  async getMyProducts(@CurrentUser() user: { id: string }) {
+  async getMyProducts(
+    @CurrentUser() user: { id: string },
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+  ) {
     const merchant = await this.merchantsService.assertApprovedMerchant(user.id);
-    return this.productsService.getMerchantProducts(merchant.id);
+    return this.productsService.getMerchantProducts(merchant.id, +page, +limit);
   }
 
   @Put('merchant/:id')
@@ -59,10 +64,28 @@ export class ProductsController {
   async updateProduct(
     @CurrentUser() user: { id: string },
     @Param('id') productId: string,
-    @Body() dto: CreateProductDto,
+    @Body() dto: UpdateProductDto,
   ) {
     const merchant = await this.merchantsService.assertApprovedMerchant(user.id);
     return this.productsService.updateProduct(merchant.id, productId, dto);
+  }
+
+  @Patch('merchant/:id/activate')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Activate a product (merchant only)' })
+  async activateProduct(@CurrentUser() user: { id: string }, @Param('id') productId: string) {
+    const merchant = await this.merchantsService.assertApprovedMerchant(user.id);
+    return this.productsService.setProductStatus(merchant.id, productId, 'ACTIVE');
+  }
+
+  @Patch('merchant/:id/deactivate')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Deactivate a product (merchant only)' })
+  async deactivateProduct(@CurrentUser() user: { id: string }, @Param('id') productId: string) {
+    const merchant = await this.merchantsService.assertApprovedMerchant(user.id);
+    return this.productsService.setProductStatus(merchant.id, productId, 'INACTIVE');
   }
 
   @Delete('merchant/:id')

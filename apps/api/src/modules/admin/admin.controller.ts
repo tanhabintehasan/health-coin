@@ -14,6 +14,7 @@ import { customAlphabet } from 'nanoid';
 import { ProductsService } from '../products/products.service';
 import { ReferralService } from '../referral/referral.service';
 import { LcswInstitutionService } from '../payments/lcsw/lcsw-institution.service';
+import { OrdersService } from '../orders/orders.service';
 import { WalletType } from '@prisma/client';
 
 @ApiTags('Admin')
@@ -27,6 +28,7 @@ export class AdminController {
     private readonly productsService: ProductsService,
     private readonly referralService: ReferralService,
     private readonly lcswInstitution: LcswInstitutionService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   private clampLimit(limit: number) {
@@ -459,7 +461,7 @@ export class AdminController {
     }
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) throw new BadRequestException('Order not found');
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id },
       data: {
         status: status as any,
@@ -467,6 +469,14 @@ export class AdminController {
         ...(status === 'CANCELLED' && { cancelledAt: new Date() }),
       },
     });
+    if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
+      try {
+        await this.ordersService.settleCommission(order.id, order.merchantId, order.totalAmount);
+      } catch (err: any) {
+        console.error(`Commission settlement failed for order ${order.id}:`, err.message);
+      }
+    }
+    return updated;
   }
 
   // ── Redemption Logs ────────────────────────────────────────────────────────

@@ -136,6 +136,13 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id: productId }, data: { status: 'INACTIVE' } });
   }
 
+  async setProductStatus(merchantId: string, productId: string, status: 'ACTIVE' | 'INACTIVE') {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    if (product.merchantId !== merchantId) throw new ForbiddenException('Not your product');
+    return this.prisma.product.update({ where: { id: productId }, data: { status } });
+  }
+
   async deleteProduct(merchantId: string, productId: string) {
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');

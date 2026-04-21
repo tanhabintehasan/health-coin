@@ -10,6 +10,19 @@ export class MerchantsService {
     const existing = await this.prisma.merchant.findUnique({ where: { ownerUserId: userId } });
     if (existing) throw new ConflictException('You already have a merchant application');
 
+    let documents: any = dto.documents ?? [];
+    if (dto.contactPhone || dto.address || dto.licenseNo) {
+      const kyc = Array.isArray(documents) ? documents : [];
+      kyc.push({
+        type: 'license_info',
+        contactPhone: dto.contactPhone,
+        address: dto.address,
+        licenseNo: dto.licenseNo,
+        uploadedAt: new Date().toISOString(),
+      });
+      documents = kyc;
+    }
+
     return this.prisma.merchant.create({
       data: {
         ownerUserId: userId,
@@ -17,7 +30,7 @@ export class MerchantsService {
         description: dto.description,
         logoUrl: dto.logoUrl,
         regionId: dto.regionId,
-        documents: dto.documents as any,
+        documents: documents as any,
         status: 'PENDING',
       },
     });
