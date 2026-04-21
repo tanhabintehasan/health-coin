@@ -6,6 +6,11 @@ export class CreateMerchantDto {
   @IsString()
   ownerPhone: string;
 
+  @ApiPropertyOptional({ description: 'Password for the owner account (only used if user does not exist). Min 6 characters.' })
+  @IsOptional()
+  @IsString()
+  password?: string;
+
   @ApiProperty({ description: 'Merchant display name' })
   @IsString()
   name: string;

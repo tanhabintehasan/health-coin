@@ -259,12 +259,15 @@ export class AdminController {
         attempts++;
       }
 
+      const passwordHash = dto.password ? await bcrypt.hash(dto.password, 12) : null;
+
       user = await this.prisma.$transaction(async (tx) => {
         const newUser = await tx.user.create({
           data: {
             phone: dto.ownerPhone,
             referralCode,
             membershipLevel: 1,
+            password: passwordHash,
           },
         });
         await tx.wallet.createMany({

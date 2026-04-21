@@ -69,6 +69,7 @@ export default function MerchantsPage() {
     try {
       await api.createMerchant({
         ownerPhone: values.ownerPhone,
+        password: values.password,
         name: values.name,
         description: values.description,
         logoUrl: values.logoUrl,
@@ -188,6 +189,9 @@ export default function MerchantsPage() {
         <Form form={addForm} layout="vertical" onFinish={handleAddMerchant}>
           <Form.Item name="ownerPhone" label="Owner Phone" rules={[{ required: true, message: 'Phone is required' }]}>
             <Input placeholder="e.g. 13800138000" />
+          </Form.Item>
+          <Form.Item name="password" label="Password (for new user only)" rules={[{ min: 6, message: 'Min 6 characters' }]}>
+            <Input.Password placeholder="Min 6 characters. Leave blank for empty password." />
           </Form.Item>
           <Form.Item name="name" label="Store Name" rules={[{ required: true, message: 'Store name is required' }]}>
             <Input placeholder="Merchant display name" />
