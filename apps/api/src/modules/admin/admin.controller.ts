@@ -7,6 +7,9 @@ import { AdminGuard } from '../../common/guards/admin.guard';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
 import { UpdateLcswConfigDto } from './dto/update-lcsw-config.dto';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcryptjs';
 import { customAlphabet } from 'nanoid';
 import { ProductsService } from '../products/products.service';
 import { ReferralService } from '../referral/referral.service';
@@ -66,6 +69,80 @@ export class AdminController {
       data: data.map((u) => ({ ...u, totalMutualCoinsEarned: u.totalMutualCoinsEarned.toString() })),
       meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / Number(limit)) },
     };
+  }
+
+  @Post('users')
+  @ApiOperation({ summary: 'Manually create a user (admin)' })
+  async createUser(@Body() dto: CreateUserDto) {
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (existing) {
+      throw new BadRequestException(`User with phone ${dto.phone} already exists`);
+    }
+
+    const generateReferralCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8);
+    let referralCode = generateReferralCode();
+    let attempts = 0;
+    while (attempts < 100) {
+      const codeExists = await this.prisma.user.findUnique({ where: { referralCode } });
+      if (!codeExists) break;
+      referralCode = generateReferralCode();
+      attempts++;
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          phone: dto.phone,
+          password: passwordHash,
+          nickname: dto.nickname || null,
+          name: dto.name || null,
+          referralCode,
+          membershipLevel: dto.membershipLevel ?? 1,
+          regionId: dto.regionId || null,
+          isActive: dto.isActive ?? true,
+        },
+      });
+      await tx.wallet.createMany({
+        data: [
+          { userId: newUser.id, walletType: 'HEALTH_COIN', balance: 0n },
+          { userId: newUser.id, walletType: 'MUTUAL_HEALTH_COIN', balance: 0n },
+          { userId: newUser.id, walletType: 'UNIVERSAL_HEALTH_COIN', balance: 0n },
+        ],
+      });
+      return newUser;
+    });
+
+    return { id: user.id, phone: user.phone, referralCode: user.referralCode };
+  }
+
+  @Patch('users/:id')
+  @ApiOperation({ summary: 'Update a user (admin)' })
+  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const data: any = {};
+    if (dto.phone !== undefined) {
+      const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException(`Phone ${dto.phone} is already in use`);
+      }
+      data.phone = dto.phone;
+    }
+    if (dto.password !== undefined) {
+      data.password = await bcrypt.hash(dto.password, 12);
+    }
+    if (dto.nickname !== undefined) data.nickname = dto.nickname || null;
+    if (dto.name !== undefined) data.name = dto.name || null;
+    if (dto.membershipLevel !== undefined) data.membershipLevel = dto.membershipLevel;
+    if (dto.regionId !== undefined) data.regionId = dto.regionId || null;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+
+    return this.prisma.user.update({ where: { id }, data });
   }
 
   @Patch('users/:id/suspend')

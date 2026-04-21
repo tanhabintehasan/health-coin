@@ -174,6 +174,8 @@ export const api = {
   updateAdminConfigs: (data: Record<string, string>) => request<any>('PUT', '/admin/configs', data),
 
   getAdminUsers: (params?: any) => request<any>('GET', '/admin/users', undefined, params),
+  createUser: (data: any) => request<any>('POST', '/admin/users', data),
+  updateUser: (id: string, data: any) => request<any>('PATCH', `/admin/users/${id}`, data),
   suspendUser: (id: string, isActive: boolean) => request<any>('PATCH', `/admin/users/${id}/suspend`, { isActive }),
   setUserLevel: (id: string, level: number) => request<any>('PATCH', `/admin/users/${id}/level`, { level }),
   adjustWallet: (id: string, data: any) => request<any>('PATCH', `/admin/users/${id}/wallet`, data),

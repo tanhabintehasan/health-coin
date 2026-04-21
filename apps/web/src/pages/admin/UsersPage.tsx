@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Table, Input, Tag, Typography, Space, Button, Drawer, Descriptions, Modal, Form, Select, InputNumber, message, Tree, Spin } from 'antd'
-import { SearchOutlined, WalletOutlined, ApartmentOutlined } from '@ant-design/icons'
+import { SearchOutlined, WalletOutlined, ApartmentOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -14,6 +14,15 @@ const LEVEL_COLORS: Record<number, string> = {
   1: 'default', 2: 'blue', 3: 'green', 4: 'orange', 5: 'purple', 6: 'gold',
 }
 
+const LEVEL_OPTIONS = [
+  { value: 1, label: 'Regular (L1)' },
+  { value: 2, label: 'Ambassador (L2)' },
+  { value: 3, label: 'Community Agent (L3)' },
+  { value: 4, label: 'County Agent (L4)' },
+  { value: 5, label: 'City Agent (L5)' },
+  { value: 6, label: 'Provincial Agent (L6)' },
+]
+
 const WALLET_TYPE_OPTIONS = [
   { value: 'HEALTH_COIN', label: 'HealthCoin' },
   { value: 'MUTUAL_HEALTH_COIN', label: 'Mutual HealthCoin' },
@@ -26,6 +35,17 @@ function toTreeData(node: any): any {
     title: `${node.phone || node.userId} (L${node.level ?? 1})`,
     children: (node.referrals ?? []).map(toTreeData),
   }
+}
+
+function flattenRegions(nodes: any[]): any[] {
+  const result: any[] = []
+  for (const node of nodes ?? []) {
+    result.push({ value: node.id, label: node.name })
+    if (node.children?.length) {
+      result.push(...flattenRegions(node.children))
+    }
+  }
+  return result
 }
 
 export default function UsersPage() {
@@ -47,6 +67,12 @@ export default function UsersPage() {
   const [referralTree, setReferralTree] = useState<any>(null)
   const [loadingTree, setLoadingTree] = useState(false)
 
+  const [userModalOpen, setUserModalOpen] = useState(false)
+  const [userEditing, setUserEditing] = useState<any>(null)
+  const [userForm] = Form.useForm()
+  const [savingUser, setSavingUser] = useState(false)
+  const [regions, setRegions] = useState<any[]>([])
+
   const fetchUsers = async (p = 1, q = '') => {
     setLoading(true)
     try {
@@ -61,6 +87,12 @@ export default function UsersPage() {
   }
 
   useEffect(() => { fetchUsers() }, [])
+
+  useEffect(() => {
+    api.getRegionsTree().then((tree: any[]) => {
+      setRegions(flattenRegions(tree))
+    }).catch(() => setRegions([]))
+  }, [])
 
   const openWalletModal = (record: any) => {
     setWalletTarget(record)
@@ -101,6 +133,51 @@ export default function UsersPage() {
     }
   }
 
+  const openAddUser = () => {
+    setUserEditing(null)
+    userForm.resetFields()
+    setUserModalOpen(true)
+  }
+
+  const openEditUser = (record: any) => {
+    setUserEditing(record)
+    userForm.setFieldsValue({
+      phone: record.phone,
+      nickname: record.nickname,
+      membershipLevel: record.membershipLevel,
+      regionId: record.regionId,
+      isActive: record.isActive,
+    })
+    setUserModalOpen(true)
+  }
+
+  const handleSaveUser = async () => {
+    const values = await userForm.validateFields()
+    setSavingUser(true)
+    try {
+      if (userEditing) {
+        const payload: any = {}
+        if (values.phone !== undefined) payload.phone = values.phone
+        if (values.password) payload.password = values.password
+        if (values.nickname !== undefined) payload.nickname = values.nickname
+        if (values.membershipLevel !== undefined) payload.membershipLevel = values.membershipLevel
+        if (values.regionId !== undefined) payload.regionId = values.regionId
+        if (values.isActive !== undefined) payload.isActive = values.isActive
+        await api.updateUser(userEditing.id, payload)
+        message.success('User updated successfully')
+      } else {
+        await api.createUser(values)
+        message.success('User created successfully')
+      }
+      setUserModalOpen(false)
+      fetchUsers(page, search)
+    } catch (err: any) {
+      message.error(err || 'Save failed')
+    } finally {
+      setSavingUser(false)
+    }
+  }
+
   const columns = [
     { title: 'Phone', dataIndex: 'phone', key: 'phone' },
     { title: 'Nickname', dataIndex: 'nickname', key: 'nickname', render: (v: string) => v || '-' },
@@ -119,6 +196,7 @@ export default function UsersPage() {
       render: (_: any, record: any) => (
         <Space size="small" wrap>
           <Button type="link" size="small" onClick={() => setSelected(record)}>View</Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditUser(record)}>Edit</Button>
           <Button type="link" size="small" icon={<WalletOutlined />} onClick={() => openWalletModal(record)}>Adjust Wallet</Button>
           <Button type="link" size="small" icon={<ApartmentOutlined />} onClick={() => openReferralTree(record)}>Referral Tree</Button>
         </Space>
@@ -132,6 +210,7 @@ export default function UsersPage() {
       <Space style={{ marginBottom: 16 }} wrap>
         <Input placeholder="Search phone or nickname" prefix={<SearchOutlined />} value={search} onChange={(e) => setSearch(e.target.value)} onPressEnter={() => fetchUsers(1, search)} style={{ width: isMobile ? '100%' : 280 }} />
         <Button type="primary" onClick={() => fetchUsers(1, search)}>Search</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openAddUser}>Add User</Button>
       </Space>
 
       <div className="table-responsive">
@@ -170,6 +249,57 @@ export default function UsersPage() {
         {loadingTree && <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>}
         {!loadingTree && referralTree && <Tree treeData={[toTreeData(referralTree)]} defaultExpandAll showLine selectable={false} />}
         {!loadingTree && !referralTree && <div style={{ textAlign: 'center', color: '#999', padding: 24 }}>No referral data</div>}
+      </Modal>
+
+      <Modal
+        title={userEditing ? `Edit User — ${userEditing.phone}` : 'Add User'}
+        open={userModalOpen}
+        onOk={handleSaveUser}
+        onCancel={() => setUserModalOpen(false)}
+        confirmLoading={savingUser}
+        okText={userEditing ? 'Update' : 'Create'}
+        style={{ maxWidth: 'calc(100vw - 32px)' }}
+      >
+        <Form form={userForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="phone"
+            label="Phone"
+            rules={[{ required: !userEditing, message: 'Phone is required' }, { pattern: /^\d+$/, message: 'Phone must contain only digits' }]}
+          >
+            <Input placeholder="e.g. 13800138000" maxLength={20} />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label={userEditing ? 'Password (leave blank to keep unchanged)' : 'Password'}
+            rules={[{ required: !userEditing, message: 'Password is required' }]}
+          >
+            <Input.Password placeholder="Min 6 characters" />
+          </Form.Item>
+          <Form.Item name="nickname" label="Nickname">
+            <Input placeholder="User nickname" maxLength={100} />
+          </Form.Item>
+          <Form.Item name="membershipLevel" label="Membership Level" rules={[{ required: true }]}>
+            <Select options={LEVEL_OPTIONS} placeholder="Select level" />
+          </Form.Item>
+          <Form.Item name="regionId" label="Region">
+            <Select
+              options={regions}
+              placeholder="Select region"
+              showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              allowClear
+            />
+          </Form.Item>
+          <Form.Item name="isActive" label="Status" rules={[{ required: true }]}>
+            <Select
+              options={[
+                { value: true, label: 'Active' },
+                { value: false, label: 'Suspended' },
+              ]}
+              placeholder="Select status"
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )
