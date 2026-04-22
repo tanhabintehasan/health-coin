@@ -51,6 +51,7 @@ function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: s
 export const api = {
   // Settings (public)
   getPublicSettings: () => request<any>('GET', '/settings/public'),
+  previewCommission: (orderAmount: number) => request<any>('POST', '/coin-rewards/preview', { orderAmount }),
 
   // Auth
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
@@ -97,6 +98,7 @@ export const api = {
   // Referral
   getMyReferral: () => request<any>('GET', '/referral/my'),
   getMyReferrals: () => request<any[]>('GET', '/referral/my/referrals'),
+  getMyReferralEarnings: () => request<any>('GET', '/referral/my/earnings'),
 
   // Membership
   getTiers: () => request<any[]>('GET', '/membership/tiers'),

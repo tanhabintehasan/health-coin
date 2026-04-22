@@ -37,6 +37,7 @@ export class SettingsController {
       'universal_coin_l1_rate',
       'withdrawal_commission_rate',
       'platform_commission_rate',
+      'mall_default_coin_offset_rate',
     ];
 
     const configs = await this.prisma.systemConfig.findMany({
@@ -77,6 +78,9 @@ export class SettingsController {
         healthCoinMultiplier: parseFloat(map.health_coin_multiplier ?? '2.0'),
         universalCoinOwnRate: parseFloat(map.universal_coin_own_rate ?? '0.2'),
         universalCoinL1Rate: parseFloat(map.universal_coin_l1_rate ?? '0.1'),
+      },
+      mall: {
+        defaultCoinOffsetRate: parseFloat(map.mall_default_coin_offset_rate ?? '0.0'),
       },
       finance: {
         withdrawalCommissionRate: parseFloat(map.withdrawal_commission_rate ?? '0.05'),

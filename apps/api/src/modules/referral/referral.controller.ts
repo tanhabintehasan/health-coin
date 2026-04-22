@@ -27,4 +27,10 @@ export class ReferralController {
   getMyReferrals(@CurrentUser() user: { id: string }) {
     return this.referralService.getMyReferrals(user.id);
   }
+
+  @Get('my/earnings')
+  @ApiOperation({ summary: 'Get my referral earnings summary (L1 + L2)' })
+  getMyReferralEarnings(@CurrentUser() user: { id: string }) {
+    return this.referralService.getReferralEarnings(user.id);
+  }
 }

@@ -104,6 +104,10 @@ export default function OrderDetailPage() {
   const coinAmt = Math.round(totalAmt * coinRate)
   const cashAmt = totalAmt - coinAmt
 
+  // Determine actual amount to pay based on selected method
+  const isHealthCoin = payMethod === 'HEALTH_COIN'
+  const displayPayAmount = isHealthCoin && coinRate > 0 ? cashAmt : totalAmt
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: order.status === 'PENDING_PAYMENT' ? 100 : 0, background: '#f5f5f5' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0' }}>
@@ -160,19 +164,61 @@ export default function OrderDetailPage() {
         </div>
         {coinRate > 0 && (
           <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-            <FireOutlined style={{ color: '#ff4d4f' }} /> 若选择健康币支付，预计现金支付 ¥{(cashAmt / 100).toFixed(2)}
+            <FireOutlined style={{ color: '#ff4d4f' }} /> 健康币自动抵扣 ¥{(coinAmt / 100).toFixed(2)}，现金支付 ¥{(cashAmt / 100).toFixed(2)}
+          </div>
+        )}
+
+        {/* Paid order breakdown */}
+        {order.status !== 'PENDING_PAYMENT' && order.status !== 'CANCELLED' && (
+          <div style={{ marginTop: 12, padding: '10px 12px', background: '#f6ffed', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>实际支付明细</div>
+            {Number(order.healthCoinPaid || 0) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#1677ff' }}>健康币抵扣</span>
+                <span style={{ color: '#1677ff' }}>-¥{(Number(order.healthCoinPaid) / 100).toFixed(2)}</span>
+              </div>
+            )}
+            {Number(order.cashPaid || 0) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#666' }}>现金支付</span>
+                <span>¥{(Number(order.cashPaid) / 100).toFixed(2)}</span>
+              </div>
+            )}
+            {Number(order.mutualCoinPaid || 0) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#52c41a' }}>互助币支付</span>
+                <span style={{ color: '#52c41a' }}>¥{(Number(order.mutualCoinPaid) / 100).toFixed(2)}</span>
+              </div>
+            )}
+            {Number(order.universalCoinPaid || 0) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#722ed1' }}>万能币支付</span>
+                <span style={{ color: '#722ed1' }}>¥{(Number(order.universalCoinPaid) / 100).toFixed(2)}</span>
+              </div>
+            )}
           </div>
         )}
       </Card>
 
       {order.status === 'PENDING_PAYMENT' && (
         <Card style={{ margin: 12, borderRadius: 12 }} title="选择支付方式">
-          <div style={{ fontSize: 12, color: '#999', marginBottom: 12 }}>每笔订单仅支持一种支付方式，请根据余额和优惠选择。</div>
+          <div style={{ fontSize: 12, color: '#999', marginBottom: 12 }}>
+            {coinRate > 0
+              ? `本单健康币抵扣 ${Math.round(coinRate * 100)}%，您只需支付现金 ¥${(cashAmt / 100).toFixed(2)}`
+              : '每笔订单仅支持一种支付方式，请根据余额和优惠选择。'}
+          </div>
           {payOptions.length === 0 && <Empty description="当前无可用的支付方式" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
           {payOptions.map((opt) => {
             const isSelected = payMethod === opt.value
             const isCoin = ['HEALTH_COIN', 'MUTUAL_HEALTH_COIN', 'UNIVERSAL_HEALTH_COIN'].includes(opt.value)
-            const disabled = isCoin && (wallets[opt.value] ?? 0) < totalAmt
+            // For HEALTH_COIN with offset, only need cashAmt balance; others need full totalAmt
+            const requiredBalance = (opt.value === 'HEALTH_COIN' && coinRate > 0) ? cashAmt : totalAmt
+            const disabled = isCoin && (wallets[opt.value] ?? 0) < requiredBalance
+            // Show discounted amount in subtitle for HEALTH_COIN when offset applies
+            let subText = opt.sub
+            if (opt.value === 'HEALTH_COIN' && coinRate > 0) {
+              subText = `抵扣后需付 ¥${(cashAmt / 100).toFixed(2)} (余额 ¥${((wallets[opt.value] ?? 0) / 100).toFixed(2)})`
+            }
             return (
               <div
                 key={opt.value}
@@ -189,7 +235,7 @@ export default function OrderDetailPage() {
                   <span style={{ fontSize: 18, color: opt.color }}>{opt.icon}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500, color: isSelected ? opt.color : '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</div>
-                    <div style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.sub}</div>
+                    <div style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subText}</div>
                   </div>
                 </div>
                 <div>{isSelected ? <CheckCircleOutlined style={{ color: opt.color, fontSize: 18 }} /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #ccc' }} />}</div>
@@ -233,7 +279,7 @@ export default function OrderDetailPage() {
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', padding: '12px 16px', display: 'flex', gap: 12, boxShadow: '0 -2px 8px rgba(0,0,0,.08)', zIndex: 40 }}>
           <Button style={{ flex: 1 }} onClick={cancel}>取消订单</Button>
           <Button type="primary" style={{ flex: 2 }} loading={paying} onClick={pay} disabled={payOptions.length === 0}>
-            {paying ? '支付中...' : `立即支付 ¥${(totalAmt / 100).toFixed(2)}`}
+            {paying ? '支付中...' : `立即支付 ¥${(displayPayAmount / 100).toFixed(2)}`}
           </Button>
         </div>
       )}

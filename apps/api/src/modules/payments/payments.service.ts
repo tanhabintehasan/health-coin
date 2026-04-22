@@ -103,6 +103,15 @@ export class PaymentsService {
     });
   }
 
+  private calculateCoinOffset(order: any) {
+    const coinOffsetRate = Number(order.coinOffsetRate ?? 0);
+    const coinAmt = coinOffsetRate > 0
+      ? BigInt(Math.round(Number(order.totalAmount) * coinOffsetRate))
+      : 0n;
+    const cashAmt = order.totalAmount - coinAmt;
+    return { coinOffsetRate, coinAmt, cashAmt };
+  }
+
   async initiatePayment(userId: string, orderId: string, walletType?: WalletType, method?: 'FUIOU' | 'LCSW' | 'WECHAT' | 'ALIPAY') {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
@@ -112,37 +121,44 @@ export class PaymentsService {
     if (order.status !== 'PENDING_PAYMENT') throw new BadRequestException('Order is not pending payment');
 
     const settings = await this.getPaymentSettings();
+    const { coinAmt, cashAmt } = this.calculateCoinOffset(order);
 
     // Pay with coins
     if (walletType) {
       if (!settings.coinEnabled) {
         throw new BadRequestException('Coin payment is currently disabled');
       }
+
+      // HEALTH_COIN with offset: user pays the discounted cash amount from their Health Coin wallet
+      const payAmount = (walletType === 'HEALTH_COIN' && cashAmt > 0n) ? cashAmt : order.totalAmount;
+
       await this.prisma.$transaction(async (tx) => {
         await this.walletTx.debit({
           userId,
           walletType,
-          amount: order.totalAmount,
+          amount: payAmount,
           txType: 'ORDER_PAYMENT',
           referenceId: orderId,
           referenceType: 'order',
-          note: `Payment for order ${order.orderNo}`,
+          note: `Payment for order ${order.orderNo}${coinAmt > 0n ? ` (coin offset ${Number(order.coinOffsetRate) * 100}%)` : ''}`,
         }, tx);
 
-        await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, order.totalAmount, 'coin', tx);
+        await this.ordersService.markPaid(orderId, `COIN_${Date.now()}`, walletType, payAmount, 'coin', tx);
       });
-      return { paymentMethod: 'coin', walletType, status: 'paid' };
+      return { paymentMethod: 'coin', walletType, status: 'paid', coinOffsetApplied: coinAmt.toString() };
     }
 
     const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
     const selectedMethod = method ? method.toLowerCase() : settings.primary;
 
-    // Cash payment — use selected or primary provider
+    // Cash payment — use selected or primary provider (pay discounted cash amount if offset applies)
+    const cashPaymentAmount = cashAmt > 0n ? cashAmt : order.totalAmount;
+
     if (selectedMethod === 'fuiou' && settings.fuiouEnabled) {
       const { payParams, tradeNo } = await this.fuiou.createPayment({
         orderId,
         orderNo: order.orderNo,
-        amount: order.totalAmount,
+        amount: cashPaymentAmount,
         description: `HealthCoin Order ${order.orderNo}`,
         notifyUrl: `${appUrl}/api/v1/webhooks/fuiou/payment`,
       });
@@ -152,9 +168,9 @@ export class PaymentsService {
         data: { fuiouTradeNo: tradeNo },
       });
 
-      await this.createPaymentTransaction(orderId, 'fuiou', tradeNo ?? null, order.totalAmount);
+      await this.createPaymentTransaction(orderId, 'fuiou', tradeNo ?? null, cashPaymentAmount);
 
-      return { paymentMethod: 'fuiou', provider: 'fuiou', payParams };
+      return { paymentMethod: 'fuiou', provider: 'fuiou', payParams, coinOffsetPending: coinAmt.toString() };
     }
 
     if (selectedMethod === 'lcsw' && settings.lcswEnabled) {
@@ -168,7 +184,7 @@ export class PaymentsService {
         {
           orderId,
           orderNo: order.orderNo,
-          amount: order.totalAmount,
+          amount: cashPaymentAmount,
           description: `HealthCoin Order ${order.orderNo}`,
           notifyUrl: `${appUrl}/api/v1/webhooks/lcsw/payment`,
         },
@@ -187,12 +203,12 @@ export class PaymentsService {
         orderId,
         'lcsw',
         tradeNo ?? null,
-        order.totalAmount,
+        cashPaymentAmount,
         lcswCreds.merchantNo,
         lcswCreds.terminalId,
       );
 
-      return { paymentMethod: 'lcsw', provider: 'lcsw', payParams };
+      return { paymentMethod: 'lcsw', provider: 'lcsw', payParams, coinOffsetPending: coinAmt.toString() };
     }
 
     throw new BadRequestException('No payment provider is currently available');
@@ -221,13 +237,16 @@ export class PaymentsService {
       throw new BadRequestException('LCSW payment configuration is incomplete');
     }
 
+    const { coinAmt, cashAmt } = this.calculateCoinOffset(order);
+    const cashPaymentAmount = cashAmt > 0n ? cashAmt : order.totalAmount;
+
     const appUrl = this.config.get('APP_URL', 'http://localhost:10000');
     const { payParams, tradeNo } = await this.lcsw.createPayment(
       lcswCreds,
       {
         orderId,
         orderNo: order.orderNo,
-        amount: order.totalAmount,
+        amount: cashPaymentAmount,
         description: `HealthCoin Order ${order.orderNo}`,
         notifyUrl: `${appUrl}/api/v1/webhooks/lcsw/payment`,
         openId,
@@ -249,12 +268,12 @@ export class PaymentsService {
       orderId,
       'lcsw',
       tradeNo ?? null,
-      order.totalAmount,
+      cashPaymentAmount,
       lcswCreds.merchantNo,
       lcswCreds.terminalId,
     );
 
-    return { paymentMethod: 'lcsw', provider: 'lcsw', payParams };
+    return { paymentMethod: 'lcsw', provider: 'lcsw', payParams, coinOffsetPending: coinAmt.toString() };
   }
 
   async handleFuiouWebhook(body: Record<string, string>): Promise<string> {

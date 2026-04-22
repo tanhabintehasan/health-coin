@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../../services/api'
 import { message, Spin, Empty, Tag, Button, Card, Typography, Modal } from 'antd'
-import { ShopOutlined, FireOutlined, CarOutlined, CheckCircleOutlined, ArrowLeftOutlined, ShoppingCartOutlined, ThunderboltOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
+import { ShopOutlined, FireOutlined, CarOutlined, CheckCircleOutlined, ArrowLeftOutlined, ShoppingCartOutlined, ThunderboltOutlined, HeartOutlined, HeartFilled, GiftOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth.store'
 import { useWishlistStore } from '../../store/wishlist.store'
+import { useSettingsStore } from '../../store/settings.store'
 
 const { Title, Text } = Typography
 
@@ -15,12 +16,15 @@ export default function ProductDetailPage() {
   const { token } = useAuthStore()
   const { has, toggle } = useWishlistStore()
 
+  const { settings, fetchSettings } = useSettingsStore()
   const [product, setProduct] = useState<any>(null)
   const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [qty, setQty] = useState(1)
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+
+  useEffect(() => { fetchSettings() }, [fetchSettings])
 
   useEffect(() => {
     if (!id) {
@@ -70,6 +74,13 @@ export default function ProductDetailPage() {
   const cashAmt = price - coinAmt
   const isWishlisted = has(product.id)
 
+  // Commission preview calculations
+  const cr = settings?.coinRates as Record<string, number> | undefined
+  const mutualOwn = (cr?.mutualCoinOwnRate ?? 0.5) * price
+  const healthFromMutual = (cr?.healthCoinMultiplier ?? 2.0) * mutualOwn
+  const universalOwn = (cr?.universalCoinOwnRate ?? 0.2) * price
+  const hasCommissionData = !!settings?.coinRates
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: 100, background: '#f5f5f5' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f0f0f0' }}>
@@ -95,6 +106,23 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Commission preview */}
+        {hasCommissionData && (
+          <div style={{ background: '#f6ffed', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: '#389e0d', fontWeight: 500, marginBottom: 6 }}>
+              <GiftOutlined style={{ marginRight: 4 }} />
+              购买本商品预计可获得
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 12, color: '#555' }}>
+              <span>互助币 <b style={{ color: '#52c41a' }}>+¥{(mutualOwn / 100).toFixed(2)}</b></span>
+              <span>健康币 <b style={{ color: '#1677ff' }}>+¥{(healthFromMutual / 100).toFixed(2)}</b></span>
+              <span>万能币 <b style={{ color: '#722ed1' }}>+¥{(universalOwn / 100).toFixed(2)}</b></span>
+            </div>
+            <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>具体以实际到账为准，推荐好友购买可获得额外返佣</div>
+          </div>
+        )}
+
         <Title level={5} style={{ margin: 0, lineHeight: 1.4 }}>{product.name}</Title>
         <div style={{ marginTop: 8, fontSize: 13, color: '#888' }}>{product.description}</div>
         {product.requiresApproval && (

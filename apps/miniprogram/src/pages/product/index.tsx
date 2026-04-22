@@ -11,8 +11,10 @@ export default function ProductPage() {
   const [qty, setQty] = useState(1)
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [settings, setSettings] = useState<any>(null)
 
   useEffect(() => {
+    api.getPublicSettings().then(setSettings).catch(() => {})
     if (!id) return
     api.getProduct(id).then((p) => {
       setProduct(p)
@@ -37,6 +39,13 @@ export default function ProductPage() {
     Taro.switchTab({ url: '/pages/cart/index' })
   }
 
+  const price = Number(selectedVariant?.price ?? product?.basePrice ?? 0)
+  const cr = settings?.coinRates || {}
+  const mutualOwn = (cr.mutualCoinOwnRate ?? 0.5) * price
+  const healthFromMutual = (cr.healthCoinMultiplier ?? 2.0) * mutualOwn
+  const universalOwn = (cr.universalCoinOwnRate ?? 0.2) * price
+  const hasCommissionData = !!settings?.coinRates
+
   if (loading) return <View style={{ padding: 40, textAlign: 'center' }}><Text>Loading...</Text></View>
   if (!product) return null
 
@@ -48,7 +57,7 @@ export default function ProductPage() {
 
         <View style={{ background: '#fff', padding: '16px', marginBottom: '10px' }}>
           <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#1677ff' }}>
-            ¥{(Number(selectedVariant?.price ?? product.basePrice) / 100).toFixed(2)}
+            ¥{(price / 100).toFixed(2)}
           </Text>
           <View style={{ marginTop: '8px' }}>
             <Text style={{ fontSize: '16px', color: '#333', fontWeight: '500' }}>{product.name}</Text>
@@ -61,6 +70,26 @@ export default function ProductPage() {
               <Text style={{ fontSize: '12px', color: '#1677ff' }}>
                 Up to {Math.round(parseFloat(product.coinOffsetRate) * 100)}% can be paid with HealthCoin
               </Text>
+            </View>
+          )}
+
+          {/* Commission preview */}
+          {hasCommissionData && (
+            <View style={{ marginTop: '10px', background: '#f6ffed', borderRadius: '8px', padding: '10px 12px' }}>
+              <Text style={{ fontSize: '13px', color: '#389e0d', fontWeight: '500', marginBottom: '6px', display: 'block' }}>
+                Estimated rewards from purchase
+              </Text>
+              <View style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+                <Text style={{ fontSize: '12px', color: '#555' }}>
+                  Mutual <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>+¥{(mutualOwn / 100).toFixed(2)}</Text>
+                </Text>
+                <Text style={{ fontSize: '12px', color: '#555' }}>
+                  Health <Text style={{ color: '#1677ff', fontWeight: 'bold' }}>+¥{(healthFromMutual / 100).toFixed(2)}</Text>
+                </Text>
+                <Text style={{ fontSize: '12px', color: '#555' }}>
+                  Universal <Text style={{ color: '#722ed1', fontWeight: 'bold' }}>+¥{(universalOwn / 100).toFixed(2)}</Text>
+                </Text>
+              </View>
             </View>
           )}
         </View>

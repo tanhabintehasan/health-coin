@@ -19,7 +19,7 @@ export class OrdersService {
     const variantIds = dto.items.map((i) => i.variantId);
     const variants = await this.prisma.productVariant.findMany({
       where: { id: { in: variantIds } },
-      include: { product: { select: { id: true, merchantId: true, name: true, productType: true, validityDays: true, status: true } } },
+      include: { product: { select: { id: true, merchantId: true, name: true, productType: true, validityDays: true, status: true, coinOffsetRate: true } } },
     });
 
     if (variants.length !== dto.items.length) throw new NotFoundException('One or more products not found');
@@ -64,6 +64,17 @@ export class OrdersService {
         return sum + variant.price * BigInt(item.quantity);
       }, 0n);
 
+      // Compute weighted-average coin offset rate from products
+      let coinOffsetRate = 0;
+      if (totalAmount > 0n) {
+        const weightedSum = variants.reduce((sum, variant) => {
+          const item = dto.items.find((i) => i.variantId === variant.id)!;
+          const itemSubtotal = Number(variant.price * BigInt(item.quantity));
+          return sum + itemSubtotal * Number(variant.product.coinOffsetRate);
+        }, 0);
+        coinOffsetRate = weightedSum / Number(totalAmount);
+      }
+
       const newOrder = await tx.order.create({
         data: {
           orderNo,
@@ -71,6 +82,7 @@ export class OrdersService {
           merchantId,
           status: 'PENDING_PAYMENT',
           totalAmount,
+          coinOffsetRate,
           shippingAddress,
           remark: dto.remark,
           items: {
@@ -115,6 +127,11 @@ export class OrdersService {
     return orders.map((o) => ({
       ...o,
       totalAmount: o.totalAmount.toString(),
+      coinOffsetRate: Number(o.coinOffsetRate),
+      healthCoinPaid: o.healthCoinPaid.toString(),
+      mutualCoinPaid: o.mutualCoinPaid.toString(),
+      universalCoinPaid: o.universalCoinPaid.toString(),
+      cashPaid: o.cashPaid.toString(),
       items: o.items.map((i) => ({ ...i, unitPrice: i.unitPrice.toString(), subtotal: i.subtotal.toString() })),
     }));
   }
@@ -129,6 +146,11 @@ export class OrdersService {
     return {
       ...order,
       totalAmount: order.totalAmount.toString(),
+      coinOffsetRate: Number(order.coinOffsetRate),
+      healthCoinPaid: order.healthCoinPaid.toString(),
+      mutualCoinPaid: order.mutualCoinPaid.toString(),
+      universalCoinPaid: order.universalCoinPaid.toString(),
+      cashPaid: order.cashPaid.toString(),
       items: order.items.map((i) => ({
         ...i,
         unitPrice: i.unitPrice.toString(),
@@ -204,7 +226,7 @@ export class OrdersService {
       // Idempotency guard
       const current = await tx.order.findUnique({
         where: { id: orderId },
-        select: { status: true, rewardProcessedAt: true },
+        select: { status: true, rewardProcessedAt: true, coinOffsetRate: true, totalAmount: true, userId: true, healthCoinPaid: true },
       });
       if (current?.status === 'PAID' && current?.rewardProcessedAt) {
         return;
@@ -225,6 +247,32 @@ export class OrdersService {
       else updateData.cashPaid = amountPaid;
 
       await tx.order.update({ where: { id: orderId }, data: updateData });
+
+      // Auto-debit Health Coins for offset when cash payment is confirmed
+      const coinOffsetRate = Number(current?.coinOffsetRate ?? 0);
+      if (coinOffsetRate > 0 && !walletType && (current?.healthCoinPaid ?? 0n) === 0n) {
+        const coinAmt = BigInt(Math.round(Number(current.totalAmount) * coinOffsetRate));
+        if (coinAmt > 0n) {
+          try {
+            await this.walletTx.debit({
+              userId: current.userId,
+              walletType: 'HEALTH_COIN',
+              amount: coinAmt,
+              txType: 'ORDER_PAYMENT',
+              referenceId: orderId,
+              referenceType: 'order',
+              note: `Health Coin offset (${Math.round(coinOffsetRate * 100)}%)`,
+            }, tx);
+            await tx.order.update({
+              where: { id: orderId },
+              data: { healthCoinPaid: coinAmt },
+            });
+          } catch (e: any) {
+            // Log but don't fail the order — offset can be handled manually
+            console.error(`[markPaid] Failed to debit coin offset for order ${orderId}: ${e.message}`);
+          }
+        }
+      }
 
       // Read redemption validity from system config
       const validityConfig = await tx.systemConfig.findUnique({ where: { key: 'redemption_code_valid_days' } });
@@ -304,6 +352,11 @@ export class OrdersService {
       data: orders.map((o) => ({
         ...o,
         totalAmount: o.totalAmount.toString(),
+        coinOffsetRate: Number(o.coinOffsetRate),
+        healthCoinPaid: o.healthCoinPaid.toString(),
+        mutualCoinPaid: o.mutualCoinPaid.toString(),
+        universalCoinPaid: o.universalCoinPaid.toString(),
+        cashPaid: o.cashPaid.toString(),
         items: o.items.map((i) => ({ ...i, unitPrice: i.unitPrice.toString(), subtotal: i.subtotal.toString() })),
       })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },

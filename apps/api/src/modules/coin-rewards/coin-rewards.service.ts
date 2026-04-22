@@ -118,6 +118,70 @@ export class CoinRewardsService {
     this.logger.log(`Coin rewards processed for order ${orderId}`);
   }
 
+  async previewRewards(userId: string, orderAmountYuan: number) {
+    const orderAmount = BigInt(Math.round(orderAmountYuan * 100));
+
+    const configs = await this.prisma.systemConfig.findMany({
+      where: {
+        key: {
+          in: [
+            'mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate',
+            'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate',
+          ],
+        },
+      },
+    });
+    const cfg = Object.fromEntries(configs.map((c) => [c.key, parseFloat(c.value)]));
+
+    const mutualOwnRate = cfg['mutual_coin_own_rate'] ?? 0.5;
+    const mutualL1Rate = cfg['mutual_coin_l1_rate'] ?? 0.25;
+    const mutualL2Rate = cfg['mutual_coin_l2_rate'] ?? 0.1;
+    const healthMultiplier = cfg['health_coin_multiplier'] ?? 2.0;
+    const universalOwnRate = cfg['universal_coin_own_rate'] ?? 0.2;
+    const universalL1Rate = cfg['universal_coin_l1_rate'] ?? 0.1;
+
+    const buyer = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { referrer: { include: { referrer: true } } },
+    });
+
+    const mutualForBuyer = applyRate(orderAmount, mutualOwnRate);
+    const healthForBuyer = applyRate(mutualForBuyer, healthMultiplier);
+    const universalForBuyer = applyRate(orderAmount, universalOwnRate);
+
+    const result: any = {
+      orderAmount: orderAmount.toString(),
+      buyer: {
+        userId,
+        mutualCoins: mutualForBuyer.toString(),
+        healthCoins: healthForBuyer.toString(),
+        universalCoins: universalForBuyer.toString(),
+      },
+      l1: null,
+      l2: null,
+    };
+
+    if (buyer?.referrer) {
+      const mutualForL1 = applyRate(orderAmount, mutualL1Rate);
+      const universalForL1 = applyRate(orderAmount, universalL1Rate);
+      result.l1 = {
+        userId: buyer.referrer.id,
+        mutualCoins: mutualForL1.toString(),
+        universalCoins: universalForL1.toString(),
+      };
+
+      if (buyer.referrer.referrer) {
+        const mutualForL2 = applyRate(orderAmount, mutualL2Rate);
+        result.l2 = {
+          userId: buyer.referrer.referrer.id,
+          mutualCoins: mutualForL2.toString(),
+        };
+      }
+    }
+
+    return result;
+  }
+
   async processRegionalRewards(payload: {
     orderId: string;
     buyerId: string;
@@ -134,7 +198,7 @@ export class CoinRewardsService {
     if (totalPool === 0n) return;
 
     const regionUsers = await this.prisma.user.findMany({
-      where: { regionId: payload.regionId, isActive: true, id: { not: payload.buyerId } },
+      where: { regionId: payload.regionId, isActive: true, id: { not: payload.buyerId }, membershipLevel: { gte: 3 } },
       select: { id: true },
     });
 

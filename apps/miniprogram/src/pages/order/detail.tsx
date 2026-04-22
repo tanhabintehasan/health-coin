@@ -66,6 +66,13 @@ export default function OrderDetailPage() {
 
   useDidShow(() => { fetchOrder() })
 
+  const coinRate = parseFloat(order?.coinOffsetRate ?? '0')
+  const totalAmt = Number(order?.totalAmount ?? 0)
+  const coinAmt = Math.round(totalAmt * coinRate)
+  const cashAmt = totalAmt - coinAmt
+  const isHealthCoin = payMethod === 'HEALTH_COIN'
+  const displayPayAmount = isHealthCoin && coinRate > 0 ? cashAmt : totalAmt
+
   const pay = async () => {
     setPaying(true)
     try {
@@ -96,7 +103,6 @@ export default function OrderDetailPage() {
             throw new Error('Missing payment parameters from server')
           }
           Taro.requestPayment({
-            provider: 'wxpay',
             timeStamp: pp.timeStamp,
             nonceStr: pp.nonceStr,
             package: pp.package,
@@ -190,11 +196,47 @@ export default function OrderDetailPage() {
               <Text style={{ fontSize: '13px', color: '#1677ff' }}>¥{(Number(item.unitPrice) * item.quantity / 100).toFixed(2)}</Text>
             </View>
           ))}
-          <View style={{ borderTop: '1px solid #f0f0f0', paddingTop: '12px', display: 'flex', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: '15px', fontWeight: 'bold' }}>Total</Text>
-            <Text style={{ fontSize: '15px', fontWeight: 'bold', color: '#1677ff' }}>
-              ¥{(Number(order.totalAmount) / 100).toFixed(2)}
-            </Text>
+          <View style={{ borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+            <View style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <Text style={{ fontSize: '13px', color: '#666' }}>Subtotal</Text>
+              <Text style={{ fontSize: '13px', color: '#333' }}>¥{(totalAmt / 100).toFixed(2)}</Text>
+            </View>
+            {coinRate > 0 && (
+              <View style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <Text style={{ fontSize: '13px', color: '#666' }}>Health Coin Offset ({Math.round(coinRate * 100)}%)</Text>
+                <Text style={{ fontSize: '13px', color: '#52c41a' }}>-¥{(coinAmt / 100).toFixed(2)}</Text>
+              </View>
+            )}
+            <View style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: '15px', fontWeight: 'bold' }}>Total</Text>
+              <Text style={{ fontSize: '15px', fontWeight: 'bold', color: '#1677ff' }}>
+                ¥{(totalAmt / 100).toFixed(2)}
+              </Text>
+            </View>
+            {coinRate > 0 && (
+              <Text style={{ fontSize: '11px', color: '#999', marginTop: '4px', display: 'block' }}>
+                Health Coin auto-offset ¥{(coinAmt / 100).toFixed(2)}, cash pay ¥{(cashAmt / 100).toFixed(2)}
+              </Text>
+            )}
+
+            {/* Paid order breakdown */}
+            {order.status !== 'PENDING_PAYMENT' && order.status !== 'CANCELLED' && (
+              <View style={{ marginTop: '10px', padding: '8px 10px', background: '#f6ffed', borderRadius: '6px' }}>
+                <Text style={{ fontSize: '11px', color: '#666', marginBottom: '4px', display: 'block' }}>Payment Details</Text>
+                {Number(order.healthCoinPaid || 0) > 0 && (
+                  <View style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: '12px', color: '#1677ff' }}>Health Coin Offset</Text>
+                    <Text style={{ fontSize: '12px', color: '#1677ff' }}>-¥{(Number(order.healthCoinPaid) / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                {Number(order.cashPaid || 0) > 0 && (
+                  <View style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: '12px', color: '#666' }}>Cash Paid</Text>
+                    <Text style={{ fontSize: '12px', color: '#333' }}>¥{(Number(order.cashPaid) / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
@@ -205,20 +247,31 @@ export default function OrderDetailPage() {
               Payment Method
             </Text>
             <Text style={{ fontSize: '12px', color: '#999', marginBottom: '10px', display: 'block' }}>
-              Select one payment method. Only one coin type can be used per order.
+              {coinRate > 0
+                ? `Health Coin offset ${Math.round(coinRate * 100)}% applied. Cash pay ¥${(cashAmt / 100).toFixed(2)}`
+                : 'Select one payment method. Only one coin type can be used per order.'}
             </Text>
             {PAY_OPTIONS.map((opt) => {
               const balance = opt.value !== 'FUIOU' ? (wallets[opt.value] ?? 0) : null
               const isSelected = payMethod === opt.value
+              const requiredBalance = (opt.value === 'HEALTH_COIN' && coinRate > 0) ? cashAmt : totalAmt
+              const disabled = opt.value !== 'FUIOU' && opt.value !== 'LCSW' && balance !== null && balance < requiredBalance
+              let subText = opt.sub
+              if (opt.value === 'HEALTH_COIN' && coinRate > 0) {
+                subText = `Pay ¥${(cashAmt / 100).toFixed(2)} after offset (Bal: ${(balance! / 100).toFixed(2)})`
+              } else if (balance !== null) {
+                subText = `Balance: ${(balance / 100).toFixed(2)} ${opt.sub}`
+              }
               return (
                 <View
                   key={opt.value}
-                  onClick={() => setPayMethod(opt.value)}
+                  onClick={() => { if (!disabled) setPayMethod(opt.value) }}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px', borderRadius: '8px', marginBottom: '8px',
                     border: `2px solid ${isSelected ? opt.color : '#e8e8e8'}`,
-                    background: isSelected ? opt.color + '10' : '#fff',
+                    background: disabled ? '#f5f5f5' : (isSelected ? opt.color + '10' : '#fff'),
+                    opacity: disabled ? 0.6 : 1,
                   }}
                 >
                   <View style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -233,7 +286,7 @@ export default function OrderDetailPage() {
                       </Text>
                       {balance !== null && (
                         <Text style={{ fontSize: '12px', color: '#999', display: 'block' }}>
-                          Balance: {(balance / 100).toFixed(2)} {opt.sub}
+                          {subText}
                         </Text>
                       )}
                     </View>
@@ -291,7 +344,7 @@ export default function OrderDetailPage() {
           </Button>
           <Button onClick={pay} loading={paying}
             style={{ flex: 2, background: '#1677ff', color: '#fff', borderRadius: '8px' }}>
-            Pay ¥{(Number(order.totalAmount) / 100).toFixed(2)}
+            Pay ¥{(displayPayAmount / 100).toFixed(2)}
           </Button>
         </View>
       )}

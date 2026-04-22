@@ -34,6 +34,9 @@ function request<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: s
 }
 
 export const api = {
+  // Settings
+  getPublicSettings: () => request<any>('GET', '/settings/public'),
+
   // Auth
   sendOtp: (phone: string) => request('POST', '/auth/otp/send', { phone }),
   verifyOtp: (phone: string, code: string, referralCode?: string) =>

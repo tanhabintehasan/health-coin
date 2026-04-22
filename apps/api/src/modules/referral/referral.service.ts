@@ -86,6 +86,44 @@ export class ReferralService {
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
+
+  async getReferralEarnings(userId: string) {
+    // Sum all referral reward transactions
+    const transactions = await this.prisma.walletTransaction.findMany({
+      where: {
+        userId,
+        txType: { in: ['REFERRAL_L1_REWARD', 'REFERRAL_L2_REWARD'] },
+      },
+      select: { txType: true, amount: true, walletType: true },
+    });
+
+    let l1Mutual = 0n, l1Universal = 0n;
+    let l2Mutual = 0n, l2Universal = 0n;
+
+    for (const t of transactions) {
+      if (t.txType === 'REFERRAL_L1_REWARD') {
+        if (t.walletType === 'MUTUAL_HEALTH_COIN') l1Mutual += t.amount;
+        else if (t.walletType === 'UNIVERSAL_HEALTH_COIN') l1Universal += t.amount;
+      } else if (t.txType === 'REFERRAL_L2_REWARD') {
+        if (t.walletType === 'MUTUAL_HEALTH_COIN') l2Mutual += t.amount;
+        else if (t.walletType === 'UNIVERSAL_HEALTH_COIN') l2Universal += t.amount;
+      }
+    }
+
+    return {
+      l1: {
+        mutualCoins: l1Mutual.toString(),
+        universalCoins: l1Universal.toString(),
+        total: (l1Mutual + l1Universal).toString(),
+      },
+      l2: {
+        mutualCoins: l2Mutual.toString(),
+        universalCoins: l2Universal.toString(),
+        total: (l2Mutual + l2Universal).toString(),
+      },
+      total: (l1Mutual + l1Universal + l2Mutual + l2Universal).toString(),
+    };
+  }
 }
 
 function maskPhone(phone: string): string {

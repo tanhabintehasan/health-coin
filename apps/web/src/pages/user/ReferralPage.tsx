@@ -1,18 +1,25 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../services/api'
 import { message, Spin } from 'antd'
+import { GiftOutlined, TeamOutlined } from '@ant-design/icons'
 
 export default function ReferralPage() {
   const [referral, setReferral] = useState<any>(null)
   const [referrals, setReferrals] = useState<any[]>([])
+  const [earnings, setEarnings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const [ref, list] = await Promise.all([api.getMyReferral(), api.getMyReferrals()])
+        const [ref, list, earn] = await Promise.all([
+          api.getMyReferral(),
+          api.getMyReferrals(),
+          api.getMyReferralEarnings().catch(() => null),
+        ])
         setReferral(ref)
+        setEarnings(earn)
         const flat: any[] = []
         ;((list as any)?.directReferrals ?? []).forEach((r: any) => {
           flat.push({ ...r, level: 1 })
@@ -97,8 +104,53 @@ export default function ReferralPage() {
         </div>
       </div>
 
+      {/* Earnings Summary */}
+      {earnings && (
+        <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <GiftOutlined style={{ color: '#fa8c16' }} />
+            My Referral Earnings
+          </div>
+          <div style={{ display: 'flex', marginBottom: 16 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', background: '#f6ffed', borderRadius: 8, marginRight: 8 }}>
+              <div style={{ fontSize: 11, color: '#888' }}>Direct (L1)</div>
+              <div style={{ fontSize: 18, fontWeight: 'bold', color: '#52c41a', marginTop: 2 }}>
+                ¥{(Number(earnings.l1?.total || 0) / 100).toFixed(2)}
+              </div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', background: '#f9f0ff', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#888' }}>Indirect (L2)</div>
+              <div style={{ fontSize: 18, fontWeight: 'bold', color: '#722ed1', marginTop: 2 }}>
+                ¥{(Number(earnings.l2?.total || 0) / 100).toFixed(2)}
+              </div>
+            </div>
+          </div>
+          <div style={{ background: '#f5f5f5', borderRadius: 8, padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+              <span style={{ color: '#666' }}>L1 Mutual Coins</span>
+              <span style={{ color: '#52c41a', fontWeight: 500 }}>¥{(Number(earnings.l1?.mutualCoins || 0) / 100).toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+              <span style={{ color: '#666' }}>L1 Universal Coins</span>
+              <span style={{ color: '#722ed1', fontWeight: 500 }}>¥{(Number(earnings.l1?.universalCoins || 0) / 100).toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+              <span style={{ color: '#666' }}>L2 Mutual Coins</span>
+              <span style={{ color: '#52c41a', fontWeight: 500 }}>¥{(Number(earnings.l2?.mutualCoins || 0) / 100).toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: '#666' }}>L2 Universal Coins</span>
+              <span style={{ color: '#722ed1', fontWeight: 500 }}>¥{(Number(earnings.l2?.universalCoins || 0) / 100).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ background: '#fff', margin: 12, borderRadius: 10, padding: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>My Network</div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <TeamOutlined style={{ color: '#1677ff' }} />
+          My Network
+        </div>
         <div style={{ display: 'flex' }}>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1677ff' }}>{level1.length}</div>

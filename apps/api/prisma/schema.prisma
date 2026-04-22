@@ -306,6 +306,7 @@ model Order {
   mutualCoinPaid    BigInt  @default(0)
   universalCoinPaid BigInt  @default(0)
   cashPaid          BigInt  @default(0)
+  coinOffsetRate    Decimal @default(0) @db.Decimal(5,4) // snapshot of product offset rate at order time
   fuiouTradeNo      String? @db.VarChar(100)
   lcswTradeNo       String? @db.VarChar(100)
 

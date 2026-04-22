@@ -392,7 +392,8 @@ export class AdminController {
     'order_approval_required',
     'mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate',
     'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate',
-    'withdrawal_commission_rate', 'platform_commission_rate',
+    'withdrawal_commission_rate', 'platform_commission_rate', 'merchant_commission_rate',
+    'mall_default_coin_offset_rate',
   ]);
 
   private readonly SENSITIVE_CONFIG_KEYS = new Set([
@@ -456,11 +457,11 @@ export class AdminController {
     if (count > 0) throw new BadRequestException('Tiers already exist. Delete existing tiers first if you want to re-seed.');
     const defaults = [
       { level: 1, name: '普通会员', minCoins: 0n, regionalCoinRate: 0.0, description: 'Regular Member' },
-      { level: 2, name: '健康大使', minCoins: 1000n, regionalCoinRate: 0.0, description: 'Health Ambassador' },
-      { level: 3, name: '社区代理', minCoins: 5000n, regionalCoinRate: 0.20, description: 'Community Agent' },
-      { level: 4, name: '县级代理', minCoins: 20000n, regionalCoinRate: 0.15, description: 'County Agent' },
-      { level: 5, name: '市级代理', minCoins: 50000n, regionalCoinRate: 0.10, description: 'City Agent' },
-      { level: 6, name: '省级代理', minCoins: 100000n, regionalCoinRate: 0.05, description: 'Provincial Agent' },
+      { level: 2, name: '健康大使', minCoins: 100000n, regionalCoinRate: 0.0, description: 'Health Ambassador' },
+      { level: 3, name: '社区代理', minCoins: 500000n, regionalCoinRate: 0.20, description: 'Community Agent' },
+      { level: 4, name: '县级代理', minCoins: 2000000n, regionalCoinRate: 0.15, description: 'County Agent' },
+      { level: 5, name: '市级代理', minCoins: 5000000n, regionalCoinRate: 0.10, description: 'City Agent' },
+      { level: 6, name: '省级代理', minCoins: 10000000n, regionalCoinRate: 0.05, description: 'Provincial Agent' },
     ];
     for (const d of defaults) {
       await this.prisma.membershipTier.create({ data: d });

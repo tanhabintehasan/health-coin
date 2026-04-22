@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Form, Button, Card, Typography, message, Spin, Row, Col, Divider, InputNumber, Input, Tooltip } from 'antd'
-import { InfoCircleOutlined, SaveOutlined } from '@ant-design/icons'
+import { Form, Button, Card, Typography, message, Spin, Row, Col, Divider, InputNumber, Input, Tooltip, Alert } from 'antd'
+import { InfoCircleOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import { useResponsive } from '../../hooks/useResponsive'
 
@@ -42,6 +42,11 @@ const CONFIG_META: Record<string, ConfigMeta> = {
   universal_coin_l1_rate: {
     label: 'Universal Coin — L1 Referral Rate',
     hint: 'Universal Coin fraction for direct referrer. E.g. 0.1 = 10%.',
+    type: 'number', min: 0, max: 1, step: 0.01,
+  },
+  mall_default_coin_offset_rate: {
+    label: 'Default Mall Coin Offset Rate',
+    hint: 'Platform-wide default Health Coin offset for new products. E.g. 0.3 = 30% of price can be offset. Set 0 to disable by default.',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   withdrawal_commission_rate: {
@@ -151,7 +156,7 @@ const CONFIG_META: Record<string, ConfigMeta> = {
   },
 }
 
-const COIN_KEYS = ['mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate', 'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate']
+const COIN_KEYS = ['mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate', 'health_coin_multiplier', 'universal_coin_own_rate', 'universal_coin_l1_rate', 'mall_default_coin_offset_rate']
 const COMMISSION_KEYS = ['withdrawal_commission_rate']
 const REVIEW_KEYS = ['order_approval_required']
 const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled', 'payment_coin_enabled']
@@ -186,7 +191,31 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchConfigs() }, [])
 
+  const [rateWarning, setRateWarning] = useState<string | null>(null)
+
+  const checkRateSum = (values: Record<string, number | string>) => {
+    const own = Number(values['mutual_coin_own_rate'] ?? configs['mutual_coin_own_rate'] ?? 0.5)
+    const l1 = Number(values['mutual_coin_l1_rate'] ?? configs['mutual_coin_l1_rate'] ?? 0.25)
+    const l2 = Number(values['mutual_coin_l2_rate'] ?? configs['mutual_coin_l2_rate'] ?? 0.1)
+    const sum = own + l1 + l2
+    if (sum > 1.0) {
+      setRateWarning(`警告：互助币返佣比例总和为 ${(sum * 100).toFixed(0)}%，超过 100%。这可能导致平台亏损。建议调整为 ≤100%。`)
+    } else {
+      setRateWarning(null)
+    }
+    return sum
+  }
+
+  const onValuesChange = (_: any, allValues: Record<string, number | string>) => {
+    checkRateSum(allValues)
+  }
+
   const onSave = async (values: Record<string, number | string>) => {
+    const sum = checkRateSum(values)
+    if (sum > 1.0) {
+      const ok = window.confirm('互助币返佣比例总和超过 100%，确定要保存吗？')
+      if (!ok) return
+    }
     setSaving(true)
     try {
       const stringValues: Record<string, string> = {}
@@ -245,8 +274,17 @@ export default function SettingsPage() {
     <div>
       <Typography.Title level={4} style={{ marginBottom: 16 }}>System Settings</Typography.Title>
       <Card>
-        <Form form={form} layout="vertical" onFinish={onSave}>
+        <Form form={form} layout="vertical" onFinish={onSave} onValuesChange={onValuesChange}>
           <Divider orientation="left">Coin Reward Rates</Divider>
+          {rateWarning && (
+            <Alert
+              type="warning"
+              showIcon
+              icon={<WarningOutlined />}
+              message={rateWarning}
+              style={{ marginBottom: 16 }}
+            />
+          )}
           <Row gutter={16}>
             {COIN_KEYS.map(renderConfigField)}
           </Row>

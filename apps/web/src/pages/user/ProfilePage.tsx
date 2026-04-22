@@ -228,6 +228,28 @@ export default function ProfilePage() {
           ) : (
             <div style={{ fontSize: 12, color: '#52c41a' }}>Maximum tier reached!</div>
           )}
+
+          {/* Tier Benefits */}
+          <div style={{ marginTop: 12, padding: 10, background: '#f5f5f5', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: '#888', fontWeight: 500, marginBottom: 6 }}>当前级别权益</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 12 }}>
+              <span style={{ color: '#555' }}>✦ 消费返互助币 <b style={{ color: '#52c41a' }}>50%</b></span>
+              <span style={{ color: '#555' }}>✦ 消费返健康币 <b style={{ color: '#1677ff' }}>100%</b></span>
+              <span style={{ color: '#555' }}>✦ 消费返万能币 <b style={{ color: '#722ed1' }}>20%</b></span>
+              <span style={{ color: '#555' }}>✦ 直推返佣 <b style={{ color: '#fa8c16' }}>25%</b> 互助 + <b style={{ color: '#fa8c16' }}>10%</b> 万能</span>
+              <span style={{ color: '#555' }}>✦ 间推返佣 <b style={{ color: '#eb2f96' }}>10%</b> 互助</span>
+            </div>
+            {tier && Number(tier.regionalCoinRate) > 0 && (
+              <div style={{ marginTop: 6, fontSize: 12, color: '#1677ff' }}>
+                ✦ 辖区返佣比例 <b>{(Number(tier.regionalCoinRate) * 100).toFixed(0)}%</b>（辖区会员消费可获得万能币分成）
+              </div>
+            )}
+            {membership.nextTier && (
+              <div style={{ marginTop: 6, fontSize: 11, color: '#999' }}>
+                升级到 {membership.nextTier.name} 后辖区返佣比例提升至 {(Number(membership.nextTier.regionalCoinRate) * 100).toFixed(0)}%
+              </div>
+            )}
+          </div>
         </div>
       )}
 

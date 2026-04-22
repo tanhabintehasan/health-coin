@@ -25,6 +25,7 @@ const configs = [
   { key: 'payment_wechat_enabled', value: 'false' },
   { key: 'payment_alipay_enabled', value: 'false' },
   { key: 'payment_coin_enabled', value: 'true' },
+  { key: 'mall_default_coin_offset_rate', value: '0.0' },
   { key: 'platform_name', value: 'HealthCoin 健康币平台' },
   { key: 'platform_hotline', value: '400-888-6666' },
   { key: 'platform_wechat', value: 'healthcoin_official' },
