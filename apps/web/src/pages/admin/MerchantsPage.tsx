@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Button, Typography, Space, message, Popconfirm, Tabs, Drawer, Descriptions, Input, Modal, Form, InputNumber, Select } from 'antd'
-import { CheckOutlined, CloseOutlined, StopOutlined, PlayCircleOutlined, PlusOutlined } from '@ant-design/icons'
+import { Table, Tag, Button, Typography, Space, message, Popconfirm, Tabs, Drawer, Descriptions, Input, Modal, Form, InputNumber, Select, Upload } from 'antd'
+import { CheckOutlined, CloseOutlined, StopOutlined, PlayCircleOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -64,15 +64,25 @@ export default function MerchantsPage() {
     catch { message.error('Action failed') }
   }
 
+  const normFile = (e: any) => {
+    if (Array.isArray(e)) return e
+    return e?.fileList
+  }
+
   const handleAddMerchant = async (values: any) => {
     setAddLoading(true)
     try {
+      let logoUrl = values.logoUrl
+      if (values.logoFile?.[0]?.originFileObj) {
+        const res: any = await api.uploadFile(values.logoFile[0].originFileObj)
+        logoUrl = res.url
+      }
       await api.createMerchant({
         ownerPhone: values.ownerPhone,
         password: values.password,
         name: values.name,
         description: values.description,
-        logoUrl: values.logoUrl,
+        logoUrl,
         regionId: values.regionId,
         commissionRate: values.commissionRate ?? 0.05,
       })
@@ -199,8 +209,13 @@ export default function MerchantsPage() {
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={2} placeholder="Optional description" />
           </Form.Item>
-          <Form.Item name="logoUrl" label="Logo URL">
-            <Input placeholder="https://..." />
+          <Form.Item name="logoFile" label="Logo" valuePropName="fileList" getValueFromEvent={normFile}>
+            <Upload beforeUpload={() => false} maxCount={1} listType="picture-card" accept="image/*">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <UploadOutlined />
+                <div style={{ marginTop: 4 }}>Upload</div>
+              </div>
+            </Upload>
           </Form.Item>
           <Form.Item name="regionId" label="Region">
             <Select placeholder="Select region" allowClear options={regions.map((r: any) => ({ value: r.id, label: r.name }))} />
