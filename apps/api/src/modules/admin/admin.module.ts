@@ -8,9 +8,10 @@ import { ProductsModule } from '../products/products.module';
 import { ReferralModule } from '../referral/referral.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { MembershipModule } from '../membership/membership.module';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [ConfigModule, WalletsModule, ProductsModule, ReferralModule, PaymentsModule, MembershipModule],
+  imports: [ConfigModule, WalletsModule, ProductsModule, ReferralModule, PaymentsModule, MembershipModule, OrdersModule],
   controllers: [AdminController, AdminCronController],
   providers: [AdminGuard],
 })
