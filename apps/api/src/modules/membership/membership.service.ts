@@ -9,7 +9,8 @@ export class MembershipService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getTiers() {
-    return this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
+    const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
+    return tiers.map((t) => ({ ...t, minCoins: t.minCoins.toString() }));
   }
 
   async getUserTier(userId: string) {

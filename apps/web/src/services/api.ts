@@ -202,7 +202,10 @@ export const api = {
   getFinanceSummary: () => request<any>('GET', '/withdrawals/admin/finance-summary'),
 
   getAdminTiers: () => request<any>('GET', '/admin/membership/tiers'),
+  createAdminTier: (data: any) => request<any>('POST', '/admin/membership/tiers', data),
   updateAdminTier: (level: number, data: any) => request<any>('PATCH', `/admin/membership/tiers/${level}`, data),
+  deleteAdminTier: (level: number) => request<any>('DELETE', `/admin/membership/tiers/${level}`),
+  seedAdminTiers: () => request<any>('POST', '/admin/membership/tiers/seed'),
 
   getAdminRedemptionLogs: (params?: any) => request<any>('GET', '/admin/redemption/logs', undefined, params),
   exportRedemptionLogs: () =>

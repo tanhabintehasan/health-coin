@@ -425,8 +425,58 @@ export class AdminController {
 
   @Get('membership/tiers')
   @ApiOperation({ summary: 'List all membership tiers' })
-  getMembershipTiers() {
-    return this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
+  async getMembershipTiers() {
+    const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
+    return tiers.map((t) => ({ ...t, minCoins: t.minCoins.toString() }));
+  }
+
+  @Post('membership/tiers')
+  @ApiOperation({ summary: 'Create a new membership tier' })
+  async createMembershipTier(
+    @Body() body: { level: number; name: string; minCoins: number; regionalCoinRate: number; description?: string },
+  ) {
+    const existing = await this.prisma.membershipTier.findUnique({ where: { level: body.level } });
+    if (existing) throw new BadRequestException(`Tier with level ${body.level} already exists`);
+    const tier = await this.prisma.membershipTier.create({
+      data: {
+        level: body.level,
+        name: body.name,
+        minCoins: BigInt(Math.round(body.minCoins * 100)),
+        regionalCoinRate: body.regionalCoinRate,
+        description: body.description ?? '',
+      },
+    });
+    return { ...tier, minCoins: tier.minCoins.toString() };
+  }
+
+  @Post('membership/tiers/seed')
+  @ApiOperation({ summary: 'Seed default membership tiers if none exist' })
+  async seedMembershipTiers() {
+    const count = await this.prisma.membershipTier.count();
+    if (count > 0) throw new BadRequestException('Tiers already exist. Delete existing tiers first if you want to re-seed.');
+    const defaults = [
+      { level: 1, name: '普通会员', minCoins: 0n, regionalCoinRate: 0.0, description: 'Regular Member' },
+      { level: 2, name: '健康大使', minCoins: 1000n, regionalCoinRate: 0.0, description: 'Health Ambassador' },
+      { level: 3, name: '社区代理', minCoins: 5000n, regionalCoinRate: 0.20, description: 'Community Agent' },
+      { level: 4, name: '县级代理', minCoins: 20000n, regionalCoinRate: 0.15, description: 'County Agent' },
+      { level: 5, name: '市级代理', minCoins: 50000n, regionalCoinRate: 0.10, description: 'City Agent' },
+      { level: 6, name: '省级代理', minCoins: 100000n, regionalCoinRate: 0.05, description: 'Provincial Agent' },
+    ];
+    for (const d of defaults) {
+      await this.prisma.membershipTier.create({ data: d });
+    }
+    const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
+    return tiers.map((t) => ({ ...t, minCoins: t.minCoins.toString() }));
+  }
+
+  @Delete('membership/tiers/:level')
+  @ApiOperation({ summary: 'Delete a membership tier' })
+  async deleteMembershipTier(@Param('level') level: string) {
+    const tierLevel = Number(level);
+    const userCount = await this.prisma.user.count({ where: { membershipLevel: tierLevel } });
+    if (userCount > 0) throw new BadRequestException(`Cannot delete tier: ${userCount} users are currently assigned to this level`);
+    await this.prisma.membershipTier.delete({ where: { level: tierLevel } });
+    return { success: true };
   }
 
   @Patch('membership/tiers/:level')
