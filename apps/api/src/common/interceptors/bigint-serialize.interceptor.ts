@@ -2,18 +2,26 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-function convertBigInt(value: any): any {
+function convertBigInt(value: any, seen = new WeakSet<object>()): any {
   if (typeof value === 'bigint') {
     return value.toString();
   }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
   if (Array.isArray(value)) {
-    return value.map(convertBigInt);
+    return value.map((item) => convertBigInt(item, seen));
   }
   if (value !== null && typeof value === 'object') {
+    if (seen.has(value)) {
+      return undefined; // break circular reference
+    }
+    seen.add(value);
     const converted: Record<string, any> = {};
     for (const key of Object.keys(value)) {
-      converted[key] = convertBigInt(value[key]);
+      converted[key] = convertBigInt(value[key], seen);
     }
+    seen.delete(value);
     return converted;
   }
   return value;
