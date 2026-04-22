@@ -103,6 +103,7 @@ export class AdminController {
           referralCode,
           membershipLevel: dto.membershipLevel ?? 1,
           regionId: dto.regionId || null,
+          avatarUrl: dto.avatarUrl || null,
           isActive: dto.isActive ?? true,
         },
       });
@@ -142,6 +143,7 @@ export class AdminController {
     if (dto.name !== undefined) data.name = dto.name || null;
     if (dto.membershipLevel !== undefined) data.membershipLevel = dto.membershipLevel;
     if (dto.regionId !== undefined) data.regionId = dto.regionId || null;
+    if (dto.avatarUrl !== undefined) data.avatarUrl = dto.avatarUrl || null;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
     return this.prisma.user.update({ where: { id }, data });

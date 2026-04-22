@@ -30,6 +30,10 @@ export class CreateUserDto {
   @IsOptional()
   regionId?: string;
 
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean = true;

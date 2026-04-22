@@ -32,6 +32,10 @@ export class UpdateUserDto {
   @IsOptional()
   regionId?: string;
 
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

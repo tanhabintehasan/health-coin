@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Table, Input, Tag, Typography, Space, Button, Drawer, Descriptions, Modal, Form, Select, InputNumber, message, Tree, Spin } from 'antd'
-import { SearchOutlined, WalletOutlined, ApartmentOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons'
+import { Table, Input, Tag, Typography, Space, Button, Drawer, Descriptions, Modal, Form, Select, InputNumber, message, Tree, Spin, Upload } from 'antd'
+import { SearchOutlined, WalletOutlined, ApartmentOutlined, PlusOutlined, EditOutlined, UploadOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import dayjs from 'dayjs'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -139,6 +139,11 @@ export default function UsersPage() {
     setUserModalOpen(true)
   }
 
+  const normFile = (e: any) => {
+    if (Array.isArray(e)) return e
+    return e?.fileList
+  }
+
   const openEditUser = (record: any) => {
     setUserEditing(record)
     userForm.setFieldsValue({
@@ -147,6 +152,7 @@ export default function UsersPage() {
       membershipLevel: record.membershipLevel,
       regionId: record.regionId,
       isActive: record.isActive,
+      avatarFile: record.avatarUrl ? [{ uid: '0', name: 'avatar', status: 'done', url: record.avatarUrl }] : [],
     })
     setUserModalOpen(true)
   }
@@ -155,6 +161,14 @@ export default function UsersPage() {
     const values = await userForm.validateFields()
     setSavingUser(true)
     try {
+      let avatarUrl = undefined
+      if (values.avatarFile?.[0]?.originFileObj) {
+        const res: any = await api.uploadFile(values.avatarFile[0].originFileObj)
+        avatarUrl = res.url
+      } else if (values.avatarFile?.[0]?.url) {
+        avatarUrl = values.avatarFile[0].url
+      }
+
       if (userEditing) {
         const payload: any = {}
         if (values.phone !== undefined) payload.phone = values.phone
@@ -162,11 +176,12 @@ export default function UsersPage() {
         if (values.nickname !== undefined) payload.nickname = values.nickname
         if (values.membershipLevel !== undefined) payload.membershipLevel = values.membershipLevel
         if (values.regionId !== undefined) payload.regionId = values.regionId
+        if (avatarUrl !== undefined) payload.avatarUrl = avatarUrl
         if (values.isActive !== undefined) payload.isActive = values.isActive
         await api.updateUser(userEditing.id, payload)
         message.success('User updated successfully')
       } else {
-        await api.createUser(values)
+        await api.createUser({ ...values, avatarUrl })
         message.success('User created successfully')
       }
       setUserModalOpen(false)
@@ -277,6 +292,14 @@ export default function UsersPage() {
           </Form.Item>
           <Form.Item name="nickname" label="Nickname">
             <Input placeholder="User nickname" maxLength={100} />
+          </Form.Item>
+          <Form.Item name="avatarFile" label="Avatar" valuePropName="fileList" getValueFromEvent={normFile}>
+            <Upload beforeUpload={() => false} maxCount={1} listType="picture-card" accept="image/*">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <UploadOutlined />
+                <div style={{ marginTop: 4 }}>Upload</div>
+              </div>
+            </Upload>
           </Form.Item>
           <Form.Item name="membershipLevel" label="Membership Level" rules={[{ required: true }]}>
             <Select options={LEVEL_OPTIONS} placeholder="Select level" />
