@@ -9,6 +9,10 @@ function convertBigInt(value: any, seen = new WeakSet<object>()): any {
   if (value instanceof Date) {
     return value.toISOString();
   }
+  // Handle Prisma Decimal (decimal.js) — preserve as string instead of expanding internal props
+  if (value !== null && typeof value === 'object' && value.constructor?.name === 'Decimal' && typeof value.toString === 'function') {
+    return value.toString();
+  }
   if (Array.isArray(value)) {
     return value.map((item) => convertBigInt(item, seen));
   }

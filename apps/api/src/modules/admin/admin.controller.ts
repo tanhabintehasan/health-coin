@@ -361,7 +361,15 @@ export class AdminController {
       }),
     ]);
     return {
-      data: data.map((o) => ({ ...o, totalAmount: o.totalAmount.toString() })),
+      data: data.map((o) => ({
+        ...o,
+        totalAmount: o.totalAmount.toString(),
+        healthCoinPaid: o.healthCoinPaid.toString(),
+        mutualCoinPaid: o.mutualCoinPaid.toString(),
+        universalCoinPaid: o.universalCoinPaid.toString(),
+        cashPaid: o.cashPaid.toString(),
+        coinOffsetRate: Number(o.coinOffsetRate ?? 0),
+      })),
       meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) },
     };
   }

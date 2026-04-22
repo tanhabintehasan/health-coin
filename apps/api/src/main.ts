@@ -4,6 +4,11 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
+// Global safety net: ensure BigInt always serializes to string in JSON
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
 
 function validateEnv() {
