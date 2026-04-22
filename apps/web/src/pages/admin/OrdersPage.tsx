@@ -29,7 +29,7 @@ export default function OrdersPage() {
       const res: any = await api.getAdminOrders({ page: p, limit: 20, search: q || undefined })
       setOrders(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch { setOrders([]) } finally { setLoading(false) }
+    } catch (err) { console.error(err); message.error('Failed to load orders'); setOrders([]) } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchOrders() }, [])

@@ -45,10 +45,10 @@ export default function DashboardPage() {
     setError(null)
     try {
       const [summaryRes, ordersRes, merchantsRes, productsRes] = await Promise.all([
-        api.getFinanceSummary().catch(() => null),
-        api.getAdminOrders({ limit: 5, page: 1 }).catch(() => null),
-        api.getAdminMerchants({ status: 'PENDING', page: 1, limit: 1 }).catch(() => null),
-        api.getPendingProducts({ page: 1, limit: 1 }).catch(() => null),
+        api.getFinanceSummary(),
+        api.getAdminOrders({ limit: 5, page: 1 }),
+        api.getAdminMerchants({ status: 'PENDING', page: 1, limit: 1 }),
+        api.getPendingProducts({ page: 1, limit: 1 }),
       ])
       setSummary(summaryRes)
       setRecentOrders((ordersRes as any)?.data ?? [])
@@ -56,6 +56,7 @@ export default function DashboardPage() {
       setPendingProducts((productsRes as any)?.meta?.total ?? 0)
     } catch (err: any) {
       setError(typeof err === 'string' ? err : '加载数据失败')
+      console.error('Dashboard fetch error:', err)
     } finally {
       setLoading(false)
     }

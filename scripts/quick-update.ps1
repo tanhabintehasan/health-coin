@@ -46,29 +46,32 @@ npm install
 if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed" }
 Write-Ok "Dependencies installed"
 
-# 3. Build API
-Write-Step "Step 3/6 — Building API"
+# 3. Stop running services to unlock Prisma engine DLL
+Write-Step "Step 3/6 — Stopping PM2 services"
+pm2 stop all 2>$null
+Write-Ok "PM2 services stopped"
+
+# 4. Build API
+Write-Step "Step 4/6 — Building API"
 Set-Location "$AppDir\apps\api"
 npm run build
 if ($LASTEXITCODE -ne 0) { Write-Err "API build failed" }
 Write-Ok "API build complete"
 
-# 4. Build Web
-Write-Step "Step 4/6 — Building Web"
+# 5. Build Web
+Write-Step "Step 5/6 — Building Web"
 Set-Location "$AppDir\apps\web"
 npm run build
 if ($LASTEXITCODE -ne 0) { Write-Err "Web build failed" }
 Write-Ok "Web build complete"
 
-# 5. Restart services
-Write-Step "Step 5/6 — Restarting services"
-pm2 restart healthcoin-api 2>$null
-if ($LASTEXITCODE -ne 0) { Write-Warn "PM2 restart healthcoin-api may have failed (check manually)" }
-else { Write-Ok "API restarted" }
+# 6. Restart services
+Write-Step "Step 6/6 — Restarting services"
+pm2 start all 2>$null
+if ($LASTEXITCODE -ne 0) { Write-Warn "PM2 start may have failed (check manually with pm2 list)" }
+else { Write-Ok "Services restarted" }
 
-pm2 restart healthcoin-proxy 2>$null
-if ($LASTEXITCODE -ne 0) { Write-Warn "PM2 restart healthcoin-proxy may have failed (check manually)" }
-else { Write-Ok "Proxy restarted" }
+pm2 save
 
 # 6. Save PM2 config
 Write-Step "Step 6/6 — Saving PM2 config"

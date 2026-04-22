@@ -23,8 +23,11 @@ export default function CategoriesPage() {
       }
       walk(res || [])
       setCategories(flat)
-    } catch {}
-    finally { setLoading(false) }
+    } catch (err) {
+      console.error(err)
+      message.error('Failed to load categories')
+      setCategories([])
+    } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchCategories() }, [])

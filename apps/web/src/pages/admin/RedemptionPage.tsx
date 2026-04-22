@@ -17,7 +17,7 @@ export default function RedemptionPage() {
       const res: any = await api.getAdminRedemptionLogs({ page: p, limit: 20 })
       setLogs(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch { setLogs([]) } finally { setLoading(false) }
+    } catch (err) { console.error(err); message.error('Failed to load redemption logs'); setLogs([]) } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchLogs() }, [])

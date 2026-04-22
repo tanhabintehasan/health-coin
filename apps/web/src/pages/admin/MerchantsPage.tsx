@@ -37,14 +37,14 @@ export default function MerchantsPage() {
       const res: any = await api.getAdminMerchants({ page: p, limit: 20, status: status || undefined })
       setMerchants(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch { setMerchants([]) } finally { setLoading(false) }
+    } catch (err) { console.error(err); message.error('Failed to load merchants'); setMerchants([]) } finally { setLoading(false) }
   }
 
   const fetchRegions = async () => {
     try {
       const res: any = await api.getRegionsTree()
       setRegions(res ?? [])
-    } catch { setRegions([]) }
+    } catch (err) { console.error(err); message.error('Failed to load regions'); setRegions([]) }
   }
 
   useEffect(() => { fetchMerchants(); fetchRegions() }, [])

@@ -79,7 +79,9 @@ export default function UsersPage() {
       const res: any = await api.getAdminUsers({ page: p, limit: 20, search: q || undefined })
       setUsers(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch {
+    } catch (err) {
+      console.error(err)
+      message.error('Failed to load users')
       setUsers([])
     } finally {
       setLoading(false)
@@ -91,7 +93,7 @@ export default function UsersPage() {
   useEffect(() => {
     api.getRegionsTree().then((tree: any[]) => {
       setRegions(flattenRegions(tree))
-    }).catch(() => setRegions([]))
+    }).catch((err) => { console.error(err); message.error('Failed to load regions'); setRegions([]) })
   }, [])
 
   const openWalletModal = (record: any) => {

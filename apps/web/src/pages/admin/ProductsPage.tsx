@@ -23,7 +23,7 @@ export default function ProductsPage() {
       const res: any = await api.getPendingProducts({ page: p, limit: 20 })
       setProducts(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch { setProducts([]) } finally { setLoading(false) }
+    } catch (err) { console.error(err); message.error('Failed to load products'); setProducts([]) } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchProducts() }, [])

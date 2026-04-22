@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Row, Col, Statistic, Spin } from 'antd'
+import { Card, Row, Col, Statistic, Spin, message } from 'antd'
 import { RiseOutlined, ShoppingOutlined, UserOutlined, DollarOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 
@@ -19,6 +19,11 @@ export default function AnalyticsPage() {
           revenue: 0,
           growth: 0,
         })
+      })
+      .catch((err) => {
+        console.error(err)
+        message.error('Failed to load analytics')
+        setStats({ users: 0, orders: 0, revenue: 0, growth: 0 })
       })
       .finally(() => setLoading(false))
   }, [])

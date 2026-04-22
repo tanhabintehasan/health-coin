@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Spin, Empty } from 'antd'
+import { Table, Tag, Spin, Empty, message } from 'antd'
 import { api } from '../../services/api'
 
 export default function RefundsPage() {
@@ -9,7 +9,7 @@ export default function RefundsPage() {
   useEffect(() => {
     api.getAdminOrders({ status: 'REFUNDING', limit: 50 })
       .then((res: any) => setOrders(res?.data || []))
-      .catch(() => setOrders([]))
+      .catch((err) => { console.error(err); message.error('Failed to load refund orders'); setOrders([]) })
       .finally(() => setLoading(false))
   }, [])
 

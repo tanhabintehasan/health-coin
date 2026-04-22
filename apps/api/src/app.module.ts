@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { BigIntSerializeInterceptor } from './common/interceptors/bigint-serialize.interceptor';
 // import { BullModule } from '@nestjs/bull';
 import { PrismaModule } from './prisma/prisma.module';
 // import { RedisModule } from './common/redis/redis.module';
@@ -59,6 +61,12 @@ import { OssModule } from './common/oss/oss.module';
     HealthRecordsModule,
     SettingsModule,
     OssModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: BigIntSerializeInterceptor,
+    },
   ],
 })
 export class AppModule {}

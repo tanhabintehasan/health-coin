@@ -281,7 +281,7 @@ pm2 start dist\src\main.js --name healthcoin-api --restart-delay 3000 --max-rest
 
 ```powershell
 Set-Location $AppDir
-npm2 start proxy-server.js --name healthcoin-proxy
+pm2 start proxy-server.js --name healthcoin-proxy
 ```
 
 ### 8.5 Save PM2 config

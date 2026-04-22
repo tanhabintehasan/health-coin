@@ -284,7 +284,7 @@ pm2 delete healthcoin-api 2>$null
 pm2 start dist\src\main.js --name healthcoin-api --restart-delay 3000 --max-restarts 5
 
 Set-Location $AppDir
-npm2 delete healthcoin-proxy 2>$null
+pm2 delete healthcoin-proxy 2>$null
 pm2 start proxy-server.js --name healthcoin-proxy
 pm2 save
 

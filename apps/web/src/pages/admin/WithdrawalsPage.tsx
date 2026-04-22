@@ -17,7 +17,7 @@ export default function WithdrawalsPage() {
       const res: any = await api.getAdminWithdrawals({ page: p, limit: 20 })
       setWithdrawals(res?.data ?? [])
       setTotal(res?.meta?.total ?? 0)
-    } catch { setWithdrawals([]) } finally { setLoading(false) }
+    } catch (err) { console.error(err); message.error('Failed to load withdrawals'); setWithdrawals([]) } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchWithdrawals() }, [])
