@@ -81,9 +81,24 @@ export default function OrderDetailPage() {
       const walletType = isCoin ? (payMethod as CoinType) : undefined
       const method = isCoin ? undefined : (payMethod as 'FUIOU' | 'LCSW')
       const res: any = await api.payOrder(id, walletType, method)
-      if (res.payUrl) { window.open(res.payUrl, '_blank'); message.info('正在跳转支付...') }
-      else if (res.payParams) { message.success('支付参数已生成，请在收银台完成支付'); fetchOrder() }
-      else { message.success('支付成功'); fetchOrder() }
+      if (res.payUrl) {
+        window.open(res.payUrl, '_blank')
+        message.info('正在跳转支付...')
+      } else if (res.payParams) {
+        const pp = res.payParams
+        const payUrl = pp.jsapi_pay_url || pp.pay_url || pp.mweb_url || pp.gateway_url
+        if (payUrl) {
+          window.location.href = payUrl
+        } else if (pp.qr_code || pp.code_url) {
+          message.success('请使用微信扫码支付')
+        } else {
+          message.success('支付参数已生成，请在收银台完成支付')
+          fetchOrder()
+        }
+      } else {
+        message.success('支付成功')
+        fetchOrder()
+      }
     } catch (err: any) { message.error(err || '支付失败') } finally { setPaying(false) }
   }
 
