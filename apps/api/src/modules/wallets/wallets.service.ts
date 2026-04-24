@@ -7,12 +7,26 @@ export class WalletsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getBalances(userId: string) {
-    const wallets = await this.prisma.wallet.findMany({
+    let wallets = await this.prisma.wallet.findMany({
       where: { userId },
       select: { walletType: true, balance: true, frozenBalance: true },
     });
 
-    if (!wallets.length) throw new NotFoundException('Wallets not found');
+    // Auto-create missing wallets
+    const existingTypes = new Set(wallets.map((w) => w.walletType));
+    const allTypes = ['HEALTH_COIN', 'MUTUAL_HEALTH_COIN', 'UNIVERSAL_HEALTH_COIN'] as const;
+    const missingTypes = allTypes.filter((t) => !existingTypes.has(t as any));
+
+    if (missingTypes.length > 0) {
+      await this.prisma.wallet.createMany({
+        data: missingTypes.map((t) => ({ userId, walletType: t as any, balance: 0n })),
+        skipDuplicates: true,
+      });
+      wallets = await this.prisma.wallet.findMany({
+        where: { userId },
+        select: { walletType: true, balance: true, frozenBalance: true },
+      });
+    }
 
     return wallets.map((w) => ({
       type: w.walletType,

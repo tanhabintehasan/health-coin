@@ -41,14 +41,19 @@ export class WalletTransactionService {
       }
 
       const wallet = wallets[0];
-      const newBalance = wallet.balance + params.amount;
+      // $queryRaw may return balance as string (pg driver) or bigint; normalize to BigInt
+      const currentBalance = BigInt(wallet.balance as any);
+      const newBalance = currentBalance + params.amount;
 
       if (newBalance < 0n) throw new BadRequestException('Insufficient balance');
 
-      await tx.$executeRaw`
+      const updatedRows = await tx.$executeRaw`
         UPDATE wallets SET balance = ${newBalance}, "updatedAt" = NOW()
         WHERE id = ${wallet.id}
       `;
+      if (Number(updatedRows) === 0) {
+        throw new BadRequestException('Wallet balance update failed: no rows affected');
+      }
 
       await tx.walletTransaction.create({
         data: {

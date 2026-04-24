@@ -530,7 +530,11 @@ export class AdminController {
       where: { level: Number(level) },
       data,
     });
-    return { ...updated, minCoins: updated.minCoins.toString() };
+    return {
+      ...updated,
+      minCoins: updated.minCoins.toString(),
+      regionalCoinRate: Number(updated.regionalCoinRate ?? 0),
+    };
   }
 
   // ── Orders (admin force-change) ────────────────────────────────────────────

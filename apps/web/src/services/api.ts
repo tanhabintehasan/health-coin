@@ -194,6 +194,7 @@ export const api = {
   getPendingProducts: (params?: any) => request<any>('GET', '/admin/products/pending', undefined, params),
   approveProduct: (id: string) => request<any>('PATCH', `/admin/products/${id}/approve`),
   rejectProduct: (id: string) => request<any>('PATCH', `/admin/products/${id}/reject`),
+  getProductAuditLogs: (id: string) => request<any[]>('GET', `/admin/products/${id}/audit-logs`),
 
   getAdminOrders: (params?: any) => request<any>('GET', '/admin/orders', undefined, params),
   forceOrderStatus: (id: string, status: string) => request<any>('PATCH', `/admin/orders/${id}/status`, { status }),
