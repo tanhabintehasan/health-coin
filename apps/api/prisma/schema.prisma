@@ -247,11 +247,29 @@ model Product {
 
   variants     ProductVariant[]
   orderItems   OrderItem[]
+  auditLogs    ProductAuditLog[]
 
   @@index([merchantId])
   @@index([categoryId])
   @@index([status])
   @@map("products")
+}
+
+model ProductAuditLog {
+  id        String   @id @default(uuid())
+  productId String
+  adminId   String
+  oldStatus String   @db.VarChar(20)
+  newStatus String   @db.VarChar(20)
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  product Product   @relation(fields: [productId], references: [id])
+  admin   AdminUser @relation(fields: [adminId], references: [userId])
+
+  @@index([productId])
+  @@index([adminId])
+  @@map("product_audit_logs")
 }
 
 enum ProductType {
@@ -449,6 +467,7 @@ model AdminUser {
   updatedAt   DateTime @updatedAt
 
   withdrawalReviews Withdrawal[]
+  auditLogs         ProductAuditLog[]
 
   @@map("admin_users")
 }

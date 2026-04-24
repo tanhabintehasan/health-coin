@@ -71,7 +71,7 @@ export default function HealthPage() {
             {uploading ? 'Uploading...' : '+ Upload'}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>Store your medical reports, lab results, and prescriptions securely.</div>
+        <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>温馨提示：此功能专为上传您的医疗报告、化验单和处方而设。为维护良好网络环境，请勿上传任何色情、暴力或与医疗无关的图片及文件。</div>
       </div>
 
       <div style={{ overflowY: 'auto' }}>

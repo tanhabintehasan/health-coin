@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { WalletTransactionService } from '../wallets/wallet-transaction.service';
 import { UpdateLcswConfigDto } from './dto/update-lcsw-config.dto';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
@@ -172,6 +173,17 @@ export class AdminController {
     if (!walletType || amount === undefined || !reason) {
       throw new BadRequestException('walletType, amount, and reason are required');
     }
+
+    // Auto-create wallet if missing
+    const existingWallet = await this.prisma.wallet.findUnique({
+      where: { userId_walletType: { userId, walletType } },
+    });
+    if (!existingWallet) {
+      await this.prisma.wallet.create({
+        data: { userId, walletType, balance: 0n },
+      });
+    }
+
     const absAmount = BigInt(Math.round(Math.abs(amount) * 100));
     const params = {
       userId,
@@ -331,14 +343,24 @@ export class AdminController {
 
   @Patch('products/:id/approve')
   @ApiOperation({ summary: 'Approve a product' })
-  approveProduct(@Param('id') id: string) {
-    return this.productsService.approveProduct(id);
+  approveProduct(@Param('id') id: string, @CurrentUser() admin: { id: string }) {
+    return this.productsService.approveProduct(id, admin.id);
   }
 
   @Patch('products/:id/reject')
   @ApiOperation({ summary: 'Reject a product' })
-  rejectProduct(@Param('id') id: string) {
-    return this.productsService.rejectProduct(id);
+  rejectProduct(@Param('id') id: string, @CurrentUser() admin: { id: string }) {
+    return this.productsService.rejectProduct(id, admin.id);
+  }
+
+  @Get('products/:id/audit-logs')
+  @ApiOperation({ summary: 'Get product audit logs' })
+  getProductAuditLogs(@Param('id') id: string) {
+    return this.prisma.productAuditLog.findMany({
+      where: { productId: id },
+      include: { admin: { select: { user: { select: { nickname: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   // ── Orders ─────────────────────────────────────────────────────────────────
@@ -436,7 +458,11 @@ export class AdminController {
   @ApiOperation({ summary: 'List all membership tiers' })
   async getMembershipTiers() {
     const tiers = await this.prisma.membershipTier.findMany({ orderBy: { level: 'asc' } });
-    return tiers.map((t) => ({ ...t, minCoins: t.minCoins.toString() }));
+    return tiers.map((t) => ({
+      ...t,
+      minCoins: t.minCoins.toString(),
+      regionalCoinRate: Number(t.regionalCoinRate ?? 0),
+    }));
   }
 
   @Post('membership/tiers')

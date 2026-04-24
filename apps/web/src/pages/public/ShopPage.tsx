@@ -167,7 +167,7 @@ export default function ShopPage() {
                     hoverable
                     cover={
                       <div style={{ position: 'relative' }}>
-                        <img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x200?text=No+Image'} style={{ height: 200, objectFit: 'cover', width: '100%' }} />
+                        <img alt={p.name} src={p.images?.[0] || 'https://placehold.co/300x300?text=No+Image'} style={{ aspectRatio: '1 / 1', objectFit: 'cover', width: '100%' }} />
                         {coinRate > 0 && (
                           <Badge count={`可抵${Math.round(coinRate * 100)}%`} style={{ backgroundColor: '#ff4d4f', position: 'absolute', top: 8, right: 8 }} />
                         )}
@@ -199,7 +199,6 @@ export default function ShopPage() {
                       {p.productType === 'SERVICE' && <Tag color="orange">到店核销</Tag>}
                       {p.deliveryType === 'DELIVERY' && <Tag color="blue">快递配送</Tag>}
                       {coinRate > 0 && <Tag color="green"><FireOutlined /> 健康币抵扣</Tag>}
-                      {p.requiresApproval && <Tag color="red">需审核</Tag>}
                     </div>
                   </Card>
                 </Col>

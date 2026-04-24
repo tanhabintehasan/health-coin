@@ -128,12 +128,36 @@ export class ProductsService {
     return serializeProduct(updated);
   }
 
-  async approveProduct(productId: string) {
-    return this.prisma.product.update({ where: { id: productId }, data: { status: 'ACTIVE' } });
+  async approveProduct(productId: string, adminId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    const updated = await this.prisma.product.update({ where: { id: productId }, data: { status: 'ACTIVE' } });
+    await this.prisma.productAuditLog.create({
+      data: {
+        productId,
+        adminId,
+        oldStatus: product.status,
+        newStatus: 'ACTIVE',
+        note: 'Product approved by admin',
+      },
+    });
+    return updated;
   }
 
-  async rejectProduct(productId: string) {
-    return this.prisma.product.update({ where: { id: productId }, data: { status: 'INACTIVE' } });
+  async rejectProduct(productId: string, adminId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+    const updated = await this.prisma.product.update({ where: { id: productId }, data: { status: 'INACTIVE' } });
+    await this.prisma.productAuditLog.create({
+      data: {
+        productId,
+        adminId,
+        oldStatus: product.status,
+        newStatus: 'INACTIVE',
+        note: 'Product rejected by admin',
+      },
+    });
+    return updated;
   }
 
   async setProductStatus(merchantId: string, productId: string, status: 'ACTIVE' | 'INACTIVE') {

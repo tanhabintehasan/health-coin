@@ -91,7 +91,7 @@ export default function ProductDetailPage() {
       </div>
 
       <div style={{ background: '#fff' }}>
-        <img src={product.images?.[0] || 'https://placehold.co/400x300?text=No+Image'} alt={product.name} style={{ width: '100%', height: 320, objectFit: 'cover' }} />
+        <img src={product.images?.[0] || 'https://placehold.co/400x400?text=No+Image'} alt={product.name} style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover' }} />
       </div>
 
       <div style={{ background: '#fff', padding: 16, marginBottom: 10 }}>
@@ -125,9 +125,7 @@ export default function ProductDetailPage() {
 
         <Title level={5} style={{ margin: 0, lineHeight: 1.4 }}>{product.name}</Title>
         <div style={{ marginTop: 8, fontSize: 13, color: '#888' }}>{product.description}</div>
-        {product.requiresApproval && (
-          <Tag color="orange" style={{ marginTop: 8 }}>需审核 / 处方药</Tag>
-        )}
+        {/* 需审核 / 处方药 tag removed per client request */}
       </div>
 
       <Card style={{ margin: '0 12px 12px', borderRadius: 12 }} bodyStyle={{ padding: 16 }}>
