@@ -144,12 +144,12 @@ const CONFIG_META: Record<string, ConfigMeta> = {
     hint: 'Use [code] as placeholder for the OTP code.',
     type: 'text',
   },
-  wechat_appid: {
+  wechat_mini_appid: {
     label: 'WeChat Mini Program AppID',
     hint: 'Your WeChat mini program AppID.',
     type: 'text',
   },
-  wechat_secret: {
+  wechat_mini_secret: {
     label: 'WeChat Mini Program Secret',
     hint: 'Your WeChat mini program AppSecret.',
     type: 'password',
@@ -162,7 +162,7 @@ const REVIEW_KEYS = ['order_approval_required']
 const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled', 'payment_coin_enabled']
 const LCSW_KEYS = ['lcsw_merchant_no', 'lcsw_terminal_id', 'lcsw_access_token', 'lcsw_base_url']
 const SMS_KEYS = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name', 'smsbao_username', 'smsbao_password', 'smsbao_template']
-const WECHAT_KEYS = ['wechat_appid', 'wechat_secret']
+const WECHAT_KEYS = ['wechat_mini_appid', 'wechat_mini_secret']
 
 export default function SettingsPage() {
   const { isMobile } = useResponsive()

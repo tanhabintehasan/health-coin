@@ -417,7 +417,7 @@ export class AdminController {
     'fuiou_merchant_no', 'fuiou_api_key',
     'platform_name', 'platform_hotline', 'platform_wechat', 'platform_address',
     'payment_fuiou_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled',
-    'payment_lcsw_enabled', 'payment_coin_enabled',
+    'payment_lcsw_enabled', 'payment_coin_enabled', 'payment_provider_primary',
     'product_review_required', 'redemption_code_valid_days', 'allow_partial_redemption',
     'order_approval_required',
     'mutual_coin_own_rate', 'mutual_coin_l1_rate', 'mutual_coin_l2_rate',
