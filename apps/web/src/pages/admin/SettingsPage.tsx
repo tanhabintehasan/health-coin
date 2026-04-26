@@ -74,6 +74,16 @@ const CONFIG_META: Record<string, ConfigMeta> = {
     hint: 'Set to 1 to enable coin payments. Set to 0 to disable.',
     type: 'number', min: 0, max: 1, step: 1,
   },
+  payment_wechat_enabled: {
+    label: 'WeChat Pay Enabled',
+    hint: 'Set to 1 to enable WeChat Pay. Set to 0 to disable.',
+    type: 'number', min: 0, max: 1, step: 1,
+  },
+  payment_alipay_enabled: {
+    label: 'Alipay Enabled',
+    hint: 'Set to 1 to enable Alipay. Set to 0 to disable.',
+    type: 'number', min: 0, max: 1, step: 1,
+  },
   lcsw_merchant_no: {
     label: 'LCSW Merchant No',
     hint: 'LCSW (Saobei) merchant number.',
