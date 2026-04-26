@@ -1,5 +1,6 @@
 #Requires -Version 5.1
 # HealthCoin Complete Fresh Deployment (RDP Optimized)
+# WARNING: Do NOT use Unicode characters in this file
 $ErrorActionPreference = "Stop"
 
 $AppDir = "C:\healthcoin"
@@ -26,7 +27,7 @@ function Write-Ok($msg)  { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Write-Warn($msg){ Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 function Write-Err($msg) { Write-Host "[ERR] $msg" -ForegroundColor Red; exit 1 }
 
-# ── 0. Verify project ─────────────────────────────────────────────────────────
+# --- 0. Verify project ---
 Write-Step "HealthCoin Fresh Deployment"
 
 if (-not (Test-Path "$AppDir\package.json")) {
@@ -34,7 +35,7 @@ if (-not (Test-Path "$AppDir\package.json")) {
 }
 Write-Ok "Project found"
 
-# ── 1. Prompts ────────────────────────────────────────────────────────────────
+# --- 1. Prompts ---
 Write-Step "Configuration"
 
 $ServerIp = Read-Host -Prompt "Server IP (e.g. 39.98.241.141)"
@@ -71,56 +72,56 @@ if ([string]::IsNullOrWhiteSpace($LcswKey)) {
     Write-Host "Auto-generated LCSW_ENCRYPTION_KEY: $LcswKey" -ForegroundColor Yellow
 }
 
-# ── 2. Install dependencies ───────────────────────────────────────────────────
+# --- 2. Install dependencies ---
 Write-Step "Installing Dependencies"
 Set-Location $AppDir
 npm install --legacy-peer-deps
 if ($LASTEXITCODE -ne 0) { Write-Err "npm install failed" }
 Write-Ok "Dependencies installed"
 
-# ── 3. Create .env files ──────────────────────────────────────────────────────
+# --- 3. Create .env files ---
 Write-Step "Creating Environment Files"
 
-$apiEnvLines = @(
-    "NODE_ENV=production"
-    "PORT=$ApiPort"
-    "DATABASE_URL=postgresql://$DbUser`:$DbPassword@localhost:5432/$DbName"
-    "JWT_SECRET=$JwtSecret"
-    "JWT_REFRESH_SECRET=$JwtRefresh"
-    "JWT_EXPIRES_IN=2h"
-    "JWT_REFRESH_EXPIRES_IN=7d"
-    "CORS_ORIGINS=*"
-    "APP_URL=http://$ServerIp"
-    "CRON_SECRET=$JwtSecret"
-    "ADMIN_PHONE=$AdminPhone"
-    "ADMIN_PASSWORD=$AdminPassword"
-    "ADMIN_NICKNAME=Administrator"
-    "FUIOU_MERCHANT_NO="
-    "FUIOU_API_KEY="
-    "FUIOU_GATEWAY_URL=https://pay.fuiou.com"
-    "FUIOU_MOCK_PAYMENTS=false"
-    "LCSW_ENCRYPTION_KEY=$LcswKey"
-    "WECHAT_MINI_APPID="
-    "WECHAT_MINI_SECRET="
-    "WECHAT_APPID="
-    "WECHAT_SECRET="
-    "SMSBAO_USERNAME=$SmsbaoUsername"
-    "SMSBAO_PASSWORD=$SmsbaoPassword"
-    "SMSBAO_TEMPLATE=$SmsbaoTemplate"
-    "OSS_REGION=oss-cn-hangzhou"
-    "OSS_ACCESS_KEY_ID="
-    "OSS_ACCESS_KEY_SECRET="
-    "OSS_BUCKET="
-    "OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com"
-    "PLATFORM_NAME=HealthCoin"
-    "PLATFORM_COMMISSION_RATE=0.05"
-)
-[System.IO.File]::WriteAllLines("$AppDir\apps\api\.env", $apiEnvLines)
+$apiEnvContent = @"
+NODE_ENV=production
+PORT=$ApiPort
+DATABASE_URL=postgresql://$DbUser`:$DbPassword@localhost:5432/$DbName
+JWT_SECRET=$JwtSecret
+JWT_REFRESH_SECRET=$JwtRefresh
+JWT_EXPIRES_IN=2h
+JWT_REFRESH_EXPIRES_IN=7d
+CORS_ORIGINS=*
+APP_URL=http://$ServerIp
+CRON_SECRET=$JwtSecret
+ADMIN_PHONE=$AdminPhone
+ADMIN_PASSWORD=$AdminPassword
+ADMIN_NICKNAME=Administrator
+FUIOU_MERCHANT_NO=
+FUIOU_API_KEY=
+FUIOU_GATEWAY_URL=https://pay.fuiou.com
+FUIOU_MOCK_PAYMENTS=false
+LCSW_ENCRYPTION_KEY=$LcswKey
+WECHAT_MINI_APPID=
+WECHAT_MINI_SECRET=
+WECHAT_APPID=
+WECHAT_SECRET=
+SMSBAO_USERNAME=$SmsbaoUsername
+SMSBAO_PASSWORD=$SmsbaoPassword
+SMSBAO_TEMPLATE=$SmsbaoTemplate
+OSS_REGION=oss-cn-hangzhou
+OSS_ACCESS_KEY_ID=
+OSS_ACCESS_KEY_SECRET=
+OSS_BUCKET=
+OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+PLATFORM_NAME=HealthCoin
+PLATFORM_COMMISSION_RATE=0.05
+"@
 
+[System.IO.File]::WriteAllText("$AppDir\apps\api\.env", $apiEnvContent)
 [System.IO.File]::WriteAllText("$AppDir\apps\web\.env", "VITE_API_BASE_URL=http://$ServerIp/api/v1")
 Write-Ok "Environment files created"
 
-# ── 4. Database Setup ─────────────────────────────────────────────────────────
+# --- 4. Database Setup ---
 Write-Step "Database Setup"
 $pgBin = "C:\Program Files\PostgreSQL\17\bin"
 $psql = "$pgBin\psql.exe"
@@ -131,26 +132,33 @@ if (-not (Test-Path $psql)) {
 
 $env:PGPASSWORD = $DbPassword
 
-# Create user if not exists
+# Create user if not exists (write SQL to temp file to avoid quote issues)
 $createUserSql = "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DbUser') THEN CREATE USER $DbUser WITH PASSWORD '$DbPassword'; END IF; END `$`$;"
-& $psql -U postgres -c $createUserSql
+$tmpUserFile = "$env:TEMP\hc_createuser.sql"
+[System.IO.File]::WriteAllText($tmpUserFile, $createUserSql)
+& $psql -U postgres -f $tmpUserFile
 if ($LASTEXITCODE -ne 0) { Write-Warn "User creation may have failed (likely already exists)" }
 
 # Check if database exists
-$dbCheck = & $psql -U postgres -t -c "SELECT 1 FROM pg_database WHERE datname = '$DbName'"
-if ([string]::IsNullOrWhiteSpace($dbCheck)) {
-    & $psql -U postgres -c "CREATE DATABASE $DbName OWNER $DbUser;"
+$dbCheckFile = "$env:TEMP\hc_dbcheck.sql"
+[System.IO.File]::WriteAllText($dbCheckFile, "SELECT 1 FROM pg_database WHERE datname = '$DbName';")
+$dbCheckResult = & $psql -U postgres -t -f $dbCheckFile
+if ([string]::IsNullOrWhiteSpace($dbCheckResult)) {
+    $createDbFile = "$env:TEMP\hc_createdb.sql"
+    [System.IO.File]::WriteAllText($createDbFile, "CREATE DATABASE $DbName OWNER $DbUser;")
+    & $psql -U postgres -f $createDbFile
     Write-Ok "Database created"
 } else {
     Write-Warn "Database $DbName already exists"
 }
 
 # Grant privileges
-& $psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DbName TO $DbUser;"
-& $psql -U postgres -d $DbName -c "CREATE EXTENSION IF NOT EXISTS `"uuid-ossp`";"
+$grantFile = "$env:TEMP\hc_grant.sql"
+[System.IO.File]::WriteAllText($grantFile, "GRANT ALL PRIVILEGES ON DATABASE $DbName TO $DbUser; CREATE EXTENSION IF NOT EXISTS `"uuid-ossp`";")
+& $psql -U postgres -d $DbName -f $grantFile
 Write-Ok "Database ready"
 
-# ── 5. Prisma ─────────────────────────────────────────────────────────────────
+# --- 5. Prisma ---
 Write-Step "Prisma Generate & Migrate"
 Set-Location "$AppDir\apps\api"
 
@@ -162,17 +170,17 @@ npm run prisma:migrate:deploy
 if ($LASTEXITCODE -ne 0) { Write-Err "prisma migrate deploy failed" }
 Write-Ok "Database migrations applied"
 
-# ── 6. Seed Data ──────────────────────────────────────────────────────────────
+# --- 6. Seed Data ---
 Write-Step "Seeding Essential Data"
 Set-Location $AppDir
 node scripts\seed-essential.js
 if ($LASTEXITCODE -ne 0) { Write-Err "Essential seeding failed" }
 Write-Ok "Essential data seeded"
 
-# ── 7. Insert Payment & SMS Configs ───────────────────────────────────────────
+# --- 7. Insert Payment & SMS Configs ---
 Write-Step "Inserting Payment & SMS Configuration"
 
-$paymentSql = @"
+$paymentSqlContent = @"
 INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ('lcsw_merchant_no', '$LcswMerchantNo', NOW()),
 ('lcsw_terminal_id', '$LcswTerminalId', NOW()),
@@ -211,10 +219,12 @@ INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = NOW();
 "@
 
-$paymentSql | & $psql -U postgres -d healthcoin_db -f -
+$tmpPaymentFile = "$env:TEMP\hc_payment.sql"
+[System.IO.File]::WriteAllText($tmpPaymentFile, $paymentSqlContent)
+& $psql -U postgres -d healthcoin_db -f $tmpPaymentFile
 Write-Ok "Payment & SMS configuration inserted"
 
-# ── 8. Admin Setup ────────────────────────────────────────────────────────────
+# --- 8. Admin Setup ---
 Write-Step "Creating Admin Account"
 $env:ADMIN_PHONE = $AdminPhone
 $env:ADMIN_PASSWORD = $AdminPassword
@@ -223,7 +233,7 @@ node scripts\setup-admin.js
 if ($LASTEXITCODE -ne 0) { Write-Err "Admin setup failed" }
 Write-Ok "Admin account ready"
 
-# ── 9. Build ──────────────────────────────────────────────────────────────────
+# --- 9. Build ---
 Write-Step "Building Applications"
 
 Set-Location "$AppDir\apps\api"
@@ -236,14 +246,14 @@ npm run build
 if ($LASTEXITCODE -ne 0) { Write-Err "Web build failed" }
 Write-Ok "Web build complete"
 
-# ── 10. Stop old services ─────────────────────────────────────────────────────
+# --- 10. Stop old services ---
 Write-Step "Stopping Old Services"
 pm2 delete healthcoin-api 2>$null
 pm2 delete healthcoin-proxy 2>$null
 Start-Sleep -Seconds 2
 Write-Ok "Old services cleaned"
 
-# ── 11. Start Services ────────────────────────────────────────────────────────
+# --- 11. Start Services ---
 Write-Step "Starting Services"
 
 Set-Location "$AppDir\apps\api"
@@ -257,7 +267,7 @@ Write-Ok "Proxy started on port 80"
 pm2 save
 Write-Ok "PM2 config saved"
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# --- Done ---
 Write-Step "Deployment Complete!"
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
