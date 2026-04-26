@@ -1,12 +1,5 @@
 #Requires -Version 5.1
-<#
-.SYNOPSIS
-    HealthCoin — Complete Fresh Deployment (RDP Optimized)
-.DESCRIPTION
-    Run this ONCE on the RDP server after pulling latest code from GitHub.
-    It sets up the database, creates .env, seeds data, inserts payment config,
-    builds applications, and starts PM2 services.
-#>
+# HealthCoin Complete Fresh Deployment (RDP Optimized)
 $ErrorActionPreference = "Stop"
 
 $AppDir = "C:\healthcoin"
@@ -14,7 +7,7 @@ $DbName = "healthcoin_db"
 $DbUser = "healthcoin_user"
 $ApiPort = 3000
 
-# ── Pre-configured credentials (DO NOT MODIFY) ────────────────────────────────
+# Pre-configured credentials
 $LcswMerchantNo = '858404816000329'
 $LcswTerminalId = '19750857'
 $LcswAccessToken = 'ce55099502be4106a38890be2e4fe787'
@@ -33,11 +26,11 @@ function Write-Ok($msg)  { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Write-Warn($msg){ Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 function Write-Err($msg) { Write-Host "[ERR] $msg" -ForegroundColor Red; exit 1 }
 
-# ── 0. Verify project location ────────────────────────────────────────────────
+# ── 0. Verify project ─────────────────────────────────────────────────────────
 Write-Step "HealthCoin Fresh Deployment"
 
 if (-not (Test-Path "$AppDir\package.json")) {
-    Write-Err "Project not found at $AppDir. Did you clone the repo?"
+    Write-Err "Project not found at $AppDir"
 }
 Write-Ok "Project found"
 
@@ -47,28 +40,32 @@ Write-Step "Configuration"
 $ServerIp = Read-Host -Prompt "Server IP (e.g. 39.98.241.141)"
 if ([string]::IsNullOrWhiteSpace($ServerIp)) { $ServerIp = "39.98.241.141" }
 
-$DbPassword = Read-Host -Prompt "PostgreSQL password for user '$DbUser'" -AsSecureString
-$DbPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($DbPassword))
+Write-Host ""
+$DbPassword = Read-Host -Prompt "PostgreSQL password"
 
+Write-Host ""
 $AdminPhone = Read-Host -Prompt "Admin phone number"
 if ([string]::IsNullOrWhiteSpace($AdminPhone)) { $AdminPhone = "13266893239" }
 
-$AdminPassword = Read-Host -Prompt "Admin password" -AsSecureString
-$AdminPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($AdminPassword))
+Write-Host ""
+$AdminPassword = Read-Host -Prompt "Admin password"
 
-$JwtSecret = Read-Host -Prompt "JWT_SECRET (min 32 chars, or press Enter to auto-generate)"
+Write-Host ""
+$JwtSecret = Read-Host -Prompt "JWT_SECRET (press Enter to auto-generate)"
 if ([string]::IsNullOrWhiteSpace($JwtSecret)) {
     $JwtSecret = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
     Write-Host "Auto-generated JWT_SECRET: $JwtSecret" -ForegroundColor Yellow
 }
 
-$JwtRefresh = Read-Host -Prompt "JWT_REFRESH_SECRET (min 32 chars, or press Enter to auto-generate)"
+Write-Host ""
+$JwtRefresh = Read-Host -Prompt "JWT_REFRESH_SECRET (press Enter to auto-generate)"
 if ([string]::IsNullOrWhiteSpace($JwtRefresh)) {
     $JwtRefresh = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
     Write-Host "Auto-generated JWT_REFRESH_SECRET: $JwtRefresh" -ForegroundColor Yellow
 }
 
-$LcswKey = Read-Host -Prompt "LCSW_ENCRYPTION_KEY (min 16 chars, or press Enter to auto-generate)"
+Write-Host ""
+$LcswKey = Read-Host -Prompt "LCSW_ENCRYPTION_KEY (press Enter to auto-generate)"
 if ([string]::IsNullOrWhiteSpace($LcswKey)) {
     $LcswKey = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
     Write-Host "Auto-generated LCSW_ENCRYPTION_KEY: $LcswKey" -ForegroundColor Yellow
@@ -84,44 +81,43 @@ Write-Ok "Dependencies installed"
 # ── 3. Create .env files ──────────────────────────────────────────────────────
 Write-Step "Creating Environment Files"
 
-$apiEnv = @"
-NODE_ENV=production
-PORT=$ApiPort
-DATABASE_URL=postgresql://$DbUser`:$DbPasswordPlain@localhost:5432/$DbName
-JWT_SECRET=$JwtSecret
-JWT_REFRESH_SECRET=$JwtRefresh
-JWT_EXPIRES_IN=2h
-JWT_REFRESH_EXPIRES_IN=7d
-CORS_ORIGINS=*
-APP_URL=http://$ServerIp
-CRON_SECRET=$JwtSecret
-ADMIN_PHONE=$AdminPhone
-ADMIN_PASSWORD=$AdminPasswordPlain
-ADMIN_NICKNAME=Administrator
-FUIOU_MERCHANT_NO=
-FUIOU_API_KEY=
-FUIOU_GATEWAY_URL=https://pay.fuiou.com
-FUIOU_MOCK_PAYMENTS=false
-LCSW_ENCRYPTION_KEY=$LcswKey
-WECHAT_MINI_APPID=
-WECHAT_MINI_SECRET=
-WECHAT_APPID=
-WECHAT_SECRET=
-SMSBAO_USERNAME=$SmsbaoUsername
-SMSBAO_PASSWORD=$SmsbaoPassword
-SMSBAO_TEMPLATE=$SmsbaoTemplate
-OSS_REGION=oss-cn-hangzhou
-OSS_ACCESS_KEY_ID=
-OSS_ACCESS_KEY_SECRET=
-OSS_BUCKET=
-OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
-PLATFORM_NAME=HealthCoin
-PLATFORM_COMMISSION_RATE=0.05
-"@
-Set-Content -Path "$AppDir\apps\api\.env" -Value $apiEnv -Encoding UTF8
+$apiEnvLines = @(
+    "NODE_ENV=production"
+    "PORT=$ApiPort"
+    "DATABASE_URL=postgresql://$DbUser`:$DbPassword@localhost:5432/$DbName"
+    "JWT_SECRET=$JwtSecret"
+    "JWT_REFRESH_SECRET=$JwtRefresh"
+    "JWT_EXPIRES_IN=2h"
+    "JWT_REFRESH_EXPIRES_IN=7d"
+    "CORS_ORIGINS=*"
+    "APP_URL=http://$ServerIp"
+    "CRON_SECRET=$JwtSecret"
+    "ADMIN_PHONE=$AdminPhone"
+    "ADMIN_PASSWORD=$AdminPassword"
+    "ADMIN_NICKNAME=Administrator"
+    "FUIOU_MERCHANT_NO="
+    "FUIOU_API_KEY="
+    "FUIOU_GATEWAY_URL=https://pay.fuiou.com"
+    "FUIOU_MOCK_PAYMENTS=false"
+    "LCSW_ENCRYPTION_KEY=$LcswKey"
+    "WECHAT_MINI_APPID="
+    "WECHAT_MINI_SECRET="
+    "WECHAT_APPID="
+    "WECHAT_SECRET="
+    "SMSBAO_USERNAME=$SmsbaoUsername"
+    "SMSBAO_PASSWORD=$SmsbaoPassword"
+    "SMSBAO_TEMPLATE=$SmsbaoTemplate"
+    "OSS_REGION=oss-cn-hangzhou"
+    "OSS_ACCESS_KEY_ID="
+    "OSS_ACCESS_KEY_SECRET="
+    "OSS_BUCKET="
+    "OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com"
+    "PLATFORM_NAME=HealthCoin"
+    "PLATFORM_COMMISSION_RATE=0.05"
+)
+[System.IO.File]::WriteAllLines("$AppDir\apps\api\.env", $apiEnvLines)
 
-$webEnv = "VITE_API_BASE_URL=http://$ServerIp/api/v1"
-Set-Content -Path "$AppDir\apps\web\.env" -Value $webEnv -Encoding UTF8
+[System.IO.File]::WriteAllText("$AppDir\apps\web\.env", "VITE_API_BASE_URL=http://$ServerIp/api/v1")
 Write-Ok "Environment files created"
 
 # ── 4. Database Setup ─────────────────────────────────────────────────────────
@@ -133,24 +129,25 @@ if (-not (Test-Path $psql)) {
     if (-not $psql) { Write-Err "psql not found. Install PostgreSQL 17." }
 }
 
-$env:PGPASSWORD = $DbPasswordPlain
+$env:PGPASSWORD = $DbPassword
 
 # Create user if not exists
-& $psql -U postgres -c "DO `\$\$` BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DbUser') THEN CREATE USER $DbUser WITH PASSWORD '$DbPasswordPlain'; END IF; END `\$\$`;"
+$createUserSql = "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DbUser') THEN CREATE USER $DbUser WITH PASSWORD '$DbPassword'; END IF; END `$`$;"
+& $psql -U postgres -c $createUserSql
 if ($LASTEXITCODE -ne 0) { Write-Warn "User creation may have failed (likely already exists)" }
 
-# Create database if not exists
-& $psql -U postgres -c "SELECT 1 FROM pg_database WHERE datname = '$DbName'" | Out-Null
-$dbExists = $LASTEXITCODE -eq 0
-if (-not $dbExists) {
+# Check if database exists
+$dbCheck = & $psql -U postgres -t -c "SELECT 1 FROM pg_database WHERE datname = '$DbName'"
+if ([string]::IsNullOrWhiteSpace($dbCheck)) {
     & $psql -U postgres -c "CREATE DATABASE $DbName OWNER $DbUser;"
+    Write-Ok "Database created"
 } else {
     Write-Warn "Database $DbName already exists"
 }
 
 # Grant privileges
 & $psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DbName TO $DbUser;"
-& $psql -U postgres -d $DbName -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+& $psql -U postgres -d $DbName -c "CREATE EXTENSION IF NOT EXISTS `"uuid-ossp`";"
 Write-Ok "Database ready"
 
 # ── 5. Prisma ─────────────────────────────────────────────────────────────────
@@ -174,8 +171,8 @@ Write-Ok "Essential data seeded"
 
 # ── 7. Insert Payment & SMS Configs ───────────────────────────────────────────
 Write-Step "Inserting Payment & SMS Configuration"
-$sql = @"
--- LCSW payment credentials (pre-configured)
+
+$paymentSql = @"
 INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ('lcsw_merchant_no', '$LcswMerchantNo', NOW()),
 ('lcsw_terminal_id', '$LcswTerminalId', NOW()),
@@ -202,7 +199,6 @@ INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ('universal_coin_l1_rate', '0.05', NOW())
 ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = NOW();
 
--- SMSbao credentials (pre-configured)
 INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ('smsbao_username', '$SmsbaoUsername', NOW()),
 ('smsbao_password', '$SmsbaoPassword', NOW()),
@@ -213,20 +209,15 @@ INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
 ('otp_hourly_limit', '10', NOW()),
 ('sms_provider', 'smsbao', NOW())
 ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = NOW();
-
--- Verify
-SELECT 'config' as type, "key", "value" FROM system_configs
-WHERE "key" IN ('payment_lcsw_enabled','payment_fuiou_enabled','payment_coin_enabled','payment_provider_primary','lcsw_merchant_no','lcsw_terminal_id','sms_enabled','smsbao_username')
-ORDER BY "key";
 "@
 
-$sql | & $psql -U postgres -d healthcoin_db -a -f -
+$paymentSql | & $psql -U postgres -d healthcoin_db -f -
 Write-Ok "Payment & SMS configuration inserted"
 
 # ── 8. Admin Setup ────────────────────────────────────────────────────────────
 Write-Step "Creating Admin Account"
 $env:ADMIN_PHONE = $AdminPhone
-$env:ADMIN_PASSWORD = $AdminPasswordPlain
+$env:ADMIN_PASSWORD = $AdminPassword
 $env:ADMIN_NICKNAME = "Administrator"
 node scripts\setup-admin.js
 if ($LASTEXITCODE -ne 0) { Write-Err "Admin setup failed" }
@@ -276,14 +267,14 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 Write-Host "Admin Login:" -ForegroundColor Yellow
 Write-Host "  Phone:    $AdminPhone" -ForegroundColor White
-Write-Host "  Password: $AdminPasswordPlain" -ForegroundColor White
+Write-Host "  Password: $AdminPassword" -ForegroundColor White
 Write-Host ""
-Write-Host "LCSW Payment Config:" -ForegroundColor Yellow
+Write-Host "LCSW Payment:" -ForegroundColor Yellow
 Write-Host "  Merchant: $LcswMerchantNo" -ForegroundColor White
 Write-Host "  Terminal: $LcswTerminalId" -ForegroundColor White
 Write-Host "  Base URL: $LcswBaseUrl" -ForegroundColor White
 Write-Host ""
-Write-Host "SMS Config:" -ForegroundColor Yellow
+Write-Host "SMS:" -ForegroundColor Yellow
 Write-Host "  Provider: SMSbao" -ForegroundColor White
 Write-Host "  Username: $SmsbaoUsername" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Green
