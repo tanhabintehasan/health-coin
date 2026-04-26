@@ -1,10 +1,11 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    HealthCoin — Complete Fresh Deployment
+    HealthCoin — Complete Fresh Deployment (RDP Optimized)
 .DESCRIPTION
     Run this ONCE on the RDP server after pulling latest code from GitHub.
-    It sets up the database, creates .env, seeds data, and starts services.
+    It sets up the database, creates .env, seeds data, inserts payment config,
+    builds applications, and starts PM2 services.
 #>
 $ErrorActionPreference = "Stop"
 
@@ -12,6 +13,15 @@ $AppDir = "C:\healthcoin"
 $DbName = "healthcoin_db"
 $DbUser = "healthcoin_user"
 $ApiPort = 3000
+
+# ── Pre-configured credentials (DO NOT MODIFY) ────────────────────────────────
+$LcswMerchantNo = '858404816000329'
+$LcswTerminalId = '19750857'
+$LcswAccessToken = 'ce55099502be4106a38890be2e4fe787'
+$LcswBaseUrl = 'http://pay.lcsw.cn/lcsw'
+$SmsbaoUsername = 'CX3308'
+$SmsbaoPassword = 'd246e48c94264b2f8a2dbe17877e8a7d'
+$SmsbaoTemplate = '【健康币】您的验证码是[code]，5分钟内有效。'
 
 function Write-Step($msg) {
     Write-Host ""
@@ -92,19 +102,14 @@ FUIOU_MERCHANT_NO=
 FUIOU_API_KEY=
 FUIOU_GATEWAY_URL=https://pay.fuiou.com
 FUIOU_MOCK_PAYMENTS=false
-LCSW_MERCHANT_NO=
-LCSW_APPID=
-LCSW_APP_SECRET=
-LCSW_ACCESS_TOKEN=
-LCSW_BASE_URL=https://openapi.lcsw.cn
 LCSW_ENCRYPTION_KEY=$LcswKey
 WECHAT_MINI_APPID=
 WECHAT_MINI_SECRET=
 WECHAT_APPID=
 WECHAT_SECRET=
-SMSBAO_USERNAME=
-SMSBAO_PASSWORD=
-SMSBAO_TEMPLATE=【健康币】您的验证码是[code]，5分钟内有效。
+SMSBAO_USERNAME=$SmsbaoUsername
+SMSBAO_PASSWORD=$SmsbaoPassword
+SMSBAO_TEMPLATE=$SmsbaoTemplate
 OSS_REGION=oss-cn-hangzhou
 OSS_ACCESS_KEY_ID=
 OSS_ACCESS_KEY_SECRET=
@@ -167,7 +172,58 @@ node scripts\seed-essential.js
 if ($LASTEXITCODE -ne 0) { Write-Err "Essential seeding failed" }
 Write-Ok "Essential data seeded"
 
-# ── 7. Admin Setup ────────────────────────────────────────────────────────────
+# ── 7. Insert Payment & SMS Configs ───────────────────────────────────────────
+Write-Step "Inserting Payment & SMS Configuration"
+$sql = @"
+-- LCSW payment credentials (pre-configured)
+INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
+('lcsw_merchant_no', '$LcswMerchantNo', NOW()),
+('lcsw_terminal_id', '$LcswTerminalId', NOW()),
+('lcsw_access_token', '$LcswAccessToken', NOW()),
+('lcsw_base_url', '$LcswBaseUrl', NOW()),
+('payment_lcsw_enabled', 'true', NOW()),
+('payment_fuiou_enabled', 'false', NOW()),
+('payment_wechat_enabled', 'false', NOW()),
+('payment_alipay_enabled', 'false', NOW()),
+('payment_coin_enabled', 'true', NOW()),
+('payment_provider_primary', 'lcsw', NOW()),
+('mall_default_coin_offset_rate', '0.5', NOW()),
+('order_approval_required', 'false', NOW()),
+('product_review_required', 'true', NOW()),
+('redemption_code_valid_days', '30', NOW()),
+('allow_partial_redemption', 'false', NOW()),
+('platform_commission_rate', '0.05', NOW()),
+('withdrawal_commission_rate', '0.02', NOW()),
+('mutual_coin_own_rate', '0.10', NOW()),
+('mutual_coin_l1_rate', '0.05', NOW()),
+('mutual_coin_l2_rate', '0.03', NOW()),
+('health_coin_multiplier', '1.0', NOW()),
+('universal_coin_own_rate', '0.10', NOW()),
+('universal_coin_l1_rate', '0.05', NOW())
+ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = NOW();
+
+-- SMSbao credentials (pre-configured)
+INSERT INTO system_configs ("key", "value", "updatedAt") VALUES
+('smsbao_username', '$SmsbaoUsername', NOW()),
+('smsbao_password', '$SmsbaoPassword', NOW()),
+('smsbao_template', '$SmsbaoTemplate', NOW()),
+('sms_enabled', 'true', NOW()),
+('otp_expiry_seconds', '300', NOW()),
+('otp_resend_seconds', '60', NOW()),
+('otp_hourly_limit', '10', NOW()),
+('sms_provider', 'smsbao', NOW())
+ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = NOW();
+
+-- Verify
+SELECT 'config' as type, "key", "value" FROM system_configs
+WHERE "key" IN ('payment_lcsw_enabled','payment_fuiou_enabled','payment_coin_enabled','payment_provider_primary','lcsw_merchant_no','lcsw_terminal_id','sms_enabled','smsbao_username')
+ORDER BY "key";
+"@
+
+$sql | & $psql -U postgres -d healthcoin_db -a -f -
+Write-Ok "Payment & SMS configuration inserted"
+
+# ── 8. Admin Setup ────────────────────────────────────────────────────────────
 Write-Step "Creating Admin Account"
 $env:ADMIN_PHONE = $AdminPhone
 $env:ADMIN_PASSWORD = $AdminPasswordPlain
@@ -176,7 +232,7 @@ node scripts\setup-admin.js
 if ($LASTEXITCODE -ne 0) { Write-Err "Admin setup failed" }
 Write-Ok "Admin account ready"
 
-# ── 8. Build ──────────────────────────────────────────────────────────────────
+# ── 9. Build ──────────────────────────────────────────────────────────────────
 Write-Step "Building Applications"
 
 Set-Location "$AppDir\apps\api"
@@ -189,14 +245,14 @@ npm run build
 if ($LASTEXITCODE -ne 0) { Write-Err "Web build failed" }
 Write-Ok "Web build complete"
 
-# ── 9. Stop old services ──────────────────────────────────────────────────────
+# ── 10. Stop old services ─────────────────────────────────────────────────────
 Write-Step "Stopping Old Services"
 pm2 delete healthcoin-api 2>$null
 pm2 delete healthcoin-proxy 2>$null
 Start-Sleep -Seconds 2
 Write-Ok "Old services cleaned"
 
-# ── 10. Start Services ────────────────────────────────────────────────────────
+# ── 11. Start Services ────────────────────────────────────────────────────────
 Write-Step "Starting Services"
 
 Set-Location "$AppDir\apps\api"
@@ -222,7 +278,12 @@ Write-Host "Admin Login:" -ForegroundColor Yellow
 Write-Host "  Phone:    $AdminPhone" -ForegroundColor White
 Write-Host "  Password: $AdminPasswordPlain" -ForegroundColor White
 Write-Host ""
-Write-Host "NEXT STEP:" -ForegroundColor Yellow
-Write-Host "  Run .\DEPLOY\02-configure-payments.ps1" -ForegroundColor White
-Write-Host "  to set up LCSW, SMS, and WeChat credentials." -ForegroundColor White
+Write-Host "LCSW Payment Config:" -ForegroundColor Yellow
+Write-Host "  Merchant: $LcswMerchantNo" -ForegroundColor White
+Write-Host "  Terminal: $LcswTerminalId" -ForegroundColor White
+Write-Host "  Base URL: $LcswBaseUrl" -ForegroundColor White
+Write-Host ""
+Write-Host "SMS Config:" -ForegroundColor Yellow
+Write-Host "  Provider: SMSbao" -ForegroundColor White
+Write-Host "  Username: $SmsbaoUsername" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Green

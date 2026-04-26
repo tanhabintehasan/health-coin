@@ -10,17 +10,12 @@
 
 ---
 
-## Step 1: Delete Old Installation (if exists)
+## Step 1: Delete Old Installation
 
 ```powershell
-# Stop and remove old services
 pm2 delete all
-
-# Remove old code
-Remove-Item -Recurse -Force C:\healthcoin -ErrorAction SilentlyContinue
-
-# Also clean old PM2 processes
 taskkill /F /IM node.exe 2>$null
+Remove-Item -Recurse -Force C:\healthcoin -ErrorAction SilentlyContinue
 ```
 
 ---
@@ -36,11 +31,12 @@ Rename-Item health-coin healthcoin
 > If GitHub HTTPS is blocked, try SSH:
 > ```powershell
 > git clone git@github.com:tanhabintehasan/health-coin.git
+> Rename-Item health-coin healthcoin
 > ```
 
 ---
 
-## Step 3: Run Deployment Script
+## Step 3: Run Full Deployment
 
 ```powershell
 cd C:\healthcoin
@@ -49,30 +45,29 @@ cd C:\healthcoin
 
 This script will:
 1. Install npm dependencies
-2. Prompt for server config (IP, DB password, admin credentials)
+2. Prompt for server config (IP, DB password, admin credentials, JWT secrets)
 3. Create `.env` files
 4. Set up PostgreSQL database
 5. Run Prisma generate + migrate
 6. Seed essential data (tiers, regions, configs)
-7. Create admin account
-8. Build API + Web frontend
-9. Start PM2 services
+7. **Auto-insert LCSW payment credentials** (Merchant: 858404816000329, Terminal: 19750857)
+8. **Auto-insert SMSbao credentials** (Username: CX3308)
+9. Create admin account
+10. Build API + Web frontend
+11. Start PM2 services
+
+> **You do NOT need to enter LCSW or SMS credentials** — they are pre-configured.
 
 ---
 
-## Step 4: Configure Payments
+## Step 4: Optional — Add WeChat Mini Program
 
-After Step 3 completes, run:
+If you have WeChat Mini AppID + Secret, run:
 
 ```powershell
 cd C:\healthcoin
 .\DEPLOY\02-configure-payments.ps1
 ```
-
-Enter your credentials:
-- **LCSW Merchant No, Terminal ID, Access Token** (from your client)
-- **SMSbao Username, Password** (for OTP SMS)
-- **WeChat Mini AppID, Secret** (for 小程序登录)
 
 Then restart the API:
 
@@ -98,21 +93,19 @@ Login to admin:
 
 ---
 
-## What's Fixed in This Build
+## Pre-Configured Settings
 
-| Feature | Status |
-|---------|--------|
-| **LCSW Payment** | Ready — enter credentials in Step 4 |
-| **Coin Payment** | Enabled by default |
-| **Fuiou Payment** | Disabled |
-| **SMS (SMSbao)** | Ready — enter credentials in Step 4 |
-| **WeChat Mini Login** | Ready — enter credentials in Step 4 |
-| **Wallet Auto-Create** | Fixed |
-| **Wallet BigInt Bug** | Fixed |
-| **Coin Offset Rate** | Fixed |
-| **Product Audit Logs** | Fixed |
-| **Membership Tier Serialization** | Fixed |
-| **BigInt JSON Crash** | Fixed globally in main.ts |
+| Setting | Value | Location |
+|---------|-------|----------|
+| **LCSW Merchant No** | 858404816000329 | Database |
+| **LCSW Terminal ID** | 19750857 | Database |
+| **LCSW Access Token** | ce55099502be4106a38890be2e4fe787 | Database |
+| **LCSW Base URL** | http://pay.lcsw.cn/lcsw | Database |
+| **SMSbao Username** | CX3308 | Database + .env |
+| **SMSbao Password** | d246e48c94264b2f8a2dbe17877e8a7d | Database + .env |
+| **Primary Payment** | LCSW | Database |
+| **Fuiou Payment** | Disabled | Database |
+| **Coin Payment** | Enabled | Database |
 
 ---
 
@@ -166,4 +159,4 @@ pm2 save
 
 ## DONE
 
-Your HealthCoin platform is now fully deployed with all fixes applied.
+Your HealthCoin platform is now fully deployed with LCSW payment and SMS ready.
