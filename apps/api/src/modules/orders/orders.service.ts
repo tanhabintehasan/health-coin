@@ -52,11 +52,11 @@ export class OrdersService {
     const order = await this.prisma.$transaction(async (tx) => {
       // Decrement stock with conditional update (prevents oversell)
       for (const item of dto.items) {
-        const result = await tx.$executeRaw`
-          UPDATE product_variants SET stock = stock - ${item.quantity}
-          WHERE id = ${item.variantId}::uuid AND stock >= ${item.quantity}
-        `;
-        if (result === 0) throw new BadRequestException('Stock sold out during checkout');
+        const result = await tx.productVariant.updateMany({
+          where: { id: item.variantId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (result.count === 0) throw new BadRequestException('Stock sold out during checkout');
       }
 
       const totalAmount = variants.reduce((sum, variant) => {

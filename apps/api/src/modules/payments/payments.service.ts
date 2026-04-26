@@ -83,7 +83,7 @@ export class PaymentsService {
 
   private async createPaymentTransaction(orderId: string, provider: string, providerTradeNo: string | null, amount: bigint, lcswMerchantNo?: string, lcswTerminalId?: string) {
     const settings = await this.getPaymentSettings();
-    const platformCommissionRate = settings.platformCommissionRate;
+    const platformCommissionRate = Number.isFinite(settings.platformCommissionRate) ? settings.platformCommissionRate : 0;
     const platformCommissionAmt = BigInt(Math.round(Number(amount) * platformCommissionRate));
     const merchantNetAmount = amount - platformCommissionAmt;
 
@@ -291,7 +291,7 @@ export class PaymentsService {
     const orderNo = body['order_id'];
     const fuiouTradeNo = body['fuiou_order_id'] ?? body['transaction_id'];
     const amountYuan = parseFloat(body['txn_amt'] ?? '0');
-    const amountUnits = BigInt(Math.round(amountYuan * 100));
+    const amountUnits = Number.isFinite(amountYuan) ? BigInt(Math.round(amountYuan * 100)) : BigInt(0);
     const resultCode = body['resp_code'];
 
     if (resultCode !== '00' && resultCode !== '0000') {
@@ -366,7 +366,7 @@ export class PaymentsService {
 
     if (body.result_code === '01') {
       if (order && order.status === 'PENDING_PAYMENT') {
-        const amount = BigInt(body.total_fee || order.totalAmount);
+        const amount = body.total_fee && /^\d+$/.test(String(body.total_fee)) ? BigInt(body.total_fee) : BigInt(order.totalAmount || 0);
         await this.ordersService.markPaid(order.id, lcswTradeNo, null, amount, 'lcsw');
         this.logger.log(`Order ${order.orderNo} marked paid via LCSW`);
       }

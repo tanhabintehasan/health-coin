@@ -147,7 +147,11 @@ export class AdminController {
     if (dto.avatarUrl !== undefined) data.avatarUrl = dto.avatarUrl || null;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
-    return this.prisma.user.update({ where: { id }, data });
+    const updated = await this.prisma.user.update({ where: { id }, data });
+    return {
+      ...updated,
+      totalMutualCoinsEarned: updated.totalMutualCoinsEarned?.toString?.() ?? updated.totalMutualCoinsEarned,
+    };
   }
 
   @Patch('users/:id/suspend')
@@ -251,7 +255,7 @@ export class AdminController {
     const take = this.clampLimit(limit);
     const skip = (Number(page) - 1) * take;
     const where: any = status ? { status } : {};
-    const [total, data] = await Promise.all([
+    const [total, rawData] = await Promise.all([
       this.prisma.merchant.count({ where }),
       this.prisma.merchant.findMany({
         where,
@@ -259,6 +263,10 @@ export class AdminController {
         skip, take, orderBy: { createdAt: 'desc' },
       }),
     ]);
+    const data = rawData.map((m: any) => ({
+      ...m,
+      commissionRate: m.commissionRate ? Number(m.commissionRate) : 0,
+    }));
     return { data, meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) } };
   }
 
@@ -278,19 +286,21 @@ export class AdminController {
       console.error(`LCSW auto-creation failed for merchant ${id}:`, err.message);
     }
 
-    return merchant;
+    return { ...merchant, commissionRate: merchant.commissionRate ? Number(merchant.commissionRate) : 0 };
   }
 
   @Patch('merchants/:id/reject')
   @ApiOperation({ summary: 'Reject a merchant' })
   async rejectMerchant(@Param('id') id: string, @Body('rejectionNote') rejectionNote?: string) {
-    return this.prisma.merchant.update({ where: { id }, data: { status: 'REJECTED', rejectionNote } });
+    const m = await this.prisma.merchant.update({ where: { id }, data: { status: 'REJECTED', rejectionNote } });
+    return { ...m, commissionRate: m.commissionRate ? Number(m.commissionRate) : 0 };
   }
 
   @Patch('merchants/:id/suspend')
   @ApiOperation({ summary: 'Suspend or unsuspend a merchant' })
   async suspendMerchant(@Param('id') id: string, @Body('suspend') suspend: boolean) {
-    return this.prisma.merchant.update({ where: { id }, data: { status: suspend ? 'SUSPENDED' : 'APPROVED' } });
+    const m = await this.prisma.merchant.update({ where: { id }, data: { status: suspend ? 'SUSPENDED' : 'APPROVED' } });
+    return { ...m, commissionRate: m.commissionRate ? Number(m.commissionRate) : 0 };
   }
 
   @Post('merchants')
@@ -367,7 +377,7 @@ export class AdminController {
       console.error(`LCSW auto-creation failed for merchant ${merchant.id}:`, err.message);
     }
 
-    return merchant;
+    return { ...merchant, commissionRate: merchant.commissionRate ? Number(merchant.commissionRate) : 0 };
   }
 
   // ── Products Review ────────────────────────────────────────────────────────
@@ -621,7 +631,15 @@ export class AdminController {
         console.error(`Commission settlement failed for order ${order.id}:`, err.message);
       }
     }
-    return updated;
+    return {
+      ...updated,
+      totalAmount: updated.totalAmount?.toString?.() ?? updated.totalAmount,
+      healthCoinPaid: updated.healthCoinPaid?.toString?.() ?? updated.healthCoinPaid,
+      mutualCoinPaid: updated.mutualCoinPaid?.toString?.() ?? updated.mutualCoinPaid,
+      universalCoinPaid: updated.universalCoinPaid?.toString?.() ?? updated.universalCoinPaid,
+      cashPaid: updated.cashPaid?.toString?.() ?? updated.cashPaid,
+      coinOffsetRate: updated.coinOffsetRate ? Number(updated.coinOffsetRate) : 0,
+    };
   }
 
   // ── Redemption Logs ────────────────────────────────────────────────────────
@@ -786,7 +804,7 @@ export class AdminController {
     if (provider) where.provider = provider;
 
     const skip = (Number(page) - 1) * Number(limit);
-    const [total, data] = await Promise.all([
+    const [total, rawData] = await Promise.all([
       this.prisma.paymentTransaction.count({ where }),
       this.prisma.paymentTransaction.findMany({
         where,
@@ -796,6 +814,14 @@ export class AdminController {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
+
+    const data = rawData.map((t: any) => ({
+      ...t,
+      amount: t.amount?.toString?.() ?? t.amount,
+      platformCommissionAmt: t.platformCommissionAmt?.toString?.() ?? t.platformCommissionAmt,
+      merchantNetAmount: t.merchantNetAmount?.toString?.() ?? t.merchantNetAmount,
+      platformCommissionRate: t.platformCommissionRate ? Number(t.platformCommissionRate) : 0,
+    }));
 
     return {
       data,

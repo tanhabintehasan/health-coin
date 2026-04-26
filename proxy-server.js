@@ -30,7 +30,7 @@ app.get('/health', (req, res) => {
 // Using pathFilter instead of mount path to preserve the full /api prefix
 const apiProxy = createProxyMiddleware({
   pathFilter: '/api',
-  target: 'http://localhost:10000',
+  target: 'http://localhost:3000',
   changeOrigin: true,
   logLevel: 'warn',
   // Retry on connection errors (API might be restarting)

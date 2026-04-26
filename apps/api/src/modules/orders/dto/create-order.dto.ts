@@ -1,4 +1,4 @@
-import { IsString, IsArray, IsOptional, IsEnum, ValidateNested, IsInt, Min } from 'class-validator';
+import { IsString, IsArray, IsOptional, IsEnum, ValidateNested, IsInt, Min, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WalletType } from '@prisma/client';
@@ -22,6 +22,7 @@ export class OrderItemDto {
 export class CreateOrderDto {
   @ApiProperty({ type: [OrderItemDto] })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];

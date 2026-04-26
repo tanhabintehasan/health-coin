@@ -46,7 +46,7 @@ async function seed() {
         productType: 'PHYSICAL',
         deliveryType: 'DELIVERY',
         status: 'ACTIVE',
-        images: ['https://placehold.co/400x400?text=Vitamin+C'],
+        images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop'],
         variants: [
           { name: '60 Tablets', price: 9900, stock: 100 },
           { name: '120 Tablets', price: 17900, stock: 50 },
@@ -61,7 +61,7 @@ async function seed() {
         deliveryType: 'IN_STORE_REDEMPTION',
         status: 'ACTIVE',
         validityDays: 90,
-        images: ['https://placehold.co/400x400?text=Health+Check'],
+        images: ['https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&h=400&fit=crop'],
         variants: [
           { name: 'Basic Package', price: 29900, stock: 20 },
           { name: 'Premium Package', price: 59900, stock: 10 },
@@ -75,7 +75,7 @@ async function seed() {
         productType: 'PHYSICAL',
         deliveryType: 'DELIVERY',
         status: 'ACTIVE',
-        images: ['https://placehold.co/400x400?text=Protein+Powder'],
+        images: ['https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=400&h=400&fit=crop'],
         variants: [
           { name: 'Chocolate 1kg', price: 19900, stock: 80 },
           { name: 'Vanilla 1kg', price: 19900, stock: 60 },
