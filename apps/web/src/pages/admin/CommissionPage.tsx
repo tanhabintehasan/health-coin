@@ -73,8 +73,9 @@ export default function CommissionPage() {
 
   const openEditTier = (tier: any) => {
     setEditTier(tier)
+    const rate = tier?.regionalCoinRate
     tierForm.setFieldsValue({
-      regionalCoinRate: Number(tier.regionalCoinRate) * 100,
+      regionalCoinRate: isNaN(Number(rate)) ? 0 : Number(rate) * 100,
     })
   }
 

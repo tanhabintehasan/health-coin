@@ -71,7 +71,9 @@ export default function HealthPage() {
             {uploading ? 'Uploading...' : '+ Upload'}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>温馨提示：此功能专为上传您的医疗报告、化验单和处方而设。为维护良好网络环境，请勿上传任何色情、暴力或与医疗无关的图片及文件。</div>
+        <div style={{ fontSize: 12, color: '#cf1322', background: '#fff2f0', borderRadius: 6, padding: '8px 12px', marginTop: 8, lineHeight: 1.5 }}>
+          <b>⚠️ 上传须知：</b>此功能专为上传您的医疗报告、化验单和处方而设。为维护良好网络环境，<b>严禁上传任何色情、暴力或与医疗无关的图片及文件</b>，违规内容将被删除并可能追究责任。
+        </div>
       </div>
 
       <div style={{ overflowY: 'auto' }}>

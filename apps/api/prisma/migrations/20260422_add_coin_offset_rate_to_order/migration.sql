@@ -21,5 +21,5 @@ BEGIN
 END $$;
 
 -- Add new system config for global mall default offset rate
-INSERT INTO system_configs (key, value) VALUES ('mall_default_coin_offset_rate', '0.0')
-ON CONFLICT (key) DO UPDATE SET value = '0.0';
+INSERT INTO system_configs ("key", "value", "updatedAt") VALUES ('mall_default_coin_offset_rate', '0.0', NOW())
+ON CONFLICT ("key") DO UPDATE SET "value" = '0.0', "updatedAt" = NOW();

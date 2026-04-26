@@ -130,10 +130,14 @@ export default function ProductDetailPage() {
 
       <Card style={{ margin: '0 12px 12px', borderRadius: 12 }} bodyStyle={{ padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#e6f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
-          </div>
-          <div style={{ flex: 1 }}>
+          {product.merchant?.logoUrl ? (
+            <img src={product.merchant.logoUrl} alt={product.merchant.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#e6f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 500 }}>{product.merchant?.name || '平台自营'}</div>
             <div style={{ fontSize: 12, color: '#888' }}>企业认证 · 正品保障</div>
           </div>

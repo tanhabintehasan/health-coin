@@ -50,8 +50,8 @@ export default function MembershipPage() {
     setEditTarget(tier)
     form.setFieldsValue({
       name: tier.name,
-      minCoins: Number(tier.minCoins) / 100,
-      regionalCoinRate: Number(tier.regionalCoinRate) * 100,
+      minCoins: isNaN(Number(tier.minCoins)) ? 0 : Number(tier.minCoins) / 100,
+      regionalCoinRate: isNaN(Number(tier.regionalCoinRate)) ? 0 : Number(tier.regionalCoinRate) * 100,
       description: tier.description ?? '',
     })
   }
@@ -254,7 +254,7 @@ export default function MembershipPage() {
           <Form.Item
             name="regionalCoinRate"
             label="Commission Rate — m% (0 for levels 1–2)"
-            extra="Percentage of regional members' spending awarded as Universal Coins. Set 0 for non-agent tiers."
+            extra="辖区会员消费获得的万能币返佣比例。非代理级别请设为 0。"
             rules={[{ required: true }]}
           >
             <InputNumber min={0} max={100} step={1} suffix="%" style={{ width: '100%' }} placeholder="e.g. 20" />
@@ -299,7 +299,7 @@ export default function MembershipPage() {
           <Form.Item
             name="regionalCoinRate"
             label="Commission Rate — m%"
-            extra="Percentage of regional members' spending awarded as Universal Coins"
+            extra="辖区会员消费获得的万能币返佣比例"
             rules={[{ required: true }]}
             initialValue={0}
           >

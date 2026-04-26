@@ -335,8 +335,17 @@ export class AuthService {
   // WeChat Web OAuth (QR Login)
   // ---------------------------------------------------------------------------
   async wechatWebOAuth(code: string) {
-    const appId = this.config.get('WECHAT_APPID');
-    const secret = this.config.get('WECHAT_APP_SECRET');
+    let appId = this.config.get('WECHAT_APPID');
+    let secret = this.config.get('WECHAT_APP_SECRET');
+    if (!appId || !secret) {
+      const cfg = await this.prisma.systemConfig.findMany({
+        where: { key: { in: ['wechat_web_appid', 'wechat_web_secret'] } },
+      });
+      const map: Record<string, string> = {};
+      for (const c of cfg) map[c.key] = c.value;
+      appId = map.wechat_web_appid;
+      secret = map.wechat_web_secret;
+    }
     if (!appId || !secret) {
       throw new BadRequestException('WeChat OAuth is not configured');
     }

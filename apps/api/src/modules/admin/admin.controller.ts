@@ -206,6 +206,43 @@ export class AdminController {
     return this.referralService.getReferralTree(userId);
   }
 
+  @Get('users/:id/wallet-transactions')
+  @ApiOperation({ summary: 'Get wallet transactions for a user (admin)' })
+  async getUserWalletTransactions(@Param('id') userId: string, @Query() query: { walletType?: string; page?: string; limit?: string }) {
+    const page = Math.max(1, parseInt(query.page ?? '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(query.limit ?? '20', 10)));
+    const where: any = { userId };
+    if (query.walletType) where.walletType = query.walletType;
+
+    const [total, transactions] = await Promise.all([
+      this.prisma.walletTransaction.count({ where }),
+      this.prisma.walletTransaction.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          walletType: true,
+          amount: true,
+          balanceAfter: true,
+          txType: true,
+          note: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    return {
+      data: transactions.map((t) => ({
+        ...t,
+        amount: t.amount.toString(),
+        balanceAfter: t.balanceAfter.toString(),
+      })),
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
   // ── Merchants ──────────────────────────────────────────────────────────────
 
   @Get('merchants')
@@ -384,13 +421,30 @@ export class AdminController {
     ]);
     return {
       data: data.map((o) => ({
-        ...o,
+        id: o.id,
+        orderNo: o.orderNo,
+        userId: o.userId,
+        merchantId: o.merchantId,
+        status: o.status,
         totalAmount: o.totalAmount.toString(),
         healthCoinPaid: o.healthCoinPaid.toString(),
         mutualCoinPaid: o.mutualCoinPaid.toString(),
         universalCoinPaid: o.universalCoinPaid.toString(),
         cashPaid: o.cashPaid.toString(),
         coinOffsetRate: Number(o.coinOffsetRate ?? 0),
+        fuiouTradeNo: o.fuiouTradeNo,
+        lcswTradeNo: o.lcswTradeNo,
+        shippingAddress: o.shippingAddress,
+        trackingNumber: o.trackingNumber,
+        remark: o.remark,
+        paidAt: o.paidAt,
+        rewardProcessedAt: o.rewardProcessedAt,
+        completedAt: o.completedAt,
+        cancelledAt: o.cancelledAt,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+        user: o.user,
+        merchant: o.merchant,
       })),
       meta: { total, page: Number(page), limit: take, totalPages: Math.ceil(total / take) },
     };

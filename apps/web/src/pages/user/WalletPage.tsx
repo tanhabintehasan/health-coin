@@ -4,7 +4,7 @@ import { message, Spin, Empty } from 'antd'
 import { useResponsive } from '../../hooks/useResponsive'
 
 const WALLET_LABEL: Record<string, string> = {
-  HEALTH_COIN: 'HealthCoin', MUTUAL_HEALTH_COIN: 'MutualCoin', UNIVERSAL_HEALTH_COIN: 'UniversalCoin',
+  HEALTH_COIN: '健康币', MUTUAL_HEALTH_COIN: '互助币', UNIVERSAL_HEALTH_COIN: '万能币',
 }
 
 const WALLET_COLOR: Record<string, string> = {

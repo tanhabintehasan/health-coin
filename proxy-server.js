@@ -27,8 +27,10 @@ app.get('/health', (req, res) => {
 });
 
 // Proxy all /api requests to the NestJS backend
+// Using pathFilter instead of mount path to preserve the full /api prefix
 const apiProxy = createProxyMiddleware({
-  target: 'http://localhost:3000',
+  pathFilter: '/api',
+  target: 'http://localhost:10000',
   changeOrigin: true,
   logLevel: 'warn',
   // Retry on connection errors (API might be restarting)
@@ -40,7 +42,7 @@ const apiProxy = createProxyMiddleware({
   },
 });
 
-app.use('/api', apiProxy);
+app.use(apiProxy);
 
 // Serve static frontend files with caching headers for better performance
 const staticPath = path.join(__dirname, 'apps', 'web', 'dist');

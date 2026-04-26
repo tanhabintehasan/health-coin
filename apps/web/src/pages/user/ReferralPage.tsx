@@ -131,7 +131,7 @@ export default function ReferralPage() {
               <span style={{ color: '#52c41a', fontWeight: 500 }}>¥{(Number(earnings.l1?.mutualCoins || 0) / 100).toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-              <span style={{ color: '#666' }}>L1 Universal Coins</span>
+              <span style={{ color: '#666' }}>L1 万能币</span>
               <span style={{ color: '#722ed1', fontWeight: 500 }}>¥{(Number(earnings.l1?.universalCoins || 0) / 100).toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
@@ -139,7 +139,7 @@ export default function ReferralPage() {
               <span style={{ color: '#52c41a', fontWeight: 500 }}>¥{(Number(earnings.l2?.mutualCoins || 0) / 100).toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: '#666' }}>L2 Universal Coins</span>
+              <span style={{ color: '#666' }}>L2 万能币</span>
               <span style={{ color: '#722ed1', fontWeight: 500 }}>¥{(Number(earnings.l2?.universalCoins || 0) / 100).toFixed(2)}</span>
             </div>
           </div>

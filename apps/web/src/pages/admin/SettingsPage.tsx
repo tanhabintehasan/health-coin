@@ -15,38 +15,38 @@ interface ConfigMeta {
 
 const CONFIG_META: Record<string, ConfigMeta> = {
   mutual_coin_own_rate: {
-    label: 'Mutual Coin — Own Spend Rate',
-    hint: 'Fraction of spending awarded as Mutual Coins to the buyer. E.g. 0.5 = 50% back.',
+    label: '互助币 — 自消费返还比例',
+    hint: '买家消费时获得的互助币比例。例如 0.5 = 50% 返还。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   mutual_coin_l1_rate: {
-    label: 'Mutual Coin — L1 Referral Rate',
-    hint: 'Fraction awarded to the direct referrer (level 1). E.g. 0.25 = 25%.',
+    label: '互助币 — 直推返佣比例',
+    hint: '直接推荐人获得的互助币比例。例如 0.25 = 25%。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   mutual_coin_l2_rate: {
-    label: 'Mutual Coin — L2 Referral Rate',
-    hint: 'Fraction awarded to the second-level referrer. E.g. 0.1 = 10%.',
+    label: '互助币 — 间推返佣比例',
+    hint: '二级推荐人获得的互助币比例。例如 0.1 = 10%。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   health_coin_multiplier: {
-    label: 'Health Coin Multiplier',
-    hint: 'How many HealthCoins are awarded per Mutual Coin earned. E.g. 2.0 = twice as many.',
+    label: '健康币倍数',
+    hint: '每获得 1 个互助币可兑换的健康币数量。例如 2.0 = 双倍。',
     type: 'number', min: 0, max: 100, step: 0.1,
   },
   universal_coin_own_rate: {
-    label: 'Universal Coin — Own Spend Rate',
-    hint: 'Fraction of spending awarded as Universal Coins to the buyer. E.g. 0.2 = 20%.',
+    label: '万能币 — 自消费返还比例',
+    hint: '买家消费时获得的万能币比例。例如 0.2 = 20%。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   universal_coin_l1_rate: {
-    label: 'Universal Coin — L1 Referral Rate',
-    hint: 'Universal Coin fraction for direct referrer. E.g. 0.1 = 10%.',
+    label: '万能币 — 直推返佣比例',
+    hint: '直接推荐人获得的万能币比例。例如 0.1 = 10%。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   mall_default_coin_offset_rate: {
-    label: 'Default Mall Coin Offset Rate',
-    hint: 'Platform-wide default Health Coin offset for new products. E.g. 0.3 = 30% of price can be offset. Set 0 to disable by default.',
+    label: '默认健康币抵扣比例',
+    hint: '新商品的默认健康币抵扣比例。例如 0.3 = 30%。设为 0 则默认不启用抵扣。',
     type: 'number', min: 0, max: 1, step: 0.01,
   },
   withdrawal_commission_rate: {
@@ -155,13 +155,23 @@ const CONFIG_META: Record<string, ConfigMeta> = {
     type: 'text',
   },
   wechat_mini_appid: {
-    label: 'WeChat Mini Program AppID',
-    hint: 'Your WeChat mini program AppID.',
+    label: '微信小程序 AppID',
+    hint: '您的微信小程序 AppID。',
     type: 'text',
   },
   wechat_mini_secret: {
-    label: 'WeChat Mini Program Secret',
-    hint: 'Your WeChat mini program AppSecret.',
+    label: '微信小程序 Secret',
+    hint: '您的微信小程序 AppSecret。',
+    type: 'password',
+  },
+  wechat_web_appid: {
+    label: '微信网页登录 AppID',
+    hint: '微信开放平台网站应用的 AppID，用于网页扫码登录。',
+    type: 'text',
+  },
+  wechat_web_secret: {
+    label: '微信网页登录 Secret',
+    hint: '微信开放平台网站应用的 AppSecret。',
     type: 'password',
   },
 }
@@ -172,7 +182,7 @@ const REVIEW_KEYS = ['order_approval_required']
 const PAYMENT_TOGGLE_KEYS = ['payment_fuiou_enabled', 'payment_lcsw_enabled', 'payment_wechat_enabled', 'payment_alipay_enabled', 'payment_coin_enabled']
 const LCSW_KEYS = ['lcsw_merchant_no', 'lcsw_terminal_id', 'lcsw_access_token', 'lcsw_base_url']
 const SMS_KEYS = ['sms_enabled', 'otp_expiry_seconds', 'otp_resend_seconds', 'otp_hourly_limit', 'sms_provider', 'sms_template_code', 'sms_sign_name', 'smsbao_username', 'smsbao_password', 'smsbao_template']
-const WECHAT_KEYS = ['wechat_mini_appid', 'wechat_mini_secret']
+const WECHAT_KEYS = ['wechat_mini_appid', 'wechat_mini_secret', 'wechat_web_appid', 'wechat_web_secret']
 
 export default function SettingsPage() {
   const { isMobile } = useResponsive()

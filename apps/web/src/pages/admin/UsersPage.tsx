@@ -24,9 +24,9 @@ const LEVEL_OPTIONS = [
 ]
 
 const WALLET_TYPE_OPTIONS = [
-  { value: 'HEALTH_COIN', label: 'HealthCoin' },
-  { value: 'MUTUAL_HEALTH_COIN', label: 'Mutual HealthCoin' },
-  { value: 'UNIVERSAL_HEALTH_COIN', label: 'Universal HealthCoin' },
+  { value: 'HEALTH_COIN', label: '健康币' },
+  { value: 'MUTUAL_HEALTH_COIN', label: '互助健康币' },
+  { value: 'UNIVERSAL_HEALTH_COIN', label: '万能健康币' },
 ]
 
 function toTreeData(node: any): any {
@@ -73,6 +73,11 @@ export default function UsersPage() {
   const [savingUser, setSavingUser] = useState(false)
   const [regions, setRegions] = useState<any[]>([])
 
+  const [walletTxs, setWalletTxs] = useState<any[]>([])
+  const [walletTxLoading, setWalletTxLoading] = useState(false)
+  const [walletTxTotal, setWalletTxTotal] = useState(0)
+  const [walletTxPage, setWalletTxPage] = useState(1)
+
   const fetchUsers = async (p = 1, q = '') => {
     setLoading(true)
     try {
@@ -100,6 +105,42 @@ export default function UsersPage() {
     setWalletTarget(record)
     walletForm.resetFields()
     setWalletModalOpen(true)
+  }
+
+  const fetchWalletTransactions = async (userId: string, p = 1) => {
+    setWalletTxLoading(true)
+    try {
+      const res: any = await api.getUserWalletTransactions(userId, { page: p, limit: 10 })
+      setWalletTxs(res?.data ?? [])
+      setWalletTxTotal(res?.meta?.total ?? 0)
+    } catch {
+      setWalletTxs([])
+      setWalletTxTotal(0)
+    } finally {
+      setWalletTxLoading(false)
+    }
+  }
+
+  const TX_TYPE_LABEL: Record<string, string> = {
+    ORDER_REWARD: '消费奖励',
+    REFERRAL_L1_REWARD: '直推奖励',
+    REFERRAL_L2_REWARD: '间推奖励',
+    REGIONAL_REWARD: '辖区奖励',
+    ORDER_PAYMENT: '订单支付',
+    WITHDRAWAL: '提现',
+    REFUND: '退款',
+    ADMIN_ADJUSTMENT: '后台调整',
+  }
+
+  const TX_TYPE_COLOR: Record<string, string> = {
+    ORDER_REWARD: '#52c41a',
+    REFERRAL_L1_REWARD: '#52c41a',
+    REFERRAL_L2_REWARD: '#52c41a',
+    REGIONAL_REWARD: '#52c41a',
+    ORDER_PAYMENT: '#1677ff',
+    WITHDRAWAL: '#fa8c16',
+    REFUND: '#722ed1',
+    ADMIN_ADJUSTMENT: '#ff4d4f',
   }
 
   const handleWalletAdjust = async () => {
@@ -234,17 +275,51 @@ export default function UsersPage() {
         <Table rowKey="id" columns={columns} dataSource={users} loading={loading} pagination={{ total, pageSize: 20, current: page, onChange: (p) => { setPage(p); fetchUsers(p, search) } }} scroll={{ x: 'max-content' }} />
       </div>
 
-      <Drawer title="User Detail" open={!!selected} onClose={() => setSelected(null)} width={isMobile ? '100%' : 480} style={{ maxWidth: 'calc(100vw - 32px)' }}>
+      <Drawer title="User Detail" open={!!selected} onClose={() => { setSelected(null); setWalletTxs([]); setWalletTxTotal(0); setWalletTxPage(1) }} width={isMobile ? '100%' : 560} style={{ maxWidth: 'calc(100vw - 32px)' }}>
         {selected && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
-            <Descriptions.Item label="Phone">{selected.phone}</Descriptions.Item>
-            <Descriptions.Item label="Nickname">{selected.nickname || '-'}</Descriptions.Item>
-            <Descriptions.Item label="Level">{LEVEL_LABELS[selected.membershipLevel]}</Descriptions.Item>
-            <Descriptions.Item label="Referral Code">{selected.referralCode}</Descriptions.Item>
-            <Descriptions.Item label="Region">{selected.region?.name || '-'}</Descriptions.Item>
-            <Descriptions.Item label="Joined">{dayjs(selected.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
+              <Descriptions.Item label="Phone">{selected.phone}</Descriptions.Item>
+              <Descriptions.Item label="Nickname">{selected.nickname || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Level">{LEVEL_LABELS[selected.membershipLevel]}</Descriptions.Item>
+              <Descriptions.Item label="Referral Code">{selected.referralCode}</Descriptions.Item>
+              <Descriptions.Item label="Region">{selected.region?.name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Joined">{dayjs(selected.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 24 }}>
+              <Typography.Title level={5}>Wallet Transactions</Typography.Title>
+              <Button size="small" type="primary" icon={<WalletOutlined />} style={{ marginBottom: 12 }} onClick={() => fetchWalletTransactions(selected.id)}>
+                Load Transactions
+              </Button>
+              {walletTxLoading && <div style={{ textAlign: 'center', padding: 24 }}><Spin size="small" /></div>}
+              {!walletTxLoading && walletTxs.length === 0 && walletTxTotal === 0 && (
+                <div style={{ color: '#999', padding: '12px 0' }}>Click "Load Transactions" to view history</div>
+              )}
+              {!walletTxLoading && walletTxs.map((tx: any) => (
+                <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <div>
+                    <Tag color={TX_TYPE_COLOR[tx.txType] ?? 'default'} style={{ fontSize: 12 }}>{TX_TYPE_LABEL[tx.txType] ?? tx.txType}</Tag>
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{tx.note || '-'}</div>
+                    <div style={{ fontSize: 11, color: '#bbb' }}>{dayjs(tx.createdAt).format('YYYY-MM-DD HH:mm')}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 14, fontWeight: 'bold', color: Number(tx.amount) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                      {Number(tx.amount) >= 0 ? '+' : ''}{(Number(tx.amount) / 100).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#999' }}>余额: {(Number(tx.balanceAfter) / 100).toFixed(2)}</div>
+                  </div>
+                </div>
+              ))}
+              {walletTxTotal > 10 && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <Button size="small" onClick={() => { const next = walletTxPage + 1; setWalletTxPage(next); fetchWalletTransactions(selected.id, next) }}>
+                    Load More
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </Drawer>
 

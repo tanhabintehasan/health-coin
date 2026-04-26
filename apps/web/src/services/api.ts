@@ -184,6 +184,7 @@ export const api = {
   setUserLevel: (id: string, level: number) => request<any>('PATCH', `/admin/users/${id}/level`, { level }),
   adjustWallet: (id: string, data: any) => request<any>('PATCH', `/admin/users/${id}/wallet`, data),
   getReferralTree: (id: string) => request<any>('GET', `/admin/users/${id}/referral-tree`),
+  getUserWalletTransactions: (id: string, params?: any) => request<any>('GET', `/admin/users/${id}/wallet-transactions`, undefined, params),
 
   getAdminMerchants: (params?: any) => request<any>('GET', '/admin/merchants', undefined, params),
   approveMerchant: (id: string) => request<any>('PATCH', `/admin/merchants/${id}/approve`),

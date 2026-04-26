@@ -6,6 +6,7 @@ import {
 import { LockOutlined, WechatOutlined, UserOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../store/auth.store'
+import { useSettingsStore } from '../../store/settings.store'
 
 const { Title, Text } = Typography
 
@@ -14,6 +15,9 @@ export default function AuthPage() {
   const [searchParams] = useSearchParams()
   const from = searchParams.get('from') || ''
   const { setAuth, detectRole } = useAuthStore()
+  const { settings, fetchSettings } = useSettingsStore()
+
+  useEffect(() => { fetchSettings() }, [fetchSettings])
 
   const [activeTab, setActiveTab] = useState<'otp' | 'password'>('otp')
   const [step, setStep] = useState(0)
@@ -178,14 +182,17 @@ export default function AuthPage() {
   }
 
   const handleWechatLogin = () => {
-    const appid = import.meta.env.VITE_WECHAT_APPID
+    const appid = settings?.auth?.wechatWebAppId || import.meta.env.VITE_WECHAT_APPID
     if (!appid) {
-      message.error('WeChat login requires WECHAT_APPID configuration')
+      message.error('微信网页登录未配置，请先前往后台设置微信网页登录 AppID')
       return
     }
     const redirectUri = encodeURIComponent(window.location.origin + '/auth')
     const url = `https://open.weixin.qq.com/connect/qrconnect?appid=${appid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login#wechat_redirect`
-    window.open(url, 'wechatLogin', 'width=600,height=600,left=200,top=200')
+    const popup = window.open(url, 'wechatLogin', 'width=600,height=600,left=200,top=200')
+    if (!popup) {
+      message.error('弹出窗口被拦截，请允许弹出窗口后重试')
+    }
   }
 
   return (

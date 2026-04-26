@@ -11,6 +11,7 @@ interface PublicSettings {
     smsEnabled: boolean
     otpExpirySeconds: number
     otpResendSeconds: number
+    wechatWebAppId: string
   }
   payments: {
     fuiou: boolean
@@ -44,7 +45,7 @@ interface SettingsState {
 
 const defaultSettings: PublicSettings = {
   platform: { name: 'HealthCoin', hotline: '', address: '' },
-  auth: { smsEnabled: true, otpExpirySeconds: 300, otpResendSeconds: 60 },
+  auth: { smsEnabled: true, otpExpirySeconds: 300, otpResendSeconds: 60, wechatWebAppId: '' },
   payments: { fuiou: true, lcsw: false, coin: true },
   business: { productReviewRequired: false, redemptionCodeValidDays: 30, allowPartialRedemption: false },
   coinRates: { mutualCoinOwnRate: 0.5, mutualCoinL1Rate: 0.25, mutualCoinL2Rate: 0.1, healthCoinMultiplier: 2.0, universalCoinOwnRate: 0.2, universalCoinL1Rate: 0.1 },

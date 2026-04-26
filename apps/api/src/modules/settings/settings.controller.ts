@@ -35,6 +35,7 @@ export class SettingsController {
       'health_coin_multiplier',
       'universal_coin_own_rate',
       'universal_coin_l1_rate',
+      'wechat_web_appid',
       'withdrawal_commission_rate',
       'platform_commission_rate',
       'mall_default_coin_offset_rate',
@@ -58,6 +59,7 @@ export class SettingsController {
         smsEnabled: map.sms_enabled === 'true',
         otpExpirySeconds: parseInt(map.otp_expiry_seconds ?? '300', 10),
         otpResendSeconds: parseInt(map.otp_resend_seconds ?? '60', 10),
+        wechatWebAppId: map.wechat_web_appid ?? '',
       },
       payments: {
         fuiou: map.payment_fuiou_enabled === 'true',
