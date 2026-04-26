@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Put, Delete, Param, Query, Body, Res, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Param, Query, Body, Res, UseGuards, UsePipes, BadRequestException, ValidationPipe } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -476,6 +476,7 @@ export class AdminController {
     'sms_provider', 'sms_template_code', 'sms_sign_name',
     'smsbao_username', 'smsbao_password', 'smsbao_template',
     'wechat_appid', 'wechat_secret', 'wechat_mini_appid', 'wechat_mini_secret',
+    'wechat_web_appid', 'wechat_web_secret',
     'lcsw_merchant_no', 'lcsw_appid', 'lcsw_app_secret', 'lcsw_access_token',
     'lcsw_terminal_id', 'lcsw_base_url',
     'fuiou_merchant_no', 'fuiou_api_key',
@@ -496,6 +497,7 @@ export class AdminController {
 
   @Put('configs')
   @ApiOperation({ summary: 'Update system configs (bulk)' })
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: true }))
   async updateConfigs(@Body() body: Record<string, string>) {
     for (const key of Object.keys(body)) {
       if (this.SENSITIVE_CONFIG_KEYS.has(key)) {
